@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Always build the binary to ensure it's for the current platform
+echo "Building tdh..."
+./scripts/build
+
+# Create completions directory
+mkdir -p completions
+
+# Generate completions
+echo "Generating bash completion..."
+./tdh completion bash > completions/tdh.bash
+
+echo "Generating zsh completion..."
+./tdh completion zsh > completions/_tdh
+
+echo "Generating fish completion..."
+./tdh completion fish > completions/tdh.fish
+
+echo "✅ Completions generated in completions/"
