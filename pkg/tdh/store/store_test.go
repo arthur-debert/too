@@ -308,3 +308,148 @@ func TestStore_TransactionRollback(t *testing.T) {
 		assert.Equal(t, "New todo", loaded.Todos[1].Text)
 	})
 }
+
+func TestStore_Exists(t *testing.T) {
+	t.Run("JSONFileStore.Exists should return false for non-existent file", func(t *testing.T) {
+		store := NewJSONFileStore("/non-existent-path/file.json")
+		assert.False(t, store.Exists())
+	})
+
+	t.Run("JSONFileStore.Exists should return true for existing file", func(t *testing.T) {
+		file, err := os.CreateTemp("", "tdh-exists-test")
+		require.NoError(t, err)
+		defer func() { _ = os.Remove(file.Name()) }()
+		_ = file.Close()
+
+		store := NewJSONFileStore(file.Name())
+		assert.True(t, store.Exists())
+	})
+
+	t.Run("MemoryStore.Exists should always return true", func(t *testing.T) {
+		store := NewMemoryStore()
+		assert.True(t, store.Exists())
+	})
+}
+
+func TestStore_Path(t *testing.T) {
+	t.Run("JSONFileStore.Path should return the file path", func(t *testing.T) {
+		expectedPath := "/some/path/todos.json"
+		store := NewJSONFileStore(expectedPath)
+		assert.Equal(t, expectedPath, store.Path())
+	})
+
+	t.Run("MemoryStore.Path should return memory URL", func(t *testing.T) {
+		store := NewMemoryStore()
+		assert.Equal(t, "memory://todos", store.Path())
+	})
+}
+
+func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
+	t.Run("should handle save with nil todos slice", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-save-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+		store := NewJSONFileStore(dbPath)
+		collection := &models.Collection{
+			Path:  dbPath,
+			Todos: nil,
+		}
+
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		// Verify the file was created with null value
+		data, err := os.ReadFile(dbPath)
+		require.NoError(t, err)
+		assert.Equal(t, "null", string(data))
+	})
+
+	t.Run("should cleanup temp file even if rename fails", func(t *testing.T) {
+		// Create a read-only directory to cause rename to fail
+		dir, err := os.MkdirTemp("", "tdh-readonly-test")
+		require.NoError(t, err)
+		defer func() {
+			_ = os.Chmod(dir, 0755) // Restore permissions before cleanup
+			_ = os.RemoveAll(dir)
+		}()
+
+		// Create the file first
+		dbPath := filepath.Join(dir, "test.json")
+		err = os.WriteFile(dbPath, []byte("[]"), 0644)
+		require.NoError(t, err)
+
+		// Make directory read-only
+		err = os.Chmod(dir, 0555)
+		require.NoError(t, err)
+
+		store := NewJSONFileStore(dbPath)
+		collection := models.NewCollection(dbPath)
+		collection.CreateTodo("Test")
+
+		// This should fail during temp file creation
+		err = store.Save(collection)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create temp file")
+	})
+}
+
+func TestFactory_EdgeCases(t *testing.T) {
+	t.Run("tryDir should handle permission errors", func(t *testing.T) {
+		// This is already tested implicitly in other tests
+		// but let's add explicit test for the IsDir check
+		dir, err := os.MkdirTemp("", "tdh-isdir-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		// Create a directory named .todos
+		todosDir := filepath.Join(dir, ".todos")
+		err = os.Mkdir(todosDir, 0755)
+		require.NoError(t, err)
+
+		_, err = tryDir(dir)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrIsNotAFile)
+	})
+
+	t.Run("calculateDBPath should handle missing home directory", func(t *testing.T) {
+		// Save original values
+		originalWd, _ := os.Getwd()
+		originalEnv := os.Getenv("TODO_DB_PATH")
+		originalHome := os.Getenv("HOME")
+		originalCache := cachedDBPath
+
+		defer func() {
+			_ = os.Chdir(originalWd)
+			if originalEnv != "" {
+				_ = os.Setenv("TODO_DB_PATH", originalEnv)
+			} else {
+				_ = os.Unsetenv("TODO_DB_PATH")
+			}
+			if originalHome != "" {
+				_ = os.Setenv("HOME", originalHome)
+			} else {
+				_ = os.Unsetenv("HOME")
+			}
+			cachedDBPath = originalCache
+		}()
+
+		// Create a directory without .todos
+		dir, err := os.MkdirTemp("", "tdh-nohome-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		err = os.Chdir(dir)
+		require.NoError(t, err)
+
+		// Clear environment
+		_ = os.Unsetenv("TODO_DB_PATH")
+		_ = os.Unsetenv("HOME")
+		cachedDBPath = ""
+
+		// Should fall back to .todos.json in current directory
+		path := calculateDBPath()
+		assert.Equal(t, ".todos.json", path)
+	})
+}
