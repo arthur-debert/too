@@ -2,7 +2,6 @@ package internal
 
 import (
 	"os"
-	"strings"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 )
@@ -76,28 +75,5 @@ func (s *MemoryStore) Find(query Query) ([]*models.Todo, error) {
 		return nil, os.ErrNotExist
 	}
 
-	var results []*models.Todo
-	for _, todo := range s.Collection.Todos {
-		// Apply status filter
-		if query.Status != nil && todo.Status != *query.Status {
-			continue
-		}
-
-		// Apply text containment filter
-		if query.TextContains != nil {
-			text := todo.Text
-			searchText := *query.TextContains
-			if !query.CaseSensitive {
-				text = strings.ToLower(text)
-				searchText = strings.ToLower(searchText)
-			}
-			if !strings.Contains(text, searchText) {
-				continue
-			}
-		}
-
-		results = append(results, todo)
-	}
-
-	return results, nil
+	return query.FilterTodos(s.Collection.Todos), nil
 }

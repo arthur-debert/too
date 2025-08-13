@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 )
@@ -130,28 +129,5 @@ func (s *JSONFileStore) Find(query Query) ([]*models.Todo, error) {
 		return nil, err
 	}
 
-	var results []*models.Todo
-	for _, todo := range collection.Todos {
-		// Apply status filter
-		if query.Status != nil && todo.Status != *query.Status {
-			continue
-		}
-
-		// Apply text containment filter
-		if query.TextContains != nil {
-			text := todo.Text
-			searchText := *query.TextContains
-			if !query.CaseSensitive {
-				text = strings.ToLower(text)
-				searchText = strings.ToLower(searchText)
-			}
-			if !strings.Contains(text, searchText) {
-				continue
-			}
-		}
-
-		results = append(results, todo)
-	}
-
-	return results, nil
+	return query.FilterTodos(collection.Todos), nil
 }

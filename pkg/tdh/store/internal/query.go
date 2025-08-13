@@ -1,5 +1,11 @@
 package internal
 
+import (
+	"strings"
+
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
+)
+
 // Query defines parameters for finding todos.
 // All fields are optional - nil pointer fields are ignored during filtering.
 // Multiple criteria are combined with AND logic (all must match).
@@ -19,4 +25,40 @@ type Query struct {
 	// Defaults to false (case-insensitive search).
 	// Note: This enhancement was added beyond the original design to improve usability.
 	CaseSensitive bool
+}
+
+// MatchesTodo checks if a todo matches the query criteria.
+// This helper function encapsulates the common filtering logic used by all store implementations.
+func (q Query) MatchesTodo(todo *models.Todo) bool {
+	// Apply status filter
+	if q.Status != nil && todo.Status != *q.Status {
+		return false
+	}
+
+	// Apply text containment filter
+	if q.TextContains != nil {
+		text := todo.Text
+		searchText := *q.TextContains
+		if !q.CaseSensitive {
+			text = strings.ToLower(text)
+			searchText = strings.ToLower(searchText)
+		}
+		if !strings.Contains(text, searchText) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// FilterTodos applies the query to a slice of todos and returns matching results.
+// This helper function provides consistent filtering behavior across all store implementations.
+func (q Query) FilterTodos(todos []*models.Todo) []*models.Todo {
+	var results []*models.Todo
+	for _, todo := range todos {
+		if q.MatchesTodo(todo) {
+			results = append(results, todo)
+		}
+	}
+	return results
 }
