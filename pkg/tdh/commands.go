@@ -285,6 +285,8 @@ func Search(query string, opts SearchOptions) (*SearchResult, error) {
 // ListOptions contains options for listing todos
 type ListOptions struct {
 	CollectionPath string
+	ShowDone       bool
+	ShowAll        bool
 }
 
 // ListResult contains the result of listing todos
@@ -294,7 +296,7 @@ type ListResult struct {
 	DoneCount  int
 }
 
-// List returns all todos in the collection
+// List returns todos from the collection with optional filtering
 func List(opts ListOptions) (*ListResult, error) {
 	s := store.NewStore(opts.CollectionPath)
 	collection, err := s.Load()
@@ -302,15 +304,31 @@ func List(opts ListOptions) (*ListResult, error) {
 		return nil, err
 	}
 
+	todos := collection.Todos
 	doneCount := 0
+
+	// Count done todos
 	for _, todo := range collection.Todos {
 		if todo.Status == "done" {
 			doneCount++
 		}
 	}
 
+	// Apply filtering if not showing all
+	if !opts.ShowAll {
+		var filteredTodos []*models.Todo
+		for _, todo := range collection.Todos {
+			if opts.ShowDone && todo.Status == "done" {
+				filteredTodos = append(filteredTodos, todo)
+			} else if !opts.ShowDone && todo.Status != "done" {
+				filteredTodos = append(filteredTodos, todo)
+			}
+		}
+		todos = filteredTodos
+	}
+
 	return &ListResult{
-		Todos:      collection.Todos,
+		Todos:      todos,
 		TotalCount: len(collection.Todos),
 		DoneCount:  doneCount,
 	}, nil
