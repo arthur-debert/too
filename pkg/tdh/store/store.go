@@ -1,6 +1,6 @@
 package store
 
-import "github.com/arthur-debert/tdh/pkg/models"
+import "github.com/arthur-debert/tdh/pkg/tdh/models"
 
 // Store defines the interface for persistence operations.
 type Store interface {

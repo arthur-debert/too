@@ -1,9 +1,9 @@
-package store
+package internal
 
 import (
 	"os"
 
-	"github.com/arthur-debert/tdh/pkg/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
 )
 
 // MemoryStore implements the Store interface for testing purposes.
