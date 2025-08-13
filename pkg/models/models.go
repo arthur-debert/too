@@ -53,3 +53,25 @@ func (t *Todo) Toggle() {
 		t.Status = "done"
 	}
 }
+
+// Clone creates a deep copy of the todo.
+func (t *Todo) Clone() *Todo {
+	return &Todo{
+		ID:       t.ID,
+		Text:     t.Text,
+		Status:   t.Status,
+		Modified: t.Modified,
+	}
+}
+
+// Clone creates a deep copy of the collection.
+func (c *Collection) Clone() *Collection {
+	clone := &Collection{
+		Path:  c.Path,
+		Todos: make([]*Todo, len(c.Todos)),
+	}
+	for i, todo := range c.Todos {
+		clone.Todos[i] = todo.Clone()
+	}
+	return clone
+}

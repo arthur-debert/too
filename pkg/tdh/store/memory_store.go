@@ -42,17 +42,23 @@ func (s *MemoryStore) Exists() bool {
 }
 
 // Update performs a transactional update on the in-memory collection.
+// If the update function returns an error, the collection is not modified.
 func (s *MemoryStore) Update(fn func(collection *models.Collection) error) error {
 	collection, err := s.Load()
 	if err != nil {
 		return err
 	}
 
-	if err := fn(collection); err != nil {
+	// Create a deep copy to ensure rollback safety
+	clone := collection.Clone()
+
+	if err := fn(clone); err != nil {
+		// On error, discard the clone and return the error
 		return err
 	}
 
-	return s.Save(collection)
+	// Only save if the update function succeeded
+	return s.Save(clone)
 }
 
 // Path returns a mock path for the memory store.

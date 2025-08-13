@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -216,5 +217,94 @@ func TestJSONFileStore_ErrorHandling(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create temp file")
 		assert.Contains(t, err.Error(), "/non-existent-dir")
+	})
+}
+
+func TestStore_TransactionRollback(t *testing.T) {
+	t.Run("JSONFileStore should rollback on error", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-rollback-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+		store := NewJSONFileStore(dbPath)
+
+		// Create initial collection with one todo
+		collection := models.NewCollection(dbPath)
+		todo1 := collection.CreateTodo("Original todo")
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		// Attempt an update that fails
+		err = store.Update(func(c *models.Collection) error {
+			c.CreateTodo("This should be rolled back")
+			c.Todos[0].Text = "Modified text"
+			return errors.New("simulated error")
+		})
+
+		assert.Error(t, err)
+		assert.Equal(t, "simulated error", err.Error())
+
+		// Verify the collection is unchanged
+		loaded, err := store.Load()
+		require.NoError(t, err)
+		assert.Len(t, loaded.Todos, 1)
+		assert.Equal(t, "Original todo", loaded.Todos[0].Text)
+		assert.Equal(t, todo1.ID, loaded.Todos[0].ID)
+	})
+
+	t.Run("MemoryStore should rollback on error", func(t *testing.T) {
+		store := NewMemoryStore()
+
+		// Create initial collection with one todo
+		collection := models.NewCollection("")
+		todo1 := collection.CreateTodo("Original todo")
+		err := store.Save(collection)
+		require.NoError(t, err)
+
+		// Attempt an update that fails
+		err = store.Update(func(c *models.Collection) error {
+			c.CreateTodo("This should be rolled back")
+			c.Todos[0].Text = "Modified text"
+			return errors.New("simulated error")
+		})
+
+		assert.Error(t, err)
+		assert.Equal(t, "simulated error", err.Error())
+
+		// Verify the collection is unchanged
+		loaded, err := store.Load()
+		require.NoError(t, err)
+		assert.Len(t, loaded.Todos, 1)
+		assert.Equal(t, "Original todo", loaded.Todos[0].Text)
+		assert.Equal(t, todo1.ID, loaded.Todos[0].ID)
+	})
+
+	t.Run("successful update should persist changes", func(t *testing.T) {
+		store := NewMemoryStore()
+
+		// Create initial collection with one todo
+		collection := models.NewCollection("")
+		collection.CreateTodo("Original todo")
+		err := store.Save(collection)
+		require.NoError(t, err)
+
+		// Perform a successful update
+		var newTodo *models.Todo
+		err = store.Update(func(c *models.Collection) error {
+			newTodo = c.CreateTodo("New todo")
+			c.Todos[0].Text = "Modified text"
+			return nil
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, newTodo)
+
+		// Verify the changes persisted
+		loaded, err := store.Load()
+		require.NoError(t, err)
+		assert.Len(t, loaded.Todos, 2)
+		assert.Equal(t, "Modified text", loaded.Todos[0].Text)
+		assert.Equal(t, "New todo", loaded.Todos[1].Text)
 	})
 }
