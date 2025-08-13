@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/arthur-debert/tdh/pkg/models"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/display"
 	"github.com/spf13/cobra"
@@ -29,7 +30,7 @@ var listCmd = &cobra.Command{
 
 		// Filter based on flags
 		if !showAll {
-			var filteredTodos []*tdh.Todo
+			var filteredTodos []*models.Todo
 			for _, todo := range result.Todos {
 				if showDone && todo.Status == "done" {
 					filteredTodos = append(filteredTodos, todo)
