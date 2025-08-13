@@ -56,7 +56,7 @@ func (s *JSONFileStore) Save(collection *models.Collection) error {
 	}
 
 	// Atomic save: write to a temp file first
-	tempFile, err := os.CreateTemp(filepath.Dir(s.path), ".tdh-*.json.tmp")
+	tempFile, err := os.CreateTemp(filepath.Dir(s.path), ".todos-*.json.tmp")
 	if err != nil {
 		return err
 	}
