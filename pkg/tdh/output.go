@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
-	"github.com/arthur-debert/tdh/pkg/tdh/printer"
 	ct "github.com/daviddengcn/go-colortext"
 )
 
@@ -21,10 +20,10 @@ func MakeOutput(t *models.Todo, useColor bool) {
 
 	if t.Status == "done" {
 		color = ct.Green
-		symbol = printer.OkSign
+		symbol = "✓"
 	} else {
 		color = ct.Red
-		symbol = printer.KoSign
+		symbol = "✕"
 	}
 
 	// Right-align the ID with padding
