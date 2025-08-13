@@ -2,127 +2,105 @@ STORAGE LAYER DESIGN
 
 CURRENT STATE
 - Storage logic is partially centralized in Collection type
-- Collection has Load() and Save() methods that handle JSON file I/O
-- Commands in pkg/tdh/commands.go use loadCollection() helper
-- Each command follows pattern: load -> modify -> save
-- JSON format and file paths are hardcoded
-- No abstraction between business logic and storage
+- Commands in pkg/tdh/commands.go load the entire collection into memory
+- Filtering and searching logic is implemented in the business logic layer (pkg/tdh)
+- No abstraction between business logic and data retrieval logic
 
 PROBLEMS
 - Cannot unit test commands without file system
 - Cannot change storage format without modifying Collection
 - No atomic saves - failures during save can corrupt data file
 - Repeated load/save pattern in every command
-- Collection type mixes data structure with persistence
+- Inefficient in-memory filtering: Load() retrieves all data, forcing the business logic layer to perform filtering, which is inefficient for large datasets and future database backends.
 
 DESIGN GOALS
-- Keep CLI layer unchanged (already properly separated)
+- Keep CLI layer unchanged
 - Create storage abstraction internal to pkg/tdh
 - Enable unit testing with in-memory storage
-- Support atomic operations
-- Single place for all storage logic
+- Support atomic operations and transactional updates
+- Provide efficient, query-based data retrieval
 - Make storage format/backend pluggable
 
 PROPOSED DESIGN
 
-1. Storage Interface (pkg/tdh/store/store.go)
+1. Query Struct (pkg/tdh/store/store.go)
+
+   // Query defines parameters for finding todos.
+   // Nil fields are ignored.
+   type Query struct {
+       Status         *string
+       TextContains   *string
+   }
+
+2. Storage Interface (pkg/tdh/store/store.go)
    
    type Store interface {
-       Load() (*Collection, error)
+       Load() (*Collection, error) // For full collection access
        Save(*Collection) error
        Exists() bool
        Update(func(collection *Collection) error) error
+       Find(Query) ([]*Todo, error) // For efficient retrieval
    }
-   // The Update method handles the load-modify-save transaction atomically.
 
-2. Implementations (pkg/tdh/store/)
+3. Implementations (pkg/tdh/store/)
    
    JSONFileStore struct {
        path string
    }
    - Implements Store using JSON file
-   - Handles all file I/O and path resolution
-   - Save() must be implemented atomically (e.g., write to temp file then rename) to prevent data corruption.
+   - Find() method will load the full collection and apply filters internally.
    
    MemoryStore struct {
        data *Collection
    }
    - Implements Store for testing
-   - No file system dependencies
 
-3. Store Factory (pkg/tdh/store/factory.go)
+4. Store Factory (pkg/tdh/store/factory.go)
    
    func NewStore(path string) Store {
-       if path == "" {
-           path = getDefaultPath()
-       }
-       return &JSONFileStore{path: path}
+       // ... (remains the same)
    }
 
-4. Updated Commands (pkg/tdh/commands.go)
+5. Updated Commands (pkg/tdh/commands.go)
    
-   // Internal helper remains the same
-   func getStore(collectionPath string) Store {
-       return store.NewStore(collectionPath)
-   }
-   
-   // Public API remains unchanged, but implementation is cleaner.
-   // The load->modify->save boilerplate is gone from the command.
-   func Add(text string, opts AddOptions) (*AddResult, error) {
-       s := getStore(opts.CollectionPath)
-       var todo *Todo
-
-       err := s.Update(func(collection *Collection) error {
-           todo = collection.CreateTodo(text)
-           return nil
-       })
+   // Business logic is simplified to building a query and processing results.
+   func Search(queryStr string, opts SearchOptions) (*SearchResult, error) {
+       s := store.NewStore(opts.CollectionPath)
        
+       query := store.Query{
+           TextContains: &queryStr,
+       }
+       
+       todos, err := s.Find(query)
        if err != nil {
            return nil, err
        }
        
-       return &AddResult{Todo: todo}, nil
+       return &SearchResult{MatchedTodos: todos}, nil
    }
-
-5. Collection Becomes Pure Data (pkg/tdh/collection.go)
-   
-   - Remove Load() and Save() methods
-   - Remove file I/O imports
-   - Keep only data manipulation methods
-   - Becomes a pure data structure
 
 IMPLEMENTATION STEPS
 
-1. Create pkg/tdh/store package with Store interface.
-2. Implement JSONFileStore, ensuring Save() is atomic (write-and-rename).
-3. Implement MemoryStore for testing.
-4. Implement the Update() method on store types to handle the transaction.
-5. Create store factory function.
-6. Update commands.go to use the store's Update() method.
-7. Remove Load/Save methods from Collection.
-8. Move path resolution logic to JSONFileStore.
-9. Update tests to use MemoryStore.
+1. Create Query struct in the store package.
+2. Add Find(Query) method to the Store interface.
+3. Implement Find() on JSONFileStore and MemoryStore.
+4. Refactor List and Search commands in pkg/tdh/commands.go to use store.Find() instead of store.Load().
+5. Update tests to cover the new query logic.
 
 TESTING STRATEGY
 
-- Unit tests use MemoryStore
-- No file system in unit tests
-- Integration tests use JSONFileStore with temp directory
-- Can test error conditions by creating failing Store implementations
+- Unit tests use MemoryStore to test command logic with different queries.
+- Integration tests use JSONFileStore to verify file-based filtering.
 
 FUTURE POSSIBILITIES
 
-- SQLiteStore for better performance with large lists
-- CloudStore for sync capabilities  
-- EncryptedStore for security
-- CompressedStore for space savings
-
-All without changing the public API or CLI layer.
+- SQLiteStore: The Find() method can be implemented as an efficient SQL query (`SELECT ... WHERE ...`), providing significant performance gains without changing any command logic.
+- CloudStore for sync capabilities.
+- EncryptedStore for security.
 
 MIGRATION NOTES
 
-- This is an internal refactoring
-- Public API in pkg/tdh/commands.go stays the same
-- CLI layer requires no changes
-- Existing JSON files remain compatible
-- Can be done incrementally, one command at a time
+- This is an internal refactoring.
+- Public API in pkg/tdh/commands.go stays the same.
+- CLI layer requires no changes.
+- Can be done incrementally.
