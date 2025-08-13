@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/arthur-debert/tdh/internal/version"
 	"github.com/arthur-debert/tdh/pkg/logging"
-	"github.com/arthur-debert/tdh/pkg/tdh"
-	"github.com/arthur-debert/tdh/pkg/tdh/display"
-	"github.com/arthur-debert/tdh/pkg/tdh/models"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -26,44 +24,37 @@ It stores todos in a JSON file and provides commands to add, modify, toggle, and
 			logging.SetupLogger(verbosity)
 			log.Debug().Str("command", cmd.Name()).Msg("Command started")
 		},
-		// Default action is to list todos
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get collection path from flag
-			collectionPath, _ := cmd.Flags().GetString("collection")
-			showDone, _ := cmd.Flags().GetBool("done")
-			showAll, _ := cmd.Flags().GetBool("all")
-
-			// Call business logic
-			result, err := tdh.List(tdh.ListOptions{
-				CollectionPath: collectionPath,
-			})
-			if err != nil {
-				return err
-			}
-
-			// Filter based on flags
-			if !showAll {
-				var filteredTodos []*models.Todo
-				for _, todo := range result.Todos {
-					if showDone && todo.Status == "done" {
-						filteredTodos = append(filteredTodos, todo)
-					} else if !showDone && todo.Status != "done" {
-						filteredTodos = append(filteredTodos, todo)
-					}
-				}
-				result.Todos = filteredTodos
-			}
-
-			// Render output
-			renderer := display.NewRenderer(nil)
-			return renderer.RenderList(result)
-		},
 	}
 )
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() error {
+	// Check if a subcommand was provided
+	// If not, default to list command (unless help/version is requested)
+	args := os.Args[1:] // Skip program name
+	hasCommand := false
+	hasHelpFlag := false
+
+	for _, arg := range args {
+		// Check for help flags
+		if arg == "-h" || arg == "--help" || arg == "help" {
+			hasHelpFlag = true
+			break
+		}
+		// If it's not a flag (doesn't start with -), it might be a command
+		if len(arg) > 0 && arg[0] != '-' {
+			hasCommand = true
+			break
+		}
+	}
+
+	// Only default to list if no command and no help flag
+	if !hasCommand && !hasHelpFlag {
+		// Insert "list" after program name but before any flags
+		os.Args = append([]string{os.Args[0], "list"}, os.Args[1:]...)
+	}
+
 	return rootCmd.Execute()
 }
 
@@ -77,10 +68,6 @@ func init() {
 
 	// Add persistent flags
 	rootCmd.PersistentFlags().StringP("collection", "c", "", "path to todo collection (default: $HOME/.todos.json)")
-
-	// Add global flags for filtering (these work with the default list command)
-	rootCmd.Flags().BoolP("done", "d", false, "print done todos")
-	rootCmd.Flags().BoolP("all", "a", false, "print all todos")
 
 	// Add version command
 	rootCmd.AddCommand(versionCmd)
