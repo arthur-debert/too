@@ -43,15 +43,16 @@ func (s *MemoryStore) Exists() bool {
 
 // Update performs a transactional update on the in-memory collection.
 func (s *MemoryStore) Update(fn func(collection *models.Collection) error) error {
-	if s.ShouldFail {
-		return os.ErrNotExist
-	}
-
-	if err := fn(s.Collection); err != nil {
+	collection, err := s.Load()
+	if err != nil {
 		return err
 	}
 
-	return nil
+	if err := fn(collection); err != nil {
+		return err
+	}
+
+	return s.Save(collection)
 }
 
 // Path returns a mock path for the memory store.
