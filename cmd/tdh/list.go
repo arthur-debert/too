@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/arthur-debert/tdh/pkg/models"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/display"
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/spf13/cobra"
 )
 

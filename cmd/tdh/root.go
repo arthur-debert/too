@@ -5,9 +5,9 @@ import (
 
 	"github.com/arthur-debert/tdh/internal/version"
 	"github.com/arthur-debert/tdh/pkg/logging"
-	"github.com/arthur-debert/tdh/pkg/models"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/display"
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"

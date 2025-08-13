@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/arthur-debert/tdh/pkg/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
 )
 
 // JSONFileStore implements the Store interface using a JSON file.

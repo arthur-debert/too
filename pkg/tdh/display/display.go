@@ -6,8 +6,8 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/arthur-debert/tdh/pkg/models"
 	"github.com/arthur-debert/tdh/pkg/tdh"
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
 )
 
 // Renderer handles output formatting for tdh commands
