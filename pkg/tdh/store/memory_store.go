@@ -53,3 +53,8 @@ func (s *MemoryStore) Update(fn func(collection *models.Collection) error) error
 
 	return nil
 }
+
+// Path returns a mock path for the memory store.
+func (s *MemoryStore) Path() string {
+	return "memory://todos"
+}

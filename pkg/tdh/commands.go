@@ -23,27 +23,23 @@ type InitResult struct {
 // Init initializes a new todo collection
 func Init(opts InitOptions) (*InitResult, error) {
 	s := store.NewStore(opts.DBPath)
-	jsonStore, ok := s.(*store.JSONFileStore)
-	if !ok {
-		return nil, fmt.Errorf("init command only supports JSONFileStore")
-	}
 
 	if !s.Exists() {
 		// Create an empty collection to initialize the file
-		if err := s.Save(models.NewCollection(jsonStore.Path)); err != nil {
+		if err := s.Save(models.NewCollection(s.Path())); err != nil {
 			return nil, fmt.Errorf("failed to create store file: %w", err)
 		}
 		return &InitResult{
-			DBPath:  jsonStore.Path,
+			DBPath:  s.Path(),
 			Created: true,
-			Message: fmt.Sprintf("Initialized empty tdh collection in %s", jsonStore.Path),
+			Message: fmt.Sprintf("Initialized empty tdh collection in %s", s.Path()),
 		}, nil
 	}
 
 	return &InitResult{
-		DBPath:  jsonStore.Path,
+		DBPath:  s.Path(),
 		Created: false,
-		Message: fmt.Sprintf("Reinitialized existing tdh collection in %s", jsonStore.Path),
+		Message: fmt.Sprintf("Reinitialized existing tdh collection in %s", s.Path()),
 	}, nil
 }
 

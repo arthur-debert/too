@@ -10,19 +10,19 @@ import (
 
 // JSONFileStore implements the Store interface using a JSON file.
 type JSONFileStore struct {
-	Path string
+	path string
 }
 
 // NewJSONFileStore creates a new JSONFileStore.
 func NewJSONFileStore(path string) *JSONFileStore {
-	return &JSONFileStore{Path: path}
+	return &JSONFileStore{path: path}
 }
 
 // Load reads the collection from the JSON file.
 func (s *JSONFileStore) Load() (*models.Collection, error) {
-	collection := models.NewCollection(s.Path)
+	collection := models.NewCollection(s.path)
 
-	file, err := os.OpenFile(s.Path, os.O_RDONLY, 0600)
+	file, err := os.OpenFile(s.path, os.O_RDONLY, 0600)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// File doesn't exist, start with empty collection
@@ -56,7 +56,7 @@ func (s *JSONFileStore) Save(collection *models.Collection) error {
 	}
 
 	// Atomic save: write to a temp file first
-	tempFile, err := os.CreateTemp(filepath.Dir(s.Path), ".tdh-*.json.tmp")
+	tempFile, err := os.CreateTemp(filepath.Dir(s.path), ".tdh-*.json.tmp")
 	if err != nil {
 		return err
 	}
@@ -72,12 +72,12 @@ func (s *JSONFileStore) Save(collection *models.Collection) error {
 	}
 
 	// Atomically replace the original file with the new one
-	return os.Rename(tempFile.Name(), s.Path)
+	return os.Rename(tempFile.Name(), s.path)
 }
 
 // Exists checks if the store file exists.
 func (s *JSONFileStore) Exists() bool {
-	_, err := os.Stat(s.Path)
+	_, err := os.Stat(s.path)
 	return !os.IsNotExist(err)
 }
 
@@ -93,4 +93,9 @@ func (s *JSONFileStore) Update(fn func(collection *models.Collection) error) err
 	}
 
 	return s.Save(collection)
+}
+
+// Path returns the file path where the store persists data.
+func (s *JSONFileStore) Path() string {
+	return s.path
 }

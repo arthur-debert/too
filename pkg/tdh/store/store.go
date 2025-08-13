@@ -8,4 +8,5 @@ type Store interface {
 	Save(*models.Collection) error
 	Exists() bool
 	Update(func(collection *models.Collection) error) error
+	Path() string // Returns the path where the store persists data
 }
