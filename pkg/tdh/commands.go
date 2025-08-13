@@ -2,7 +2,6 @@ package tdh
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
@@ -254,25 +253,23 @@ func Search(query string, opts SearchOptions) (*SearchResult, error) {
 	}
 
 	s := store.NewStore(opts.CollectionPath)
-	collection, err := s.Load()
+
+	// Build query for Find API
+	q := store.Query{
+		TextContains:  &query,
+		CaseSensitive: opts.CaseSensitive,
+	}
+
+	// Get matching todos using Find
+	matchedTodos, err := s.Find(q)
 	if err != nil {
 		return nil, err
 	}
 
-	var matchedTodos []*models.Todo
-	searchQuery := query
-	if !opts.CaseSensitive {
-		searchQuery = strings.ToLower(query)
-	}
-
-	for _, todo := range collection.Todos {
-		todoText := todo.Text
-		if !opts.CaseSensitive {
-			todoText = strings.ToLower(todoText)
-		}
-		if strings.Contains(todoText, searchQuery) {
-			matchedTodos = append(matchedTodos, todo)
-		}
+	// Still need total count from full collection
+	collection, err := s.Load()
+	if err != nil {
+		return nil, err
 	}
 
 	return &SearchResult{
