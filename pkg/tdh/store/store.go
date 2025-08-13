@@ -1,6 +1,12 @@
 package store
 
-import "github.com/arthur-debert/tdh/pkg/tdh/models"
+import (
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/store/internal"
+)
+
+// Query is an alias for the internal Query struct, exposing it to the public API.
+type Query = internal.Query
 
 // Store defines the interface for persistence operations.
 type Store interface {
@@ -8,5 +14,6 @@ type Store interface {
 	Save(*models.Collection) error
 	Exists() bool
 	Update(func(collection *models.Collection) error) error
+	Find(query Query) ([]*models.Todo, error)
 	Path() string // Returns the path where the store persists data
 }

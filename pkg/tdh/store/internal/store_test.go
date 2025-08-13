@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/store"
 	"github.com/arthur-debert/tdh/pkg/tdh/store/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -394,4 +395,74 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create temp file")
 	})
+}
+
+func TestStore_Find(t *testing.T) {
+	stores := map[string]store.Store{
+		"JSONFileStore": newTestJSONFileStore(t),
+		"MemoryStore":   internal.NewMemoryStore(),
+	}
+
+	for name, s := range stores {
+		t.Run(name, func(t *testing.T) {
+			// Setup initial data
+			collection := models.NewCollection("")
+			collection.CreateTodo("Buy milk")
+			doneTodo := collection.CreateTodo("Buy eggs")
+			doneTodo.Toggle()
+			collection.CreateTodo("Buy bread and milk")
+			err := s.Save(collection)
+			require.NoError(t, err)
+
+			t.Run("should find by status", func(t *testing.T) {
+				doneStatus := "done"
+				query := store.Query{Status: &doneStatus}
+				results, err := s.Find(query)
+				require.NoError(t, err)
+				assert.Len(t, results, 1)
+				assert.Equal(t, "Buy eggs", results[0].Text)
+			})
+
+			t.Run("should find by text (case-insensitive)", func(t *testing.T) {
+				text := "milk"
+				query := store.Query{TextContains: &text}
+				results, err := s.Find(query)
+				require.NoError(t, err)
+				assert.Len(t, results, 2)
+			})
+
+			t.Run("should find by text (case-sensitive)", func(t *testing.T) {
+				text := "Milk"
+				query := store.Query{TextContains: &text, CaseSensitive: true}
+				results, err := s.Find(query)
+				require.NoError(t, err)
+				assert.Len(t, results, 0)
+			})
+
+			t.Run("should combine filters", func(t *testing.T) {
+				text := "milk"
+				pendingStatus := "pending"
+				query := store.Query{TextContains: &text, Status: &pendingStatus}
+				results, err := s.Find(query)
+				require.NoError(t, err)
+				assert.Len(t, results, 2)
+			})
+
+			t.Run("should return empty slice for no matches", func(t *testing.T) {
+				text := "non-existent"
+				query := store.Query{TextContains: &text}
+				results, err := s.Find(query)
+				require.NoError(t, err)
+				assert.Len(t, results, 0)
+			})
+		})
+	}
+}
+
+func newTestJSONFileStore(t *testing.T) store.Store {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "tdh-find-test")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return internal.NewJSONFileStore(filepath.Join(dir, "test.json"))
 }
