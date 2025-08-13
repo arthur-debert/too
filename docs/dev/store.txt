@@ -1,0 +1,128 @@
+STORAGE LAYER DESIGN
+
+CURRENT STATE
+- Storage logic is partially centralized in Collection type
+- Collection has Load() and Save() methods that handle JSON file I/O
+- Commands in pkg/tdh/commands.go use loadCollection() helper
+- Each command follows pattern: load -> modify -> save
+- JSON format and file paths are hardcoded
+- No abstraction between business logic and storage
+
+PROBLEMS
+- Cannot unit test commands without file system
+- Cannot change storage format without modifying Collection
+- No atomic saves - failures during save can corrupt data file
+- Repeated load/save pattern in every command
+- Collection type mixes data structure with persistence
+
+DESIGN GOALS
+- Keep CLI layer unchanged (already properly separated)
+- Create storage abstraction internal to pkg/tdh
+- Enable unit testing with in-memory storage
+- Support atomic operations
+- Single place for all storage logic
+- Make storage format/backend pluggable
+
+PROPOSED DESIGN
+
+1. Storage Interface (pkg/tdh/store/store.go)
+   
+   type Store interface {
+       Load() (*Collection, error)
+       Save(*Collection) error
+       Exists() bool
+       Update(func(collection *Collection) error) error
+   }
+   // The Update method handles the load-modify-save transaction atomically.
+
+2. Implementations (pkg/tdh/store/)
+   
+   JSONFileStore struct {
+       path string
+   }
+   - Implements Store using JSON file
+   - Handles all file I/O and path resolution
+   - Save() must be implemented atomically (e.g., write to temp file then rename) to prevent data corruption.
+   
+   MemoryStore struct {
+       data *Collection
+   }
+   - Implements Store for testing
+   - No file system dependencies
+
+3. Store Factory (pkg/tdh/store/factory.go)
+   
+   func NewStore(path string) Store {
+       if path == "" {
+           path = getDefaultPath()
+       }
+       return &JSONFileStore{path: path}
+   }
+
+4. Updated Commands (pkg/tdh/commands.go)
+   
+   // Internal helper remains the same
+   func getStore(collectionPath string) Store {
+       return store.NewStore(collectionPath)
+   }
+   
+   // Public API remains unchanged, but implementation is cleaner.
+   // The load->modify->save boilerplate is gone from the command.
+   func Add(text string, opts AddOptions) (*AddResult, error) {
+       s := getStore(opts.CollectionPath)
+       var todo *Todo
+
+       err := s.Update(func(collection *Collection) error {
+           todo = collection.CreateTodo(text)
+           return nil
+       })
+       
+       if err != nil {
+           return nil, err
+       }
+       
+       return &AddResult{Todo: todo}, nil
+   }
+
+5. Collection Becomes Pure Data (pkg/tdh/collection.go)
+   
+   - Remove Load() and Save() methods
+   - Remove file I/O imports
+   - Keep only data manipulation methods
+   - Becomes a pure data structure
+
+IMPLEMENTATION STEPS
+
+1. Create pkg/tdh/store package with Store interface.
+2. Implement JSONFileStore, ensuring Save() is atomic (write-and-rename).
+3. Implement MemoryStore for testing.
+4. Implement the Update() method on store types to handle the transaction.
+5. Create store factory function.
+6. Update commands.go to use the store's Update() method.
+7. Remove Load/Save methods from Collection.
+8. Move path resolution logic to JSONFileStore.
+9. Update tests to use MemoryStore.
+
+TESTING STRATEGY
+
+- Unit tests use MemoryStore
+- No file system in unit tests
+- Integration tests use JSONFileStore with temp directory
+- Can test error conditions by creating failing Store implementations
+
+FUTURE POSSIBILITIES
+
+- SQLiteStore for better performance with large lists
+- CloudStore for sync capabilities  
+- EncryptedStore for security
+- CompressedStore for space savings
+
+All without changing the public API or CLI layer.
+
+MIGRATION NOTES
+
+- This is an internal refactoring
+- Public API in pkg/tdh/commands.go stays the same
+- CLI layer requires no changes
+- Existing JSON files remain compatible
+- Can be done incrementally, one command at a time
