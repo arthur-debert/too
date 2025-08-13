@@ -1,9 +1,11 @@
 package main
 
-func Exampletodo() {
-	todo := todo{
+import "github.com/arthur-debert/tdh/pkg/tdh"
+
+func ExampleTodo() {
+	todo := tdh.Todo{
 		ID:       0,
-		Desc:     "Test td",
+		Text:     "Test td",
 		Status:   "pending",
 		Modified: "",
 	}

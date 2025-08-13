@@ -1,0 +1,45 @@
+package main
+
+import (
+	"strings"
+
+	"github.com/arthur-debert/tdh/pkg/tdh"
+	"github.com/arthur-debert/tdh/pkg/tdh/display"
+	"github.com/spf13/cobra"
+)
+
+var searchCmd = &cobra.Command{
+	Use:     "search <query>",
+	Aliases: []string{"s"},
+	Short:   "Search for todos",
+	Long:    `Search for todos containing the specified text.`,
+	Args:    cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Join all arguments as the search query
+		query := strings.Join(args, " ")
+
+		// Get collection path from flag
+		collectionPath, _ := cmd.Flags().GetString("collection")
+
+		// Get case-sensitive flag
+		caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")
+
+		// Call business logic
+		result, err := tdh.Search(query, tdh.SearchOptions{
+			CollectionPath: collectionPath,
+			CaseSensitive:  caseSensitive,
+		})
+		if err != nil {
+			return err
+		}
+
+		// Render output
+		renderer := display.NewRenderer(nil)
+		return renderer.RenderSearch(result)
+	},
+}
+
+func init() {
+	searchCmd.Flags().BoolP("case-sensitive", "s", false, "Perform case-sensitive search")
+	rootCmd.AddCommand(searchCmd)
+}

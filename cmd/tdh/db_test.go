@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/arthur-debert/tdh/pkg/tdh"
 )
 
 func TestGetDbPath(t *testing.T) {
@@ -12,7 +14,7 @@ func TestGetDbPath(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	path := getDBPath()
+	path := tdh.GetDBPath()
 	fmt.Println(path)
 	err = _DeleteFakeDb()
 	if err != nil {
@@ -31,7 +33,7 @@ func _CreateFakeDb() error {
 	if (err != nil && os.IsNotExist(err)) || fi.Size() == 0 {
 		w, _ := os.Create(cwd)
 		_, err = w.WriteString("[]")
-		defer w.Close()
+		defer func() { _ = w.Close() }()
 		return err
 	}
 
