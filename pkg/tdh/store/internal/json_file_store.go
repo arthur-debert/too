@@ -130,13 +130,7 @@ func (s *JSONFileStore) Find(query Query) (*FindResult, error) {
 	}
 
 	// Calculate counts from the full collection
-	totalCount := len(collection.Todos)
-	doneCount := 0
-	for _, t := range collection.Todos {
-		if t.Status == "done" {
-			doneCount++
-		}
-	}
+	totalCount, doneCount := CountTodos(collection.Todos)
 
 	return &FindResult{
 		Todos:      query.FilterTodos(collection.Todos),

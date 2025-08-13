@@ -76,13 +76,7 @@ func (s *MemoryStore) Find(query Query) (*FindResult, error) {
 	}
 
 	// Calculate counts from the full collection
-	totalCount := len(s.Collection.Todos)
-	doneCount := 0
-	for _, t := range s.Collection.Todos {
-		if t.Status == "done" {
-			doneCount++
-		}
-	}
+	totalCount, doneCount := CountTodos(s.Collection.Todos)
 
 	return &FindResult{
 		Todos:      query.FilterTodos(s.Collection.Todos),
