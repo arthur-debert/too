@@ -174,15 +174,18 @@ type CleanResult struct {
 // Clean removes finished todos from the collection
 func Clean(opts CleanOptions) (*CleanResult, error) {
 	s := store.NewStore(opts.CollectionPath)
-	var removedTodos []*models.Todo
-	var activeCount int
 
-	err := s.Update(func(collection *models.Collection) error {
-		for _, todo := range collection.Todos {
-			if todo.Status == "done" {
-				removedTodos = append(removedTodos, todo)
-			}
-		}
+	// First, find all done todos using Find API
+	doneStatus := "done"
+	query := store.Query{Status: &doneStatus}
+	removedTodos, err := s.Find(query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then remove them in the update transaction
+	var activeCount int
+	err = s.Update(func(collection *models.Collection) error {
 		activeCount = RemoveFinishedTodos(collection)
 		return nil
 	})
