@@ -6,6 +6,7 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/arthur-debert/tdh/pkg/models"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 )
 
@@ -117,10 +118,8 @@ func (r *Renderer) RenderList(result *tdh.ListResult) error {
 }
 
 // renderTodo renders a single todo (helper method)
-func (r *Renderer) renderTodo(todo *tdh.Todo) {
-	// Use the existing MakeOutput method for now
-	// In the future, this could be replaced with template-based rendering
-	todo.MakeOutput(true)
+func (r *Renderer) renderTodo(todo *models.Todo) {
+	tdh.MakeOutput(todo, true)
 }
 
 // RenderError renders an error message

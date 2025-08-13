@@ -2,9 +2,10 @@ package tdh
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/arthur-debert/tdh/pkg/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
 
 // InitOptions contains options for the init command
@@ -21,36 +22,25 @@ type InitResult struct {
 
 // Init initializes a new todo collection
 func Init(opts InitOptions) (*InitResult, error) {
-	dbPath := opts.DBPath
-	if dbPath == "" {
-		dbPath = GetDBPath()
-		if dbPath == "" {
-			// Use default home directory path
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get home directory: %w", err)
-			}
-			dbPath = filepath.Join(home, ".todos.json")
+	s := store.NewStore(opts.DBPath)
+
+	if !s.Exists() {
+		// Create an empty collection to initialize the file
+		if err := s.Save(models.NewCollection(s.Path())); err != nil {
+			return nil, fmt.Errorf("failed to create store file: %w", err)
 		}
+		return &InitResult{
+			DBPath:  s.Path(),
+			Created: true,
+			Message: fmt.Sprintf("Initialized empty tdh collection in %s", s.Path()),
+		}, nil
 	}
 
-	created, err := CreateStoreFileIfNeeded(dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create store file: %w", err)
-	}
-
-	result := &InitResult{
-		DBPath:  dbPath,
-		Created: created,
-	}
-
-	if created {
-		result.Message = fmt.Sprintf("Initialized empty tdh collection in %s", dbPath)
-	} else {
-		result.Message = fmt.Sprintf("Reinitialized existing tdh collection in %s", dbPath)
-	}
-
-	return result, nil
+	return &InitResult{
+		DBPath:  s.Path(),
+		Created: false,
+		Message: fmt.Sprintf("Reinitialized existing tdh collection in %s", s.Path()),
+	}, nil
 }
 
 // AddOptions contains options for the add command
@@ -60,7 +50,7 @@ type AddOptions struct {
 
 // AddResult contains the result of the add command
 type AddResult struct {
-	Todo *Todo
+	Todo *models.Todo
 }
 
 // Add adds a new todo to the collection
@@ -69,14 +59,16 @@ func Add(text string, opts AddOptions) (*AddResult, error) {
 		return nil, fmt.Errorf("todo text cannot be empty")
 	}
 
-	collection, err := loadCollection(opts.CollectionPath)
-	if err != nil {
-		return nil, err
-	}
+	s := store.NewStore(opts.CollectionPath)
+	var todo *models.Todo
 
-	todo := collection.CreateTodo(text)
-	if err := collection.Save(); err != nil {
-		return nil, fmt.Errorf("failed to save collection: %w", err)
+	err := s.Update(func(collection *models.Collection) error {
+		todo = collection.CreateTodo(text)
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to add todo: %w", err)
 	}
 
 	return &AddResult{Todo: todo}, nil
@@ -89,7 +81,7 @@ type ModifyOptions struct {
 
 // ModifyResult contains the result of the modify command
 type ModifyResult struct {
-	Todo    *Todo
+	Todo    *models.Todo
 	OldText string
 	NewText string
 }
@@ -100,21 +92,23 @@ func Modify(id int, newText string, opts ModifyOptions) (*ModifyResult, error) {
 		return nil, fmt.Errorf("new todo text cannot be empty")
 	}
 
-	collection, err := loadCollection(opts.CollectionPath)
+	s := store.NewStore(opts.CollectionPath)
+	var todo *models.Todo
+	var oldText string
+
+	err := s.Update(func(collection *models.Collection) error {
+		var err error
+		todo, err = Find(collection, id)
+		if err != nil {
+			return fmt.Errorf("todo not found: %w", err)
+		}
+		oldText = todo.Text
+		todo.Text = newText
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	todo, err := collection.Find(id)
-	if err != nil {
-		return nil, fmt.Errorf("todo not found: %w", err)
-	}
-
-	oldText := todo.Text
-	todo.Text = newText
-
-	if err := collection.Save(); err != nil {
-		return nil, fmt.Errorf("failed to save collection: %w", err)
 	}
 
 	return &ModifyResult{
@@ -131,29 +125,32 @@ type ToggleOptions struct {
 
 // ToggleResult contains the result of the toggle command
 type ToggleResult struct {
-	Todo      *Todo
+	Todo      *models.Todo
 	OldStatus string
 	NewStatus string
 }
 
 // Toggle toggles the status of a todo
 func Toggle(id int, opts ToggleOptions) (*ToggleResult, error) {
-	collection, err := loadCollection(opts.CollectionPath)
+	s := store.NewStore(opts.CollectionPath)
+	var todo *models.Todo
+	var oldStatus string
+	var newStatus string
+
+	err := s.Update(func(collection *models.Collection) error {
+		var err error
+		todo, err = Find(collection, id)
+		if err != nil {
+			return fmt.Errorf("todo not found: %w", err)
+		}
+		oldStatus = todo.Status
+		todo.Toggle()
+		newStatus = todo.Status
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	todo, err := collection.Find(id)
-	if err != nil {
-		return nil, fmt.Errorf("todo not found: %w", err)
-	}
-
-	oldStatus := todo.Status
-	todo.Toggle()
-	newStatus := todo.Status
-
-	if err := collection.Save(); err != nil {
-		return nil, fmt.Errorf("failed to save collection: %w", err)
 	}
 
 	return &ToggleResult{
@@ -171,29 +168,28 @@ type CleanOptions struct {
 // CleanResult contains the result of the clean command
 type CleanResult struct {
 	RemovedCount int
-	RemovedTodos []*Todo
+	RemovedTodos []*models.Todo
 	ActiveCount  int
 }
 
 // Clean removes finished todos from the collection
 func Clean(opts CleanOptions) (*CleanResult, error) {
-	collection, err := loadCollection(opts.CollectionPath)
+	s := store.NewStore(opts.CollectionPath)
+	var removedTodos []*models.Todo
+	var activeCount int
+
+	err := s.Update(func(collection *models.Collection) error {
+		for _, todo := range collection.Todos {
+			if todo.Status == "done" {
+				removedTodos = append(removedTodos, todo)
+			}
+		}
+		activeCount = RemoveFinishedTodos(collection)
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	// Collect finished todos before cleaning
-	var removedTodos []*Todo
-	for _, todo := range collection.Todos {
-		if todo.Status == "done" {
-			removedTodos = append(removedTodos, todo)
-		}
-	}
-
-	activeCount := collection.RemoveFinishedTodos()
-
-	if err := collection.Save(); err != nil {
-		return nil, fmt.Errorf("failed to save collection: %w", err)
 	}
 
 	return &CleanResult{
@@ -210,27 +206,27 @@ type ReorderOptions struct {
 
 // ReorderResult contains the result of the reorder command
 type ReorderResult struct {
-	TodoA *Todo
-	TodoB *Todo
+	TodoA *models.Todo
+	TodoB *models.Todo
 }
 
 // Reorder swaps the position of two todos
 func Reorder(idA, idB int, opts ReorderOptions) (*ReorderResult, error) {
-	collection, err := loadCollection(opts.CollectionPath)
+	s := store.NewStore(opts.CollectionPath)
+	var todoA, todoB *models.Todo
+
+	err := s.Update(func(collection *models.Collection) error {
+		if err := Swap(collection, idA, idB); err != nil {
+			return fmt.Errorf("failed to swap todos: %w", err)
+		}
+		todoA, _ = Find(collection, idA)
+		todoB, _ = Find(collection, idB)
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-
-	if err := collection.Swap(idA, idB); err != nil {
-		return nil, fmt.Errorf("failed to swap todos: %w", err)
-	}
-
-	if err := collection.Save(); err != nil {
-		return nil, fmt.Errorf("failed to save collection: %w", err)
-	}
-
-	todoA, _ := collection.Find(idA)
-	todoB, _ := collection.Find(idB)
 
 	return &ReorderResult{
 		TodoA: todoA,
@@ -247,7 +243,7 @@ type SearchOptions struct {
 // SearchResult contains the result of the search command
 type SearchResult struct {
 	Query        string
-	MatchedTodos []*Todo
+	MatchedTodos []*models.Todo
 	TotalCount   int
 }
 
@@ -257,12 +253,13 @@ func Search(query string, opts SearchOptions) (*SearchResult, error) {
 		return nil, fmt.Errorf("search query cannot be empty")
 	}
 
-	collection, err := loadCollection(opts.CollectionPath)
+	s := store.NewStore(opts.CollectionPath)
+	collection, err := s.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	var matchedTodos []*Todo
+	var matchedTodos []*models.Todo
 	searchQuery := query
 	if !opts.CaseSensitive {
 		searchQuery = strings.ToLower(query)
@@ -292,14 +289,15 @@ type ListOptions struct {
 
 // ListResult contains the result of listing todos
 type ListResult struct {
-	Todos      []*Todo
+	Todos      []*models.Todo
 	TotalCount int
 	DoneCount  int
 }
 
 // List returns all todos in the collection
 func List(opts ListOptions) (*ListResult, error) {
-	collection, err := loadCollection(opts.CollectionPath)
+	s := store.NewStore(opts.CollectionPath)
+	collection, err := s.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -316,32 +314,4 @@ func List(opts ListOptions) (*ListResult, error) {
 		TotalCount: len(collection.Todos),
 		DoneCount:  doneCount,
 	}, nil
-}
-
-// loadCollection loads a collection from the specified path or default
-func loadCollection(path string) (*Collection, error) {
-	if path == "" {
-		path = GetDBPath()
-		if path == "" {
-			// Use default home directory path
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return nil, fmt.Errorf("failed to get home directory: %w", err)
-			}
-			path = filepath.Join(home, ".todos.json")
-		}
-	}
-
-	// Check if we're dealing with a directory or file
-	if filepath.Ext(path) == "" {
-		// If no extension, assume it's a directory and append the default filename
-		path = filepath.Join(path, ".todos.json")
-	}
-
-	collection := NewCollection(path)
-	if err := collection.Load(); err != nil {
-		return nil, fmt.Errorf("failed to load collection: %w", err)
-	}
-
-	return collection, nil
 }

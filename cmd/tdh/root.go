@@ -5,6 +5,7 @@ import (
 
 	"github.com/arthur-debert/tdh/internal/version"
 	"github.com/arthur-debert/tdh/pkg/logging"
+	"github.com/arthur-debert/tdh/pkg/models"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/display"
 
@@ -42,7 +43,7 @@ It stores todos in a JSON file and provides commands to add, modify, toggle, and
 
 			// Filter based on flags
 			if !showAll {
-				var filteredTodos []*tdh.Todo
+				var filteredTodos []*models.Todo
 				for _, todo := range result.Todos {
 					if showDone && todo.Status == "done" {
 						filteredTodos = append(filteredTodos, todo)
