@@ -65,3 +65,15 @@ func (s *MemoryStore) Update(fn func(collection *models.Collection) error) error
 func (s *MemoryStore) Path() string {
 	return "memory://todos"
 }
+
+// Find retrieves todos based on the provided query.
+// This implementation uses O(n) linear search through all todos, which is
+// acceptable for typical todo list sizes. Future store implementations
+// (e.g., SQLite) can optimize this with proper indexing.
+func (s *MemoryStore) Find(query Query) ([]*models.Todo, error) {
+	if s.ShouldFail {
+		return nil, os.ErrNotExist
+	}
+
+	return query.FilterTodos(s.Collection.Todos), nil
+}

@@ -118,3 +118,16 @@ func (s *JSONFileStore) Update(fn func(collection *models.Collection) error) err
 func (s *JSONFileStore) Path() string {
 	return s.PathValue
 }
+
+// Find retrieves todos based on the provided query.
+// This implementation uses O(n) linear search through all todos, which is
+// acceptable for typical todo list sizes. Future store implementations
+// (e.g., SQLite) can optimize this with proper indexing.
+func (s *JSONFileStore) Find(query Query) ([]*models.Todo, error) {
+	collection, err := s.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	return query.FilterTodos(collection.Todos), nil
+}
