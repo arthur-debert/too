@@ -70,10 +70,17 @@ func (s *MemoryStore) Path() string {
 // This implementation uses O(n) linear search through all todos, which is
 // acceptable for typical todo list sizes. Future store implementations
 // (e.g., SQLite) can optimize this with proper indexing.
-func (s *MemoryStore) Find(query Query) ([]*models.Todo, error) {
+func (s *MemoryStore) Find(query Query) (*FindResult, error) {
 	if s.ShouldFail {
 		return nil, os.ErrNotExist
 	}
 
-	return query.FilterTodos(s.Collection.Todos), nil
+	// Calculate counts from the full collection
+	totalCount, doneCount := CountTodos(s.Collection.Todos)
+
+	return &FindResult{
+		Todos:      query.FilterTodos(s.Collection.Todos),
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
+	}, nil
 }

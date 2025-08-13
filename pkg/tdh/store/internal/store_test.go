@@ -419,8 +419,10 @@ func TestStore_Find(t *testing.T) {
 				query := store.Query{Status: &doneStatus}
 				results, err := s.Find(query)
 				require.NoError(t, err)
-				assert.Len(t, results, 1)
-				assert.Equal(t, "Buy eggs", results[0].Text)
+				assert.Len(t, results.Todos, 1)
+				assert.Equal(t, "Buy eggs", results.Todos[0].Text)
+				assert.Equal(t, 3, results.TotalCount)
+				assert.Equal(t, 1, results.DoneCount)
 			})
 
 			t.Run("should find by text (case-insensitive)", func(t *testing.T) {
@@ -428,7 +430,7 @@ func TestStore_Find(t *testing.T) {
 				query := store.Query{TextContains: &text}
 				results, err := s.Find(query)
 				require.NoError(t, err)
-				assert.Len(t, results, 2)
+				assert.Len(t, results.Todos, 2)
 			})
 
 			t.Run("should find by text (case-sensitive)", func(t *testing.T) {
@@ -436,7 +438,7 @@ func TestStore_Find(t *testing.T) {
 				query := store.Query{TextContains: &text, CaseSensitive: true}
 				results, err := s.Find(query)
 				require.NoError(t, err)
-				assert.Len(t, results, 0)
+				assert.Len(t, results.Todos, 0)
 			})
 
 			t.Run("should combine filters", func(t *testing.T) {
@@ -445,7 +447,7 @@ func TestStore_Find(t *testing.T) {
 				query := store.Query{TextContains: &text, Status: &pendingStatus}
 				results, err := s.Find(query)
 				require.NoError(t, err)
-				assert.Len(t, results, 2)
+				assert.Len(t, results.Todos, 2)
 			})
 
 			t.Run("should return empty slice for no matches", func(t *testing.T) {
@@ -453,7 +455,7 @@ func TestStore_Find(t *testing.T) {
 				query := store.Query{TextContains: &text}
 				results, err := s.Find(query)
 				require.NoError(t, err)
-				assert.Len(t, results, 0)
+				assert.Len(t, results.Todos, 0)
 			})
 		})
 	}

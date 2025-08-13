@@ -123,11 +123,18 @@ func (s *JSONFileStore) Path() string {
 // This implementation uses O(n) linear search through all todos, which is
 // acceptable for typical todo list sizes. Future store implementations
 // (e.g., SQLite) can optimize this with proper indexing.
-func (s *JSONFileStore) Find(query Query) ([]*models.Todo, error) {
+func (s *JSONFileStore) Find(query Query) (*FindResult, error) {
 	collection, err := s.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	return query.FilterTodos(collection.Todos), nil
+	// Calculate counts from the full collection
+	totalCount, doneCount := CountTodos(collection.Todos)
+
+	return &FindResult{
+		Todos:      query.FilterTodos(collection.Todos),
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
+	}, nil
 }

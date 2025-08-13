@@ -2,7 +2,6 @@ package tdh
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
@@ -175,15 +174,19 @@ type CleanResult struct {
 // Clean removes finished todos from the collection
 func Clean(opts CleanOptions) (*CleanResult, error) {
 	s := store.NewStore(opts.CollectionPath)
-	var removedTodos []*models.Todo
-	var activeCount int
 
-	err := s.Update(func(collection *models.Collection) error {
-		for _, todo := range collection.Todos {
-			if todo.Status == "done" {
-				removedTodos = append(removedTodos, todo)
-			}
-		}
+	// First, find all done todos using Find API
+	doneStatus := "done"
+	query := store.Query{Status: &doneStatus}
+	findResult, err := s.Find(query)
+	if err != nil {
+		return nil, err
+	}
+	removedTodos := findResult.Todos
+
+	// Then remove them in the update transaction
+	var activeCount int
+	err = s.Update(func(collection *models.Collection) error {
 		activeCount = RemoveFinishedTodos(collection)
 		return nil
 	})
@@ -254,31 +257,23 @@ func Search(query string, opts SearchOptions) (*SearchResult, error) {
 	}
 
 	s := store.NewStore(opts.CollectionPath)
-	collection, err := s.Load()
+
+	// Build query for Find API
+	q := store.Query{
+		TextContains:  &query,
+		CaseSensitive: opts.CaseSensitive,
+	}
+
+	// Get matching todos and counts using Find
+	findResult, err := s.Find(q)
 	if err != nil {
 		return nil, err
 	}
 
-	var matchedTodos []*models.Todo
-	searchQuery := query
-	if !opts.CaseSensitive {
-		searchQuery = strings.ToLower(query)
-	}
-
-	for _, todo := range collection.Todos {
-		todoText := todo.Text
-		if !opts.CaseSensitive {
-			todoText = strings.ToLower(todoText)
-		}
-		if strings.Contains(todoText, searchQuery) {
-			matchedTodos = append(matchedTodos, todo)
-		}
-	}
-
 	return &SearchResult{
 		Query:        query,
-		MatchedTodos: matchedTodos,
-		TotalCount:   len(collection.Todos),
+		MatchedTodos: findResult.Todos,
+		TotalCount:   findResult.TotalCount,
 	}, nil
 }
 
@@ -299,37 +294,26 @@ type ListResult struct {
 // List returns todos from the collection with optional filtering
 func List(opts ListOptions) (*ListResult, error) {
 	s := store.NewStore(opts.CollectionPath)
-	collection, err := s.Load()
+
+	// Build query based on options
+	var query store.Query
+	if !opts.ShowAll {
+		status := "pending"
+		if opts.ShowDone {
+			status = "done"
+		}
+		query.Status = &status
+	}
+
+	// Get filtered todos and counts using Find
+	findResult, err := s.Find(query)
 	if err != nil {
 		return nil, err
 	}
 
-	todos := collection.Todos
-	doneCount := 0
-
-	// Count done todos
-	for _, todo := range collection.Todos {
-		if todo.Status == "done" {
-			doneCount++
-		}
-	}
-
-	// Apply filtering if not showing all
-	if !opts.ShowAll {
-		var filteredTodos []*models.Todo
-		for _, todo := range collection.Todos {
-			if opts.ShowDone && todo.Status == "done" {
-				filteredTodos = append(filteredTodos, todo)
-			} else if !opts.ShowDone && todo.Status != "done" {
-				filteredTodos = append(filteredTodos, todo)
-			}
-		}
-		todos = filteredTodos
-	}
-
 	return &ListResult{
-		Todos:      todos,
-		TotalCount: len(collection.Todos),
-		DoneCount:  doneCount,
+		Todos:      findResult.Todos,
+		TotalCount: findResult.TotalCount,
+		DoneCount:  findResult.DoneCount,
 	}, nil
 }
