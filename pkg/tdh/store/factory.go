@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/arthur-debert/tdh/pkg/tdh/store/internal"
 )
 
 var (
@@ -108,5 +110,10 @@ func NewStore(path string) Store {
 	if path == "" {
 		path = calculateDBPath()
 	}
-	return NewJSONFileStore(path)
+	return internal.NewJSONFileStore(path)
+}
+
+// ResetCache clears the cachedDBPath. This is intended for testing purposes.
+func ResetCache() {
+	cachedDBPath = ""
 }

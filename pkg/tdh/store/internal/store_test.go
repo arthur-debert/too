@@ -1,4 +1,4 @@
-package store
+package internal_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/store/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +25,7 @@ func TestJSONFileStore_Load(t *testing.T) {
 		err = os.WriteFile(dbPath, []byte(`[{"id": 1, "text": "Test Todo", "status": "pending"}]`), 0600)
 		require.NoError(t, err)
 
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 		collection, err := store.Load()
 
 		require.NoError(t, err)
@@ -34,7 +35,7 @@ func TestJSONFileStore_Load(t *testing.T) {
 	})
 
 	t.Run("should return empty collection if file does not exist", func(t *testing.T) {
-		store := NewJSONFileStore("non-existent-file.json")
+		store := internal.NewJSONFileStore("non-existent-file.json")
 		collection, err := store.Load()
 
 		require.NoError(t, err)
@@ -54,7 +55,7 @@ func TestJSONFileStore_Load(t *testing.T) {
 		err = os.WriteFile(dbPath, []byte(""), 0600)
 		require.NoError(t, err)
 
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 		collection, err := store.Load()
 
 		require.NoError(t, err)
@@ -73,7 +74,7 @@ func TestJSONFileStore_Save(t *testing.T) {
 		}()
 
 		dbPath := filepath.Join(dir, "test.json")
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 		collection := models.NewCollection(dbPath)
 		collection.CreateTodo("My new todo")
 
@@ -96,7 +97,7 @@ func TestJSONFileStore_Update(t *testing.T) {
 		}()
 
 		dbPath := filepath.Join(dir, "test.json")
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 
 		// Initial save
 		err = store.Save(models.NewCollection(dbPath))
@@ -122,7 +123,7 @@ func TestJSONFileStore_Update(t *testing.T) {
 
 func TestMemoryStore(t *testing.T) {
 	t.Run("should load and save correctly", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 		collection, err := store.Load()
 		require.NoError(t, err)
 		assert.Empty(t, collection.Todos)
@@ -138,7 +139,7 @@ func TestMemoryStore(t *testing.T) {
 	})
 
 	t.Run("should handle update correctly", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 		var todo *models.Todo
 		err := store.Update(func(collection *models.Collection) error {
 			todo = collection.CreateTodo("Updated in-memory")
@@ -155,7 +156,7 @@ func TestMemoryStore(t *testing.T) {
 	})
 
 	t.Run("should simulate failure", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 		store.ShouldFail = true
 
 		_, err := store.Load()
@@ -181,7 +182,7 @@ func TestJSONFileStore_ErrorHandling(t *testing.T) {
 		err = os.Chmod(file.Name(), 0200)
 		require.NoError(t, err)
 
-		store := NewJSONFileStore(file.Name())
+		store := internal.NewJSONFileStore(file.Name())
 		_, err = store.Load()
 
 		assert.Error(t, err)
@@ -199,7 +200,7 @@ func TestJSONFileStore_ErrorHandling(t *testing.T) {
 		require.NoError(t, err)
 		_ = file.Close()
 
-		store := NewJSONFileStore(file.Name())
+		store := internal.NewJSONFileStore(file.Name())
 		_, err = store.Load()
 
 		assert.Error(t, err)
@@ -209,7 +210,7 @@ func TestJSONFileStore_ErrorHandling(t *testing.T) {
 
 	t.Run("should return descriptive error when save fails", func(t *testing.T) {
 		// Use a non-existent directory for the store path
-		store := NewJSONFileStore("/non-existent-dir/todos.json")
+		store := internal.NewJSONFileStore("/non-existent-dir/todos.json")
 		collection := models.NewCollection("")
 
 		err := store.Save(collection)
@@ -227,7 +228,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 		defer func() { _ = os.RemoveAll(dir) }()
 
 		dbPath := filepath.Join(dir, "test.json")
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 
 		// Create initial collection with one todo
 		collection := models.NewCollection(dbPath)
@@ -254,7 +255,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 	})
 
 	t.Run("MemoryStore should rollback on error", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 
 		// Create initial collection with one todo
 		collection := models.NewCollection("")
@@ -281,7 +282,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 	})
 
 	t.Run("successful update should persist changes", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 
 		// Create initial collection with one todo
 		collection := models.NewCollection("")
@@ -311,7 +312,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 func TestStore_Exists(t *testing.T) {
 	t.Run("JSONFileStore.Exists should return false for non-existent file", func(t *testing.T) {
-		store := NewJSONFileStore("/non-existent-path/file.json")
+		store := internal.NewJSONFileStore("/non-existent-path/file.json")
 		assert.False(t, store.Exists())
 	})
 
@@ -321,12 +322,12 @@ func TestStore_Exists(t *testing.T) {
 		defer func() { _ = os.Remove(file.Name()) }()
 		_ = file.Close()
 
-		store := NewJSONFileStore(file.Name())
+		store := internal.NewJSONFileStore(file.Name())
 		assert.True(t, store.Exists())
 	})
 
 	t.Run("MemoryStore.Exists should always return true", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 		assert.True(t, store.Exists())
 	})
 }
@@ -334,12 +335,12 @@ func TestStore_Exists(t *testing.T) {
 func TestStore_Path(t *testing.T) {
 	t.Run("JSONFileStore.Path should return the file path", func(t *testing.T) {
 		expectedPath := "/some/path/todos.json"
-		store := NewJSONFileStore(expectedPath)
+		store := internal.NewJSONFileStore(expectedPath)
 		assert.Equal(t, expectedPath, store.Path())
 	})
 
 	t.Run("MemoryStore.Path should return memory URL", func(t *testing.T) {
-		store := NewMemoryStore()
+		store := internal.NewMemoryStore()
 		assert.Equal(t, "memory://todos", store.Path())
 	})
 }
@@ -351,7 +352,7 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 		defer func() { _ = os.RemoveAll(dir) }()
 
 		dbPath := filepath.Join(dir, "test.json")
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 		collection := &models.Collection{
 			Path:  dbPath,
 			Todos: nil,
@@ -384,7 +385,7 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 		err = os.Chmod(dir, 0555)
 		require.NoError(t, err)
 
-		store := NewJSONFileStore(dbPath)
+		store := internal.NewJSONFileStore(dbPath)
 		collection := models.NewCollection(dbPath)
 		collection.CreateTodo("Test")
 
@@ -392,64 +393,5 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 		err = store.Save(collection)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create temp file")
-	})
-}
-
-func TestFactory_EdgeCases(t *testing.T) {
-	t.Run("tryDir should handle permission errors", func(t *testing.T) {
-		// This is already tested implicitly in other tests
-		// but let's add explicit test for the IsDir check
-		dir, err := os.MkdirTemp("", "tdh-isdir-test")
-		require.NoError(t, err)
-		defer func() { _ = os.RemoveAll(dir) }()
-
-		// Create a directory named .todos
-		todosDir := filepath.Join(dir, ".todos")
-		err = os.Mkdir(todosDir, 0755)
-		require.NoError(t, err)
-
-		_, err = tryDir(dir)
-		assert.Error(t, err)
-		assert.ErrorIs(t, err, ErrIsNotAFile)
-	})
-
-	t.Run("calculateDBPath should handle missing home directory", func(t *testing.T) {
-		// Save original values
-		originalWd, _ := os.Getwd()
-		originalEnv := os.Getenv("TODO_DB_PATH")
-		originalHome := os.Getenv("HOME")
-		originalCache := cachedDBPath
-
-		defer func() {
-			_ = os.Chdir(originalWd)
-			if originalEnv != "" {
-				_ = os.Setenv("TODO_DB_PATH", originalEnv)
-			} else {
-				_ = os.Unsetenv("TODO_DB_PATH")
-			}
-			if originalHome != "" {
-				_ = os.Setenv("HOME", originalHome)
-			} else {
-				_ = os.Unsetenv("HOME")
-			}
-			cachedDBPath = originalCache
-		}()
-
-		// Create a directory without .todos
-		dir, err := os.MkdirTemp("", "tdh-nohome-test")
-		require.NoError(t, err)
-		defer func() { _ = os.RemoveAll(dir) }()
-
-		err = os.Chdir(dir)
-		require.NoError(t, err)
-
-		// Clear environment
-		_ = os.Unsetenv("TODO_DB_PATH")
-		_ = os.Unsetenv("HOME")
-		cachedDBPath = ""
-
-		// Should fall back to .todos.json in current directory
-		path := calculateDBPath()
-		assert.Equal(t, ".todos.json", path)
 	})
 }

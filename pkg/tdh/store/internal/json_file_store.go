@@ -1,4 +1,4 @@
-package store
+package internal
 
 import (
 	"encoding/json"
@@ -13,25 +13,25 @@ import (
 
 // JSONFileStore implements the Store interface using a JSON file.
 type JSONFileStore struct {
-	path string
+	PathValue string
 }
 
 // NewJSONFileStore creates a new JSONFileStore.
 func NewJSONFileStore(path string) *JSONFileStore {
-	return &JSONFileStore{path: path}
+	return &JSONFileStore{PathValue: path}
 }
 
 // Load reads the collection from the JSON file.
 func (s *JSONFileStore) Load() (*models.Collection, error) {
-	collection := models.NewCollection(s.path)
+	collection := models.NewCollection(s.PathValue)
 
-	file, err := os.OpenFile(s.path, os.O_RDONLY, 0600)
+	file, err := os.OpenFile(s.PathValue, os.O_RDONLY, 0600)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// File doesn't exist, start with empty collection
 			return collection, nil
 		}
-		return nil, fmt.Errorf("failed to open store file %s: %w", s.path, err)
+		return nil, fmt.Errorf("failed to open store file %s: %w", s.PathValue, err)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -41,7 +41,7 @@ func (s *JSONFileStore) Load() (*models.Collection, error) {
 		if errors.Is(err, io.EOF) {
 			return collection, nil
 		}
-		return nil, fmt.Errorf("failed to decode JSON from %s: %w", s.path, err)
+		return nil, fmt.Errorf("failed to decode JSON from %s: %w", s.PathValue, err)
 	}
 
 	// Ensure non-nil slice
@@ -59,7 +59,7 @@ func (s *JSONFileStore) Save(collection *models.Collection) error {
 	}
 
 	// Atomic save: write to a temp file first
-	dir := filepath.Dir(s.path)
+	dir := filepath.Dir(s.PathValue)
 	tempFile, err := os.CreateTemp(dir, ".todos-*.json.tmp")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file in %s: %w", dir, err)
@@ -82,15 +82,15 @@ func (s *JSONFileStore) Save(collection *models.Collection) error {
 	}
 
 	// Atomically replace the original file with the new one
-	if err := os.Rename(tempPath, s.path); err != nil {
-		return fmt.Errorf("failed to atomically save file %s: %w", s.path, err)
+	if err := os.Rename(tempPath, s.PathValue); err != nil {
+		return fmt.Errorf("failed to atomically save file %s: %w", s.PathValue, err)
 	}
 	return nil
 }
 
 // Exists checks if the store file exists.
 func (s *JSONFileStore) Exists() bool {
-	_, err := os.Stat(s.path)
+	_, err := os.Stat(s.PathValue)
 	return !os.IsNotExist(err)
 }
 
@@ -116,5 +116,5 @@ func (s *JSONFileStore) Update(fn func(collection *models.Collection) error) err
 
 // Path returns the file path where the store persists data.
 func (s *JSONFileStore) Path() string {
-	return s.path
+	return s.PathValue
 }
