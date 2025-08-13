@@ -178,10 +178,11 @@ func Clean(opts CleanOptions) (*CleanResult, error) {
 	// First, find all done todos using Find API
 	doneStatus := "done"
 	query := store.Query{Status: &doneStatus}
-	removedTodos, err := s.Find(query)
+	findResult, err := s.Find(query)
 	if err != nil {
 		return nil, err
 	}
+	removedTodos := findResult.Todos
 
 	// Then remove them in the update transaction
 	var activeCount int
@@ -263,22 +264,16 @@ func Search(query string, opts SearchOptions) (*SearchResult, error) {
 		CaseSensitive: opts.CaseSensitive,
 	}
 
-	// Get matching todos using Find
-	matchedTodos, err := s.Find(q)
-	if err != nil {
-		return nil, err
-	}
-
-	// Still need total count from full collection
-	collection, err := s.Load()
+	// Get matching todos and counts using Find
+	findResult, err := s.Find(q)
 	if err != nil {
 		return nil, err
 	}
 
 	return &SearchResult{
 		Query:        query,
-		MatchedTodos: matchedTodos,
-		TotalCount:   len(collection.Todos),
+		MatchedTodos: findResult.Todos,
+		TotalCount:   findResult.TotalCount,
 	}, nil
 }
 
@@ -310,29 +305,15 @@ func List(opts ListOptions) (*ListResult, error) {
 		query.Status = &status
 	}
 
-	// Get filtered todos using Find
-	todos, err := s.Find(query)
+	// Get filtered todos and counts using Find
+	findResult, err := s.Find(query)
 	if err != nil {
 		return nil, err
-	}
-
-	// Still need full collection for counts
-	collection, err := s.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	// Count done todos
-	doneCount := 0
-	for _, todo := range collection.Todos {
-		if todo.Status == "done" {
-			doneCount++
-		}
 	}
 
 	return &ListResult{
-		Todos:      todos,
-		TotalCount: len(collection.Todos),
-		DoneCount:  doneCount,
+		Todos:      findResult.Todos,
+		TotalCount: findResult.TotalCount,
+		DoneCount:  findResult.DoneCount,
 	}, nil
 }
