@@ -2,14 +2,17 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 )
 
 var (
-	errIsNotAFile          = errors.New("the database path is not a file")
-	errLocalDbFileNotFound = errors.New("the local .todos file was not found")
+	// ErrIsNotAFile indicates that the database path points to a directory, not a file
+	ErrIsNotAFile = errors.New("database path is not a file")
+	// ErrLocalDbFileNotFound indicates that no .todos file was found in current or parent directories
+	ErrLocalDbFileNotFound = errors.New("no .todos file found in current or parent directories")
 	cachedDBPath           = ""
 )
 
@@ -22,7 +25,7 @@ func tryDir(dir string) (string, error) {
 	}
 
 	if fi.IsDir() {
-		return "", errIsNotAFile
+		return "", fmt.Errorf("%s: %w", dbPath, ErrIsNotAFile)
 	}
 
 	return dbPath, nil
@@ -32,7 +35,7 @@ func tryDir(dir string) (string, error) {
 func tryCwdAndParentFolders() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
 	for {
@@ -48,7 +51,7 @@ func tryCwdAndParentFolders() (string, error) {
 		cwd = path.Dir(cwd)
 	}
 
-	return "", errLocalDbFileNotFound
+	return "", ErrLocalDbFileNotFound
 }
 
 // tryEnv checks the TODO_DB_PATH environment variable
@@ -57,7 +60,7 @@ func tryEnv() (string, error) {
 	if envPath != "" {
 		return envPath, nil
 	}
-	return "", errors.New("TODO_DB_PATH not set")
+	return "", errors.New("TODO_DB_PATH environment variable is not set")
 }
 
 // calculateDBPath determines the database path using the original logic:

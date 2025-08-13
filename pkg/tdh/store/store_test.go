@@ -167,3 +167,54 @@ func TestMemoryStore(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestJSONFileStore_ErrorHandling(t *testing.T) {
+	t.Run("should return descriptive error when file cannot be opened", func(t *testing.T) {
+		// Create a file with no read permissions
+		file, err := os.CreateTemp("", "tdh-perm-test")
+		require.NoError(t, err)
+		defer func() { _ = os.Remove(file.Name()) }()
+
+		_ = file.Close()
+		// Remove read permissions
+		err = os.Chmod(file.Name(), 0200)
+		require.NoError(t, err)
+
+		store := NewJSONFileStore(file.Name())
+		_, err = store.Load()
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to open store file")
+		assert.Contains(t, err.Error(), file.Name())
+	})
+
+	t.Run("should return descriptive error for invalid JSON", func(t *testing.T) {
+		// Create a file with invalid JSON
+		file, err := os.CreateTemp("", "tdh-json-test")
+		require.NoError(t, err)
+		defer func() { _ = os.Remove(file.Name()) }()
+
+		_, err = file.WriteString("{ invalid json }")
+		require.NoError(t, err)
+		_ = file.Close()
+
+		store := NewJSONFileStore(file.Name())
+		_, err = store.Load()
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to decode JSON")
+		assert.Contains(t, err.Error(), file.Name())
+	})
+
+	t.Run("should return descriptive error when save fails", func(t *testing.T) {
+		// Use a non-existent directory for the store path
+		store := NewJSONFileStore("/non-existent-dir/todos.json")
+		collection := models.NewCollection("")
+
+		err := store.Save(collection)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create temp file")
+		assert.Contains(t, err.Error(), "/non-existent-dir")
+	})
+}

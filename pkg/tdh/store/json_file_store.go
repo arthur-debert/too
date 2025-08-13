@@ -2,6 +2,9 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -28,17 +31,17 @@ func (s *JSONFileStore) Load() (*models.Collection, error) {
 			// File doesn't exist, start with empty collection
 			return collection, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to open store file %s: %w", s.path, err)
 	}
 	defer func() { _ = file.Close() }()
 
 	err = json.NewDecoder(file).Decode(&collection.Todos)
 	if err != nil {
 		// Handle empty file case
-		if err.Error() == "EOF" {
+		if errors.Is(err, io.EOF) {
 			return collection, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to decode JSON from %s: %w", s.path, err)
 	}
 
 	// Ensure non-nil slice
@@ -52,27 +55,37 @@ func (s *JSONFileStore) Load() (*models.Collection, error) {
 func (s *JSONFileStore) Save(collection *models.Collection) error {
 	data, err := json.MarshalIndent(&collection.Todos, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal todos to JSON: %w", err)
 	}
 
 	// Atomic save: write to a temp file first
-	tempFile, err := os.CreateTemp(filepath.Dir(s.path), ".todos-*.json.tmp")
+	dir := filepath.Dir(s.path)
+	tempFile, err := os.CreateTemp(dir, ".todos-*.json.tmp")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temp file in %s: %w", dir, err)
 	}
-	defer func() { _ = os.Remove(tempFile.Name()) }() // Clean up temp file
+	tempPath := tempFile.Name()
+	defer func() {
+		// Clean up temp file if it still exists
+		if _, err := os.Stat(tempPath); err == nil {
+			_ = os.Remove(tempPath)
+		}
+	}()
 
 	if _, err := tempFile.Write(data); err != nil {
 		_ = tempFile.Close()
-		return err
+		return fmt.Errorf("failed to write data to temp file %s: %w", tempPath, err)
 	}
 
 	if err := tempFile.Close(); err != nil {
-		return err
+		return fmt.Errorf("failed to close temp file %s: %w", tempPath, err)
 	}
 
 	// Atomically replace the original file with the new one
-	return os.Rename(tempFile.Name(), s.path)
+	if err := os.Rename(tempPath, s.path); err != nil {
+		return fmt.Errorf("failed to atomically save file %s: %w", s.path, err)
+	}
+	return nil
 }
 
 // Exists checks if the store file exists.
