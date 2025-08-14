@@ -160,9 +160,29 @@ func (r *Renderer) RenderClean(result *tdh.CleanResult) error {
 
 // RenderReorder renders the reorder command result
 func (r *Renderer) RenderReorder(result *tdh.ReorderResult) error {
-	_, err := fmt.Fprintf(r.writer, "Swapped todos #%d and #%d\n",
-		result.TodoA.Position, result.TodoB.Position)
-	return err
+	if result.ReorderedCount == 0 {
+		_, err := fmt.Fprintln(r.writer, "All todos are already in sequential order")
+		return err
+	}
+
+	_, err := fmt.Fprintf(r.writer, "Reordered %d todo(s) to sequential positions\n", result.ReorderedCount)
+	if err != nil {
+		return err
+	}
+
+	// Optionally show the reordered list
+	if len(result.Todos) > 0 {
+		_, err = fmt.Fprintln(r.writer, "\nCurrent order:")
+		if err != nil {
+			return err
+		}
+
+		for _, todo := range result.Todos {
+			r.renderTodo(todo)
+		}
+	}
+
+	return nil
 }
 
 // RenderSearch renders the search command result
