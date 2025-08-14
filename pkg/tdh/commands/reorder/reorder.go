@@ -1,10 +1,8 @@
 package reorder
 
 import (
-	"errors"
-	"fmt"
+	"sort"
 
-	"github.com/arthur-debert/tdh/pkg/tdh/internal/helpers"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
@@ -16,21 +14,21 @@ type Options struct {
 
 // Result contains the result of the reorder command
 type Result struct {
-	TodoA *models.Todo
-	TodoB *models.Todo
+	ReorderedCount int
+	Todos          []*models.Todo
 }
 
-// Execute swaps the position of two todos
-func Execute(positionA, positionB int, opts Options) (*Result, error) {
+// Execute reorders todos by sorting them by their current position and reassigning sequential positions
+func Execute(opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
-	var todoA, todoB *models.Todo
+	var reorderedTodos []*models.Todo
+	var count int
 
 	err := s.Update(func(collection *models.Collection) error {
-		if err := swap(collection, positionA, positionB); err != nil {
-			return fmt.Errorf("failed to swap todos: %w", err)
-		}
-		todoA, _ = helpers.FindByPosition(collection, positionA)
-		todoB, _ = helpers.FindByPosition(collection, positionB)
+		count = reorder(collection)
+		// Make a copy of the todos for the result
+		reorderedTodos = make([]*models.Todo, len(collection.Todos))
+		copy(reorderedTodos, collection.Todos)
 		return nil
 	})
 
@@ -39,30 +37,33 @@ func Execute(positionA, positionB int, opts Options) (*Result, error) {
 	}
 
 	return &Result{
-		TodoA: todoA,
-		TodoB: todoB,
+		ReorderedCount: count,
+		Todos:          reorderedTodos,
 	}, nil
 }
 
-// swap swaps the position of two todos in a collection by their positions.
-// Note: This also swaps the positions, which maintains the visual order.
-func swap(c *models.Collection, posA, posB int) error {
-	var indexA, indexB = -1, -1
+// reorder sorts todos by their current position and reassigns sequential positions starting from 1
+// Returns the number of todos that had their position changed
+func reorder(c *models.Collection) int {
+	if len(c.Todos) == 0 {
+		return 0
+	}
 
-	for i, todo := range c.Todos {
-		if todo.Position == posA {
-			indexA = i
-		}
-		if todo.Position == posB {
-			indexB = i
+	// Sort todos by their current position
+	// Using a stable sort to maintain relative order of todos with same position
+	sort.SliceStable(c.Todos, func(i, j int) bool {
+		return c.Todos[i].Position < c.Todos[j].Position
+	})
+
+	// Reassign positions sequentially starting from 1
+	changed := 0
+	for i := range c.Todos {
+		newPosition := i + 1
+		if c.Todos[i].Position != newPosition {
+			c.Todos[i].Position = newPosition
+			changed++
 		}
 	}
 
-	if indexA == -1 || indexB == -1 {
-		return errors.New("one or both todos not found")
-	}
-
-	c.Todos[indexA], c.Todos[indexB] = c.Todos[indexB], c.Todos[indexA]
-	c.Todos[indexA].Position, c.Todos[indexB].Position = c.Todos[indexB].Position, c.Todos[indexA].Position
-	return nil
+	return changed
 }

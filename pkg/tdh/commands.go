@@ -63,9 +63,9 @@ func Clean(opts CleanOptions) (*CleanResult, error) {
 	return cmdClean.Execute(opts)
 }
 
-// Reorder swaps the position of two todos
-func Reorder(positionA, positionB int, opts ReorderOptions) (*ReorderResult, error) {
-	return cmdReorder.Execute(positionA, positionB, opts)
+// Reorder reorders todos by sorting them by position and reassigning sequential positions
+func Reorder(opts ReorderOptions) (*ReorderResult, error) {
+	return cmdReorder.Execute(opts)
 }
 
 // Search searches for todos containing the query string
