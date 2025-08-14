@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
+	"strings"
 	"text/template"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
-	"github.com/arthur-debert/tdh/pkg/tdh/output/styles"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/pterm/pterm"
 )
 
@@ -37,32 +35,26 @@ func NewTemplateRenderer(w io.Writer, useColor bool) (*TemplateRenderer, error) 
 		useColor:  useColor,
 	}
 
-	// Load all templates
-	entries, err := templateFS.ReadDir("templates")
+	// Parse all templates together so they can reference each other
+	tmpl := template.New("").Funcs(r.templateFuncs())
+
+	// Parse all template files
+	tmpl, err := tmpl.ParseFS(templateFS, "templates/*.tmpl")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read templates directory: %w", err)
+		return nil, fmt.Errorf("failed to parse templates: %w", err)
 	}
 
-	for _, entry := range entries {
-		if entry.IsDir() {
+	// Store individual templates by name for easy access
+	for _, t := range tmpl.Templates() {
+		name := t.Name()
+		if name == "" {
 			continue
 		}
-
-		name := entry.Name()
-		content, err := templateFS.ReadFile("templates/" + name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read template %s: %w", name, err)
+		// Remove .tmpl extension
+		if strings.HasSuffix(name, ".tmpl") {
+			baseName := name[:len(name)-5]
+			r.templates[baseName] = t
 		}
-
-		// Create template with custom functions
-		tmpl, err := template.New(name).Funcs(r.templateFuncs()).Parse(string(content))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse template %s: %w", name, err)
-		}
-
-		// Store without .tmpl extension
-		templateName := name[:len(name)-5] // Remove .tmpl
-		r.templates[templateName] = tmpl
 	}
 
 	return r, nil
@@ -71,73 +63,47 @@ func NewTemplateRenderer(w io.Writer, useColor bool) (*TemplateRenderer, error) 
 // templateFuncs returns the custom template functions
 func (r *TemplateRenderer) templateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"style":    r.applyStyle,
-		"color":    r.applyColor,
-		"hashtags": r.highlightHashtags,
+		"isDone": func(todo *models.Todo) bool {
+			return todo.Status == models.StatusDone
+		},
+		"isPending": func(todo *models.Todo) bool {
+			return todo.Status == models.StatusPending
+		},
+		"padPosition": func(pos int) string {
+			return fmt.Sprintf("%6d", pos)
+		},
+		// Color functions using pterm
+		"red": func(s string) string {
+			if r.useColor {
+				return pterm.FgRed.Sprint(s)
+			}
+			return s
+		},
+		"green": func(s string) string {
+			if r.useColor {
+				return pterm.FgGreen.Sprint(s)
+			}
+			return s
+		},
+		"gray": func(s string) string {
+			if r.useColor {
+				return pterm.FgGray.Sprint(s)
+			}
+			return s
+		},
+		"yellow": func(s string) string {
+			if r.useColor {
+				return pterm.FgYellow.Sprint(s)
+			}
+			return s
+		},
+		"cyan": func(s string) string {
+			if r.useColor {
+				return pterm.FgCyan.Sprint(s)
+			}
+			return s
+		},
 	}
-}
-
-// applyStyle applies a named style to text
-func (r *TemplateRenderer) applyStyle(styleName string, text string) string {
-	if !r.useColor {
-		return text
-	}
-
-	var style lipgloss.Style
-	switch styleName {
-	case "done":
-		style = styles.StatusDone
-	case "pending":
-		style = styles.StatusPending
-	case "position":
-		style = styles.Position
-	case "hashtag":
-		style = styles.Hashtag
-	case "error":
-		style = styles.Error
-	case "success":
-		style = styles.Success
-	case "info":
-		style = styles.Info
-	default:
-		style = styles.Base
-	}
-
-	return style.Render(text)
-}
-
-// applyColor applies a color to text using pterm
-func (r *TemplateRenderer) applyColor(color string, text string) string {
-	if !r.useColor {
-		return text
-	}
-
-	switch color {
-	case "green":
-		return pterm.FgGreen.Sprint(text)
-	case "red":
-		return pterm.FgRed.Sprint(text)
-	case "yellow":
-		return pterm.FgYellow.Sprint(text)
-	case "blue":
-		return pterm.FgBlue.Sprint(text)
-	case "gray":
-		return pterm.FgGray.Sprint(text)
-	default:
-		return text
-	}
-}
-
-// highlightHashtags highlights hashtags in text
-func (r *TemplateRenderer) highlightHashtags(text string) string {
-	if !r.useColor {
-		return text
-	}
-
-	hashtagRegex := regexp.MustCompile(`#[^\s]+`)
-	return hashtagRegex.ReplaceAllStringFunc(text, func(match string) string {
-		return styles.Hashtag.Render(match)
-	})
 }
 
 // Render renders a template with the given data
@@ -147,48 +113,20 @@ func (r *TemplateRenderer) Render(templateName string, data interface{}) error {
 		return fmt.Errorf("template '%s' not found", templateName)
 	}
 
-	// Prepare data for rendering
-	renderData := r.PrepareData(data)
-
-	// Execute template
+	// Execute template to get markup
 	var buf bytes.Buffer
-	err := tmpl.Execute(&buf, renderData)
+	err := tmpl.Execute(&buf, data)
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %w", err)
 	}
 
-	// Write to output
+	// Write output directly - colors are already applied by template functions
 	_, err = r.writer.Write(buf.Bytes())
 	return err
 }
 
 // PrepareData prepares data for template rendering
 func (r *TemplateRenderer) PrepareData(data interface{}) interface{} {
-	// If it's a Todo, enrich it with rendered elements
-	if todo, ok := data.(*models.Todo); ok {
-		// Format position with padding
-		positionStr := fmt.Sprintf("%6d", todo.Position)
-
-		return map[string]interface{}{
-			"Todo":        todo,
-			"Position":    positionStr,
-			"PositionRaw": todo.Position,
-			"Symbol":      r.getStatusSymbol(todo.Status),
-			"Text":        r.highlightHashtags(todo.Text),
-			"TextRaw":     todo.Text,
-			"Status":      todo.Status,
-			"IsDone":      todo.Status == models.StatusDone,
-			"IsPending":   todo.Status == models.StatusPending,
-		}
-	}
-
+	// Pass raw data - let templates handle all formatting
 	return data
-}
-
-// getStatusSymbol returns the styled status symbol
-func (r *TemplateRenderer) getStatusSymbol(status models.TodoStatus) string {
-	if status == models.StatusDone {
-		return r.applyStyle("done", "✓")
-	}
-	return r.applyStyle("pending", "✕")
 }

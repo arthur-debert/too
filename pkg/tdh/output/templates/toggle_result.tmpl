@@ -1,1 +1,1 @@
-Toggled todo #{{.Todo.Position}} from {{.OldStatus}} to {{.NewStatus}}
+{{cyan "Toggled todo"}} {{gray (printf "#%d" .Todo.Position)}} from {{red .OldStatus}} to {{green .NewStatus}}
