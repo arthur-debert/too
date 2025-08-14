@@ -1,106 +1,115 @@
-STORAGE LAYER DESIGN
+                Storage Layer Design
 
-CURRENT STATE
-- Storage logic is partially centralized in Collection type
-- Commands in pkg/tdh/commands.go load the entire collection into memory
-- Filtering and searching logic is implemented in the business logic layer (pkg/tdh)
-- No abstraction between business logic and data retrieval logic
+This document describes the storage abstraction layer in tdh.
 
-PROBLEMS
-- Cannot unit test commands without file system
-- Cannot change storage format without modifying Collection
-- No atomic saves - failures during save can corrupt data file
-- Repeated load/save pattern in every command
-- Inefficient in-memory filtering: Load() retrieves all data, forcing the business logic layer to perform filtering, which is inefficient for large datasets and future database backends.
 
-DESIGN GOALS
-- Keep CLI layer unchanged
-- Create storage abstraction internal to pkg/tdh
-- Enable unit testing with in-memory storage
-- Support atomic operations and transactional updates
-- Provide efficient, query-based data retrieval
-- Make storage format/backend pluggable
+Overview
+--------
 
-PROPOSED DESIGN
+The storage layer provides a clean abstraction between business logic
+and data persistence, enabling:
+    • Unit testing without filesystem access
+    • Atomic operations and transactional updates
+    • Pluggable storage backends
+    • Efficient query-based data retrieval
 
-1. Query Struct (pkg/tdh/store/store.go)
 
-   // Query defines parameters for finding todos.
-   // Nil fields are ignored.
-   type Query struct {
-       Status         *string
-       TextContains   *string
-   }
+Current Implementation
+----------------------
 
-2. Storage Interface (pkg/tdh/store/store.go)
-   
-   type Store interface {
-       Load() (*Collection, error) // For full collection access
-       Save(*Collection) error
-       Exists() bool
-       Update(func(collection *Collection) error) error
-       Find(Query) ([]*Todo, error) // For efficient retrieval
-   }
+Store Interface:
+    The core abstraction is defined in pkg/tdh/store/store.go:
 
-3. Implementations (pkg/tdh/store/)
-   
-   JSONFileStore struct {
-       path string
-   }
-   - Implements Store using JSON file
-   - Find() method will load the full collection and apply filters internally.
-   
-   MemoryStore struct {
-       data *Collection
-   }
-   - Implements Store for testing
+    type Store interface {
+        Load() (*models.Collection, error)
+        Save(*models.Collection) error
+        Exists() bool
+        Update(func(collection *models.Collection) error) error
+        Find(query Query) (*FindResult, error)
+        Path() string
+    }
 
-4. Store Factory (pkg/tdh/store/factory.go)
-   
-   func NewStore(path string) Store {
-       // ... (remains the same)
-   }
+Query System:
+    type Query struct {
+        Status       *models.TodoStatus
+        TextContains *string
+    }
 
-5. Updated Commands (pkg/tdh/commands.go)
-   
-   // Business logic is simplified to building a query and processing results.
-   func Search(queryStr string, opts SearchOptions) (*SearchResult, error) {
-       s := store.NewStore(opts.CollectionPath)
-       
-       query := store.Query{
-           TextContains: &queryStr,
-       }
-       
-       todos, err := s.Find(query)
-       if err != nil {
-           return nil, err
-       }
-       
-       return &SearchResult{MatchedTodos: todos}, nil
-   }
+    type FindResult struct {
+        Todos      []*models.Todo
+        TotalCount int
+        DoneCount  int
+    }
 
-IMPLEMENTATION STEPS
+Implementations:
 
-1. Create Query struct in the store package.
-2. Add Find(Query) method to the Store interface.
-3. Implement Find() on JSONFileStore and MemoryStore.
-4. Refactor List and Search commands in pkg/tdh/commands.go to use store.Find() instead of store.Load().
-5. Update tests to cover the new query logic.
+    JSONFileStore:
+        • Default production implementation
+        • Stores todos in JSON format
+        • Atomic saves with temporary file + rename
+        • Find() loads full collection and filters in memory
 
-TESTING STRATEGY
+    MemoryStore:
+        • Used exclusively for testing
+        • No filesystem dependencies
+        • Fast and deterministic
 
-- Unit tests use MemoryStore to test command logic with different queries.
-- Integration tests use JSONFileStore to verify file-based filtering.
+Factory Pattern:
+    func NewStore(path string) Store {
+        if strings.HasPrefix(path, ":memory:") {
+            return NewMemoryStore()
+        }
+        return NewJSONFileStore(path)
+    }
 
-FUTURE POSSIBILITIES
+Usage in Commands
+-----------------
 
-- SQLiteStore: The Find() method can be implemented as an efficient SQL query (`SELECT ... WHERE ...`), providing significant performance gains without changing any command logic.
-- CloudStore for sync capabilities.
-- EncryptedStore for security.
+Commands use the store abstraction for all persistence:
 
-MIGRATION NOTES
+    func List(opts ListOptions) (*ListResult, error) {
+        s := store.NewStore(opts.CollectionPath)
+        
+        query := store.Query{}
+        if !opts.All {
+            status := models.StatusPending
+            query.Status = &status
+        }
+        
+        result, err := s.Find(query)
+        if err != nil {
+            return nil, err
+        }
+        
+        return &ListResult{
+            Todos:      result.Todos,
+            TotalCount: result.TotalCount,
+            DoneCount:  result.DoneCount,
+        }, nil
+    }
 
-- This is an internal refactoring.
-- Public API in pkg/tdh/commands.go stays the same.
-- CLI layer requires no changes.
-- Can be done incrementally.
+
+Testing Strategy
+----------------
+
+Unit tests use MemoryStore for fast, isolated testing:
+    • No filesystem dependencies
+    • Deterministic behavior
+    • Easy setup with testutil helpers
+
+Integration tests verify JSONFileStore behavior:
+    • Atomic saves
+    • File format compatibility
+    • Error handling
+
+
+Future Enhancements
+-------------------
+
+The store interface enables future backends:
+    • SQLiteStore for better performance with large datasets
+    • CloudStore for synchronization capabilities
+    • EncryptedStore for security-sensitive data
+
+All backends implement the same interface, allowing seamless
+switching without changing business logic.

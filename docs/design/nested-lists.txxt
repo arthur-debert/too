@@ -1,6 +1,9 @@
-Nested Lists Design Specification
+                Nested Lists Design Specification
 
-This document outlines the design for implementing arbitrarily nested todo lists in tdh.
+NOTE: This is a proposed feature that has not been implemented yet.
+
+This document outlines the design for implementing arbitrarily nested
+todo lists in tdh.
 
 1. Problem Analysis
 
