@@ -36,6 +36,10 @@ func Execute(position int, opts Options) (*Result, error) {
 		oldStatus = string(todo.Status)
 		todo.Toggle()
 		newStatus = string(todo.Status)
+
+		// Auto-reorder after toggle
+		collection.Reorder()
+
 		return nil
 	})
 

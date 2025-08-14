@@ -34,6 +34,10 @@ func Execute(opts Options) (*Result, error) {
 	var activeCount int
 	err = s.Update(func(collection *models.Collection) error {
 		activeCount = removeFinishedTodos(collection)
+
+		// Auto-reorder after cleaning
+		collection.Reorder()
+
 		return nil
 	})
 

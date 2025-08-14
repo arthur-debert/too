@@ -9,14 +9,14 @@ import (
 )
 
 var toggleCmd = &cobra.Command{
-	Use:     "toggle <id>",
+	Use:     "toggle <position>",
 	Aliases: []string{"t"},
 	Short:   "Toggle the status of a todo (alias: t)",
 	Long:    `Toggle the status of a todo between pending and done.`,
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Parse ID
-		id, err := strconv.Atoi(args[0])
+		// Parse position
+		position, err := strconv.Atoi(args[0])
 		if err != nil {
 			return err
 		}
@@ -25,7 +25,7 @@ var toggleCmd = &cobra.Command{
 		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
-		result, err := tdh.Toggle(id, tdh.ToggleOptions{
+		result, err := tdh.Toggle(position, tdh.ToggleOptions{
 			CollectionPath: collectionPath,
 		})
 		if err != nil {
