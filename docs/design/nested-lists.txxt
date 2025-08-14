@@ -37,7 +37,10 @@ todo lists in tdh.
         intuitive behavior:
         
         • Toggle: Toggling a parent's status (e.g., to "done") will recursively 
-          apply the same status to all of its descendants.
+          apply the same status to all of its descendants. This maintains the 
+          invariant that a parent and all its children must have the same status.
+          A "done" task cannot have "pending" subtasks, as this would be logically
+          inconsistent - you cannot complete a task if its subtasks are incomplete.
         • Delete: Deleting a parent will delete all of its descendants by default. 
           An --unwrap flag will be provided to delete the parent but promote its 
           children to the parent's level, preventing accidental mass deletion.
