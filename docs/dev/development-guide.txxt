@@ -223,3 +223,22 @@ covering quick start, conventions, and architecture.
 
 Remember: The goal is safe, testable, and maintainable code. When in
 doubt, refer to existing patterns or ask for guidance.
+
+
+TLDR
+----
+
+    • Use scripts/* for build, lint, pre-commit, test
+    • Don't litter the codebase with random *.md files or compile binaries in root
+    • Use test utils for creating todo lists and assertions
+    • CLI architecture:
+        - CLI (cmd) is thin layer: argument/option validation, parsing, help, output
+        - All logic via pure Go API in pkg/tdh/commands.go (directs to implementations)
+        - Implementations in pkg/tdh/commands/*
+        - API returns structured data
+        - Rendering: pkg/tdh/output uses templates with lipgloss
+    • Working on issues:
+        - GitHub issue: gh issue develop -c <issue-id> to get branch
+        - Otherwise: create feature branch
+        - Do work, verify with tests, commit, push
+        - Write PR with "closes #<id>" or "for #<id>" for auto-close
