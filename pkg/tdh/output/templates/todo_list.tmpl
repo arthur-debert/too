@@ -1,0 +1,8 @@
+{{- if .Todos -}}
+{{- range .Todos -}}
+{{template "todo_item.tmpl" .}}
+{{ end -}}
+<cyan>{{.TotalCount}} todo(s), {{.DoneCount}} done</cyan>
+{{- else -}}
+<yellow>No todos found</yellow>
+{{- end -}}

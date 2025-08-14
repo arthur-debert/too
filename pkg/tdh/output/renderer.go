@@ -1,9 +1,13 @@
 package output
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
 	"io"
 	"os"
+	"strings"
+	"text/template"
 
 	"github.com/arthur-debert/tdh/pkg/lipbaml"
 	"github.com/arthur-debert/tdh/pkg/tdh"
@@ -12,11 +16,15 @@ import (
 	"github.com/muesli/termenv"
 )
 
+//go:embed templates/*.tmpl
+var templateFS embed.FS
+
 // LipbamlRenderer is a renderer that uses lipbaml for styled output
 type LipbamlRenderer struct {
-	writer   io.Writer
-	useColor bool
-	styles   lipbaml.StyleMap
+	writer    io.Writer
+	useColor  bool
+	styles    lipbaml.StyleMap
+	templates map[string]string
 }
 
 // NewLipbamlRenderer creates a new lipbaml-based renderer
@@ -69,236 +77,177 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 			Foreground(lipgloss.AdaptiveColor{Light: "#1971C2", Dark: "#339AF0"}),
 	}
 
-	return &LipbamlRenderer{
-		writer:   w,
-		useColor: useColor,
-		styles:   styles,
-	}, nil
+	r := &LipbamlRenderer{
+		writer:    w,
+		useColor:  useColor,
+		styles:    styles,
+		templates: make(map[string]string),
+	}
+
+	// Load all templates
+	entries, err := templateFS.ReadDir("templates")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read templates directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".tmpl") {
+			content, err := templateFS.ReadFile("templates/" + entry.Name())
+			if err != nil {
+				return nil, fmt.Errorf("failed to read template %s: %w", entry.Name(), err)
+			}
+			// Store without .tmpl extension
+			templateName := strings.TrimSuffix(entry.Name(), ".tmpl")
+			r.templates[templateName] = string(content)
+		}
+	}
+
+	return r, nil
+}
+
+// templateFuncs returns custom functions for templates
+func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
+	return map[string]interface{}{
+		"isDone": func(todo *models.Todo) bool {
+			return todo.Status == models.StatusDone
+		},
+		"padPosition": func(pos int) string {
+			return fmt.Sprintf("%6d", pos)
+		},
+	}
+}
+
+// renderTemplate renders a template with the given data
+func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) (string, error) {
+	tmplContent, ok := r.templates[templateName]
+	if !ok {
+		return "", fmt.Errorf("template '%s' not found", templateName)
+	}
+
+	// For templates that use other templates, we need to process all of them together
+	if strings.Contains(tmplContent, "{{template") {
+		// Combine all templates into one for parsing
+		var allTemplates strings.Builder
+		for name, content := range r.templates {
+			allTemplates.WriteString(fmt.Sprintf(`{{define "%s.tmpl"}}%s{{end}}`, name, content))
+		}
+
+		// Parse and execute with custom functions using standard template package
+		tmpl, err := template.New("combined").Funcs(template.FuncMap(r.templateFuncs())).Parse(allTemplates.String())
+		if err != nil {
+			return "", fmt.Errorf("failed to parse templates: %w", err)
+		}
+
+		var buf bytes.Buffer
+		if err := tmpl.ExecuteTemplate(&buf, templateName+".tmpl", data); err != nil {
+			return "", fmt.Errorf("failed to execute template: %w", err)
+		}
+
+		// Now expand the lipbaml tags
+		return lipbaml.ExpandTags(buf.String(), r.styles)
+	}
+
+	// For simple templates, we need to parse with functions first, then use lipbaml
+	tmpl, err := template.New(templateName).Funcs(template.FuncMap(r.templateFuncs())).Parse(tmplContent)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	// Now expand the lipbaml tags
+	return lipbaml.ExpandTags(buf.String(), r.styles)
 }
 
 // RenderAdd renders the add command result using lipbaml
 func (r *LipbamlRenderer) RenderAdd(result *tdh.AddResult) error {
-	// Template matching add_result.tmpl:
-	// {{green "Added todo"}} {{gray (printf "#%d" .Todo.Position)}}: {{.Todo.Text}}
-	template := `<success>Added todo</success> <position>#{{.Todo.Position}}</position>: {{.Todo.Text}}`
-
-	output, err := lipbaml.Render(template, result, r.styles)
+	output, err := r.renderTemplate("add_result", result)
 	if err != nil {
 		return fmt.Errorf("failed to render add result: %w", err)
 	}
-
 	_, err = fmt.Fprintln(r.writer, output)
 	return err
 }
 
 // RenderToggle renders the toggle command result using lipbaml
 func (r *LipbamlRenderer) RenderToggle(result *tdh.ToggleResult) error {
-	// Template matching toggle_result.tmpl:
-	// {{cyan "Toggled todo"}} {{gray (printf "#%d" .Todo.Position)}} from {{red .OldStatus}} to {{green .NewStatus}}
-	template := `<cyan>Toggled todo</cyan> <gray>#{{.Todo.Position}}</gray> from <red>{{.OldStatus}}</red> to <green>{{.NewStatus}}</green>`
-
-	output, err := lipbaml.Render(template, result, r.styles)
+	output, err := r.renderTemplate("toggle_result", result)
 	if err != nil {
 		return fmt.Errorf("failed to render toggle result: %w", err)
 	}
-
 	_, err = fmt.Fprintln(r.writer, output)
 	return err
 }
 
 // RenderModify renders the modify command result using lipbaml
 func (r *LipbamlRenderer) RenderModify(result *tdh.ModifyResult) error {
-	// Template matching modify_result.tmpl
-	template := `<info>Modified todo</info> <position>#{{.Todo.Position}}</position>: {{.Todo.Text}}`
-
-	output, err := lipbaml.Render(template, result, r.styles)
+	output, err := r.renderTemplate("modify_result", result)
 	if err != nil {
 		return fmt.Errorf("failed to render modify result: %w", err)
 	}
-
 	_, err = fmt.Fprintln(r.writer, output)
 	return err
 }
 
 // RenderInit renders the init command result using lipbaml
 func (r *LipbamlRenderer) RenderInit(result *tdh.InitResult) error {
-	template := `{{.Message}}`
-
-	output, err := lipbaml.Render(template, result, r.styles)
+	output, err := r.renderTemplate("init_result", result)
 	if err != nil {
 		return fmt.Errorf("failed to render init result: %w", err)
 	}
-
 	_, err = fmt.Fprintln(r.writer, output)
 	return err
 }
 
-// renderTodoItem renders a single todo item (helper function)
-func (r *LipbamlRenderer) renderTodoItem(todo *models.Todo) (string, error) {
-	// Template matching todo_item.tmpl:
-	// {{gray (padPosition .Position)}} | {{if isDone .}}{{green "✓"}}{{else}}{{red "✕"}}{{end}} {{.Text}}
-	var template string
-	if todo.Status == models.StatusDone {
-		template = fmt.Sprintf(`<gray>%6d</gray> | <done>✓</done> {{.Text}}`, todo.Position)
-	} else {
-		template = fmt.Sprintf(`<gray>%6d</gray> | <pending>✕</pending> {{.Text}}`, todo.Position)
-	}
-
-	return lipbaml.Render(template, todo, r.styles)
-}
-
 // RenderClean renders the clean command result using lipbaml
 func (r *LipbamlRenderer) RenderClean(result *tdh.CleanResult) error {
-	if result.RemovedCount == 0 {
-		template := `<yellow>No finished todos to clean</yellow>`
-		output, err := lipbaml.Render(template, nil, r.styles)
-		if err != nil {
-			return fmt.Errorf("failed to render clean result: %w", err)
-		}
-		_, _ = fmt.Fprintln(r.writer, output)
-	} else {
-		template := `<green>Removed {{.RemovedCount}} finished todo(s)</green>`
-		output, err := lipbaml.Render(template, result, r.styles)
-		if err != nil {
-			return fmt.Errorf("failed to render clean header: %w", err)
-		}
-		_, _ = fmt.Fprintln(r.writer, output)
-
-		// Show removed todos
-		for _, todo := range result.RemovedTodos {
-			itemTemplate := fmt.Sprintf(`  - <gray>#%d</gray>: {{.Text}}`, todo.Position)
-			output, err := lipbaml.Render(itemTemplate, todo, r.styles)
-			if err != nil {
-				return fmt.Errorf("failed to render removed todo: %w", err)
-			}
-			_, _ = fmt.Fprintln(r.writer, output)
-		}
-	}
-
-	// Show remaining active count
-	summaryTemplate := `<cyan>{{.ActiveCount}} active todo(s) remaining</cyan>`
-	summary, err := lipbaml.Render(summaryTemplate, result, r.styles)
+	output, err := r.renderTemplate("clean_result", result)
 	if err != nil {
-		return fmt.Errorf("failed to render clean summary: %w", err)
+		return fmt.Errorf("failed to render clean result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, summary)
+	_, err = fmt.Fprintln(r.writer, output)
 	return err
 }
 
 // RenderReorder renders the reorder command result using lipbaml
 func (r *LipbamlRenderer) RenderReorder(result *tdh.ReorderResult) error {
-	if result.ReorderedCount == 0 {
-		template := `<yellow>All todos are already in sequential order</yellow>`
-		output, err := lipbaml.Render(template, nil, r.styles)
-		if err != nil {
-			return fmt.Errorf("failed to render reorder result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.writer, output)
-		return err
-	}
-
-	// Show reorder count
-	template := `<green>Reordered {{.ReorderedCount}} todo(s) to sequential positions</green>`
-	output, err := lipbaml.Render(template, result, r.styles)
+	output, err := r.renderTemplate("reorder_result", result)
 	if err != nil {
-		return fmt.Errorf("failed to render reorder header: %w", err)
+		return fmt.Errorf("failed to render reorder result: %w", err)
 	}
-	_, _ = fmt.Fprintln(r.writer, output)
-
-	// Show current order if todos are provided
-	if len(result.Todos) > 0 {
-		_, _ = fmt.Fprintln(r.writer)
-		header := `<cyan>Current order:</cyan>`
-		output, err := lipbaml.Render(header, nil, r.styles)
-		if err != nil {
-			return fmt.Errorf("failed to render reorder list header: %w", err)
-		}
-		_, _ = fmt.Fprintln(r.writer, output)
-
-		for _, todo := range result.Todos {
-			output, err := r.renderTodoItem(todo)
-			if err != nil {
-				return fmt.Errorf("failed to render todo item: %w", err)
-			}
-			_, _ = fmt.Fprintln(r.writer, output)
-		}
-	}
-
-	return nil
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
 }
 
 // RenderSearch renders the search command result using lipbaml
 func (r *LipbamlRenderer) RenderSearch(result *tdh.SearchResult) error {
-	if len(result.MatchedTodos) == 0 {
-		template := `<yellow>No todos found matching '{{.Query}}'</yellow>`
-		output, err := lipbaml.Render(template, result, r.styles)
-		if err != nil {
-			return fmt.Errorf("failed to render search result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.writer, output)
-		return err
-	}
-
-	// Show match count and query
-	headerTemplate := `<cyan>Found {{len .MatchedTodos}} todo(s) matching '{{.Query}}':</cyan>`
-	header, err := lipbaml.Render(headerTemplate, result, r.styles)
+	output, err := r.renderTemplate("search_result", result)
 	if err != nil {
-		return fmt.Errorf("failed to render search header: %w", err)
+		return fmt.Errorf("failed to render search result: %w", err)
 	}
-	_, _ = fmt.Fprintln(r.writer, header)
-
-	// Show matched todos
-	for _, todo := range result.MatchedTodos {
-		output, err := r.renderTodoItem(todo)
-		if err != nil {
-			return fmt.Errorf("failed to render todo item: %w", err)
-		}
-		_, _ = fmt.Fprintln(r.writer, output)
-	}
-
-	return nil
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
 }
 
 // RenderList renders the list command result using lipbaml
 func (r *LipbamlRenderer) RenderList(result *tdh.ListResult) error {
-	if len(result.Todos) == 0 {
-		template := `<yellow>No todos found</yellow>`
-		output, err := lipbaml.Render(template, nil, r.styles)
-		if err != nil {
-			return fmt.Errorf("failed to render empty list: %w", err)
-		}
-		_, err = fmt.Fprintln(r.writer, output)
-		return err
-	}
-
-	// Render each todo item
-	for _, todo := range result.Todos {
-		output, err := r.renderTodoItem(todo)
-		if err != nil {
-			return fmt.Errorf("failed to render todo item: %w", err)
-		}
-		_, _ = fmt.Fprintln(r.writer, output)
-	}
-
-	// Render summary
-	summaryTemplate := `<cyan>{{.TotalCount}} todo(s), {{.DoneCount}} done</cyan>`
-	summary, err := lipbaml.Render(summaryTemplate, result, r.styles)
+	output, err := r.renderTemplate("todo_list", result)
 	if err != nil {
-		return fmt.Errorf("failed to render summary: %w", err)
+		return fmt.Errorf("failed to render list: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, summary)
+	_, err = fmt.Fprint(r.writer, output)
 	return err
 }
 
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
-	template := `<error>Error:</error> {{.}}`
-
-	output, renderErr := lipbaml.Render(template, err.Error(), r.styles)
+	output, renderErr := r.renderTemplate("error", err.Error())
 	if renderErr != nil {
 		return renderErr
 	}
-
 	_, writeErr := fmt.Fprintln(r.writer, output)
 	return writeErr
 }
