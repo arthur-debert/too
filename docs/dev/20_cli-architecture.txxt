@@ -40,23 +40,41 @@ Message Management
 All user-facing text is centralized for easy maintenance:
 
 Structure:
-• Single-line messages: Constants in cmd/tdh/msgs.go
-• Multi-line content: Files in cmd/tdh/msgs/*.txt
+• Command strings: Constants in cmd/tdh/msgs.go
+  - Command descriptions (Use, Short, Long)
+  - Flag descriptions
+  - Error messages
+  - Command aliases
+• Multi-line content: Files in cmd/tdh/msgs/*.txt (for future use)
 • Embedded at compile time using Go's embed package
 
 Benefits:
+• Complete "copy deck" visibility in one place
 • Non-technical contributors can edit messages safely
 • Compile-time validation catches errors
 • No runtime string construction bugs
 • Easy to review all user-facing text
+• Consistency across all commands
 
 Example:
 ```go
 // msgs.go
-const msgPackNotFound = "pack not found: %s"
+const (
+    msgAddUse   = "add <text>"
+    msgAddShort = "Add a new todo (aliases: a, new, create)"
+    msgAddLong  = "Add a new todo with the specified text."
+)
 
-//go:embed msgs/deploy-long.txt
-var deployLongHelp string
+var aliasesAdd = []string{"a", "new", "create"}
+
+// add.go
+var addCmd = &cobra.Command{
+    Use:     msgAddUse,
+    Aliases: aliasesAdd,
+    Short:   msgAddShort,
+    Long:    msgAddLong,
+    // ...
+}
 ```
 
 Help System

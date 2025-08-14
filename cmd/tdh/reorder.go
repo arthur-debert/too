@@ -7,10 +7,10 @@ import (
 )
 
 var reorderCmd = &cobra.Command{
-	Use:     "reorder",
-	Aliases: []string{"r"},
-	Short:   "Reorder todos by sorting and reassigning sequential positions (alias: r)",
-	Long:    `Reorder todos by sorting them by their current position and reassigning sequential positions starting from 1.`,
+	Use:     msgReorderUse,
+	Aliases: aliasesReorder,
+	Short:   msgReorderShort,
+	Long:    msgReorderLong,
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
