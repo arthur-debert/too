@@ -1,14 +1,98 @@
-package display
+package output
 
 import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
+	ct "github.com/daviddengcn/go-colortext"
 )
+
+var hashtagRegex = regexp.MustCompile(`#[^\s]*`)
+
+// TodoRenderer handles rendering of individual todos
+type TodoRenderer struct {
+	writer   io.Writer
+	useColor bool
+}
+
+// NewTodoRenderer creates a new todo renderer
+func NewTodoRenderer(w io.Writer, useColor bool) *TodoRenderer {
+	if w == nil {
+		w = os.Stdout
+	}
+	return &TodoRenderer{
+		writer:   w,
+		useColor: useColor,
+	}
+}
+
+// RenderTodo renders a single todo with formatting
+func (r *TodoRenderer) RenderTodo(t *models.Todo) {
+	var symbol string
+	var color ct.Color
+
+	if t.Status == "done" {
+		color = ct.Green
+		symbol = "✓"
+	} else {
+		color = ct.Red
+		symbol = "✕"
+	}
+
+	// Right-align the ID with padding
+	spaceCount := 6 - len(strconv.FormatInt(t.ID, 10))
+	_, _ = fmt.Fprint(r.writer, strings.Repeat(" ", spaceCount), t.ID, " | ")
+
+	// Print status symbol with color
+	if r.useColor {
+		ct.ChangeColor(color, false, ct.None, false)
+	}
+	_, _ = fmt.Fprint(r.writer, symbol)
+	if r.useColor {
+		ct.ResetColor()
+	}
+	_, _ = fmt.Fprint(r.writer, " ")
+
+	// Print text with hashtag highlighting
+	r.printWithHashtagHighlight(t.Text)
+	_, _ = fmt.Fprintln(r.writer)
+}
+
+// printWithHashtagHighlight prints text with hashtags highlighted in yellow.
+func (r *TodoRenderer) printWithHashtagHighlight(text string) {
+	pos := 0
+	for _, match := range hashtagRegex.FindAllStringIndex(text, -1) {
+		// Print text before hashtag
+		_, _ = fmt.Fprint(r.writer, text[pos:match[0]])
+
+		// Print hashtag with color
+		if r.useColor {
+			ct.ChangeColor(ct.Yellow, false, ct.None, false)
+		}
+		_, _ = fmt.Fprint(r.writer, text[match[0]:match[1]])
+		if r.useColor {
+			ct.ResetColor()
+		}
+
+		pos = match[1]
+	}
+	// Print remaining text
+	_, _ = fmt.Fprint(r.writer, text[pos:])
+}
+
+// MakeOutput is a compatibility function that renders a todo to stdout
+// Deprecated: Use TodoRenderer.RenderTodo instead
+func MakeOutput(t *models.Todo, useColor bool) {
+	renderer := NewTodoRenderer(os.Stdout, useColor)
+	renderer.RenderTodo(t)
+}
 
 // Renderer handles output formatting for tdh commands
 type Renderer struct {
@@ -119,7 +203,8 @@ func (r *Renderer) RenderList(result *tdh.ListResult) error {
 
 // renderTodo renders a single todo (helper method)
 func (r *Renderer) renderTodo(todo *models.Todo) {
-	tdh.MakeOutput(todo, true)
+	renderer := NewTodoRenderer(r.writer, true)
+	renderer.RenderTodo(todo)
 }
 
 // RenderError renders an error message
