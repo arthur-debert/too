@@ -10,14 +10,14 @@ import (
 )
 
 var editCmd = &cobra.Command{
-	Use:     "edit <id> <text>",
+	Use:     "edit <position> <text>",
 	Aliases: []string{"modify", "m", "e"},
 	Short:   "Edit the text of an existing todo (aliases: modify, m, e)",
-	Long:    `Edit the text of an existing todo by its ID.`,
+	Long:    `Edit the text of an existing todo by its position.`,
 	Args:    cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Parse ID
-		id, err := strconv.Atoi(args[0])
+		// Parse position
+		position, err := strconv.Atoi(args[0])
 		if err != nil {
 			return err
 		}
@@ -29,7 +29,7 @@ var editCmd = &cobra.Command{
 		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
-		result, err := tdh.Modify(id, text, tdh.ModifyOptions{
+		result, err := tdh.Modify(position, text, tdh.ModifyOptions{
 			CollectionPath: collectionPath,
 		})
 		if err != nil {

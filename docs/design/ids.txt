@@ -28,10 +28,6 @@ This new system will affect command behavior as follows:
 
 - `tdh toggle <pos>`: This command will toggle the item at the specified Position. Immediately after the toggle is successful, the system will automatically perform a "reorder" operation in the background to compact the list and ensure all Position numbers are sequential again. This is a low-risk operation, as it's easily reversible.
 
-- `tdh rm <pos>`: This is the most critical command. To prevent accidental deletion due to the mutable nature of the Position number, it will have a safety-first interactive confirmation step.
-    1. The user runs `tdh rm 2`.
-    2. The system finds the item at Position 2 and displays a confirmation prompt, showing the full text of the item to be deleted (e.g., 'Delete "Write report" [y/N]?').
-    3. The user must confirm with 'y' or 'Y'.
-    4. Upon confirmation, the item is deleted, and the list is automatically reordered to fill the gap.
+- `tdh clean`: This command removes all completed (done) todos from the list. After the clean operation is successful, the system will automatically perform a "reorder" operation to ensure all remaining Position numbers are sequential again.
 
-This "Auto-Reorder with Confirmation" model provides the best of both worlds: it maintains the clean, sequential list the user expects, while the confirmation step for destructive actions prevents dangerous mistakes. For power users, a `--force` / `-f` flag can be added to bypass this confirmation step.
+Note: tdh does not have a command to delete individual todos. The philosophy is that todos should be marked as done (`tdh toggle`) and then cleaned up in batch (`tdh clean`). This prevents accidental deletion of individual items and maintains a history of completed work until explicitly cleaned.

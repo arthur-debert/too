@@ -216,4 +216,33 @@ func TestToggleCommand(t *testing.T) {
 		assert.Equal(t, "pending", result.OldStatus)
 		assert.Equal(t, "done", result.NewStatus)
 	})
+
+	t.Run("auto-reorders todos after toggle", func(t *testing.T) {
+		// Create store with todos having non-sequential positions
+		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "First", Status: models.StatusPending},
+			{Text: "Second", Status: models.StatusPending},
+			{Text: "Third", Status: models.StatusPending},
+		})
+
+		// Manually set non-sequential positions to simulate gaps
+		collection, _ := store.Load()
+		collection.Todos[0].Position = 1
+		collection.Todos[1].Position = 5
+		collection.Todos[2].Position = 8
+		err := store.Save(collection)
+		testutil.AssertNoError(t, err)
+
+		// Toggle the middle todo
+		opts := toggle.Options{CollectionPath: store.Path()}
+		_, err = toggle.Execute(5, opts)
+		testutil.AssertNoError(t, err)
+
+		// Verify todos were reordered to sequential positions
+		collection, err = store.Load()
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, 3, collection.Todos[2].Position)
+	})
 }

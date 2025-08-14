@@ -5,7 +5,6 @@ import (
 
 	"github.com/arthur-debert/tdh/pkg/tdh/internal/helpers"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
-	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
 
 // Options contains options for the modify command
@@ -26,28 +25,25 @@ func Execute(position int, newText string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("new todo text cannot be empty")
 	}
 
-	s := store.NewStore(opts.CollectionPath)
-	var todo *models.Todo
-	var oldText string
+	var result *Result
 
-	err := s.Update(func(collection *models.Collection) error {
-		var err error
-		todo, err = helpers.FindByPosition(collection, position)
-		if err != nil {
-			return fmt.Errorf("todo not found: %w", err)
-		}
-		oldText = todo.Text
+	err := helpers.TransactOnTodo(opts.CollectionPath, position, func(todo *models.Todo, collection *models.Collection) error {
+		oldText := todo.Text
 		todo.Text = newText
+
+		// Capture result
+		result = &Result{
+			Todo:    todo,
+			OldText: oldText,
+			NewText: newText,
+		}
+
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("todo not found: %w", err)
 	}
 
-	return &Result{
-		Todo:    todo,
-		OldText: oldText,
-		NewText: newText,
-	}, nil
+	return result, nil
 }

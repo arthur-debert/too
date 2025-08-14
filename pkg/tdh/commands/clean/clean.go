@@ -20,20 +20,17 @@ type Result struct {
 // Execute removes finished todos from the collection
 func Execute(opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
-
-	// First, find all done todos using Find API
-	doneStatus := string(models.StatusDone)
-	query := store.Query{Status: &doneStatus}
-	findResult, err := s.Find(query)
-	if err != nil {
-		return nil, err
-	}
-	removedTodos := findResult.Todos
-
-	// Then remove them in the update transaction
+	var removedTodos []*models.Todo
 	var activeCount int
-	err = s.Update(func(collection *models.Collection) error {
+
+	err := s.Update(func(collection *models.Collection) error {
+		// Capture the todos to be removed *before* modifying the slice
+		removedTodos = findDoneTodos(collection.Todos)
 		activeCount = removeFinishedTodos(collection)
+
+		// Auto-reorder after cleaning
+		collection.Reorder()
+
 		return nil
 	})
 
@@ -46,6 +43,20 @@ func Execute(opts Options) (*Result, error) {
 		RemovedTodos: removedTodos,
 		ActiveCount:  activeCount,
 	}, nil
+}
+
+// findDoneTodos returns a list of done todos from the given slice.
+// This creates new Todo pointers to avoid issues when the original slice is modified.
+func findDoneTodos(todos []*models.Todo) []*models.Todo {
+	var doneTodos []*models.Todo
+	for _, todo := range todos {
+		if todo.Status == models.StatusDone {
+			// Create a copy to avoid issues when the original slice is modified
+			todoCopy := *todo
+			doneTodos = append(doneTodos, &todoCopy)
+		}
+	}
+	return doneTodos
 }
 
 // removeFinishedTodos removes all done todos from a collection.
