@@ -106,8 +106,11 @@ func NewRenderer(w io.Writer) *Renderer {
 		w = os.Stdout
 	}
 
-	// Try to create template renderer
-	templateRenderer, _ := NewTemplateRenderer(w, true)
+	// Create template renderer - panic if it fails
+	templateRenderer, err := NewTemplateRenderer(w, true)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create template renderer: %v", err))
+	}
 
 	return &Renderer{
 		writer:           w,
@@ -117,232 +120,121 @@ func NewRenderer(w io.Writer) *Renderer {
 
 // RenderInit renders the init command result
 func (r *Renderer) RenderInit(result *tdh.InitResult) error {
-	_, err := fmt.Fprintln(r.writer, result.Message)
+	if err := r.templateRenderer.Render("init_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
 	return err
 }
 
 // RenderAdd renders the add command result
 func (r *Renderer) RenderAdd(result *tdh.AddResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		if err := r.templateRenderer.Render("add_result", result); err == nil {
-			_, _ = fmt.Fprintln(r.writer)
-			return nil
-		}
+	if err := r.templateRenderer.Render("add_result", result); err != nil {
+		return err
 	}
-
-	// Fallback to old rendering
-	_, err := fmt.Fprintf(r.writer, "Added todo #%d: %s\n", result.Todo.Position, result.Todo.Text)
+	_, err := fmt.Fprintln(r.writer)
 	return err
 }
 
 // RenderModify renders the modify command result
 func (r *Renderer) RenderModify(result *tdh.ModifyResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		if err := r.templateRenderer.Render("modify_result", result); err == nil {
-			_, _ = fmt.Fprintln(r.writer)
-			return nil
-		}
-	}
-
-	// Fallback to old rendering
-	if _, err := fmt.Fprintf(r.writer, "Modified todo #%d\n", result.Todo.Position); err != nil {
+	if err := r.templateRenderer.Render("modify_result", result); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(r.writer, "  Old: %s\n", result.OldText); err != nil {
-		return err
-	}
-	_, err := fmt.Fprintf(r.writer, "  New: %s\n", result.NewText)
+	_, err := fmt.Fprintln(r.writer)
 	return err
 }
 
 // RenderToggle renders the toggle command result
 func (r *Renderer) RenderToggle(result *tdh.ToggleResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		if err := r.templateRenderer.Render("toggle_result", result); err == nil {
-			_, _ = fmt.Fprintln(r.writer)
-			return nil
-		}
+	if err := r.templateRenderer.Render("toggle_result", result); err != nil {
+		return err
 	}
-
-	// Fallback to old rendering
-	_, err := fmt.Fprintf(r.writer, "Toggled todo #%d from %s to %s\n",
-		result.Todo.Position, result.OldStatus, result.NewStatus)
+	_, err := fmt.Fprintln(r.writer)
 	return err
 }
 
 // RenderClean renders the clean command result
 func (r *Renderer) RenderClean(result *tdh.CleanResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		if err := r.templateRenderer.Render("clean_result", result); err == nil {
-			_, _ = fmt.Fprintln(r.writer)
-			return nil
-		}
+	if err := r.templateRenderer.Render("clean_result", result); err != nil {
+		return err
 	}
-
-	// Fallback to old rendering
-	if result.RemovedCount == 0 {
-		if _, err := fmt.Fprintln(r.writer, "No finished todos to clean"); err != nil {
-			return err
-		}
-	} else {
-		if _, err := fmt.Fprintf(r.writer, "Removed %d finished todo(s)\n", result.RemovedCount); err != nil {
-			return err
-		}
-		for _, todo := range result.RemovedTodos {
-			if _, err := fmt.Fprintf(r.writer, "  - #%d: %s\n", todo.Position, todo.Text); err != nil {
-				return err
-			}
-		}
-	}
-	_, err := fmt.Fprintf(r.writer, "%d active todo(s) remaining\n", result.ActiveCount)
+	_, err := fmt.Fprintln(r.writer)
 	return err
 }
 
 // RenderReorder renders the reorder command result
 func (r *Renderer) RenderReorder(result *tdh.ReorderResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		// Prepare reorder data with pre-rendered todos
-		reorderData := map[string]interface{}{
-			"ReorderedCount": result.ReorderedCount,
-			"Todos":          make([]map[string]interface{}, 0, len(result.Todos)),
-		}
+	// Prepare reorder data with pre-rendered todos
+	reorderData := map[string]interface{}{
+		"ReorderedCount": result.ReorderedCount,
+		"Todos":          make([]map[string]interface{}, 0, len(result.Todos)),
+	}
 
-		// Pre-render each todo
-		for _, todo := range result.Todos {
-			todoData := r.templateRenderer.PrepareData(todo)
-			if todoMap, ok := todoData.(map[string]interface{}); ok {
-				reorderData["Todos"] = append(reorderData["Todos"].([]map[string]interface{}), todoMap)
-			}
-		}
-
-		if err := r.templateRenderer.Render("reorder_result", reorderData); err == nil {
-			_, _ = fmt.Fprintln(r.writer)
-			return nil
+	// Pre-render each todo
+	for _, todo := range result.Todos {
+		todoData := r.templateRenderer.PrepareData(todo)
+		if todoMap, ok := todoData.(map[string]interface{}); ok {
+			reorderData["Todos"] = append(reorderData["Todos"].([]map[string]interface{}), todoMap)
 		}
 	}
 
-	// Fallback to old rendering
-	if result.ReorderedCount == 0 {
-		_, err := fmt.Fprintln(r.writer, "All todos are already in sequential order")
+	if err := r.templateRenderer.Render("reorder_result", reorderData); err != nil {
 		return err
 	}
-
-	_, err := fmt.Fprintf(r.writer, "Reordered %d todo(s) to sequential positions\n", result.ReorderedCount)
-	if err != nil {
-		return err
-	}
-
-	// Optionally show the reordered list
-	if len(result.Todos) > 0 {
-		_, err = fmt.Fprintln(r.writer, "\nCurrent order:")
-		if err != nil {
-			return err
-		}
-
-		for _, todo := range result.Todos {
-			r.renderTodo(todo)
-		}
-	}
-
-	return nil
+	_, err := fmt.Fprintln(r.writer)
+	return err
 }
 
 // RenderSearch renders the search command result
 func (r *Renderer) RenderSearch(result *tdh.SearchResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		// Prepare search data with pre-rendered todos
-		searchData := map[string]interface{}{
-			"Query":        result.Query,
-			"MatchedTodos": make([]map[string]interface{}, 0, len(result.MatchedTodos)),
-		}
-
-		// Pre-render each todo
-		for _, todo := range result.MatchedTodos {
-			todoData := r.templateRenderer.PrepareData(todo)
-			if todoMap, ok := todoData.(map[string]interface{}); ok {
-				searchData["MatchedTodos"] = append(searchData["MatchedTodos"].([]map[string]interface{}), todoMap)
-			}
-		}
-
-		if err := r.templateRenderer.Render("search_result", searchData); err == nil {
-			_, _ = fmt.Fprintln(r.writer)
-			return nil
-		}
+	// Prepare search data with pre-rendered todos
+	searchData := map[string]interface{}{
+		"Query":        result.Query,
+		"MatchedTodos": make([]map[string]interface{}, 0, len(result.MatchedTodos)),
 	}
 
-	// Fallback to old rendering
-	if len(result.MatchedTodos) == 0 {
-		_, err := fmt.Fprintf(r.writer, "No todos found matching '%s'\n", result.Query)
-		return err
-	}
-
-	if _, err := fmt.Fprintf(r.writer, "Found %d todo(s) matching '%s':\n",
-		len(result.MatchedTodos), result.Query); err != nil {
-		return err
-	}
-
+	// Pre-render each todo
 	for _, todo := range result.MatchedTodos {
-		r.renderTodo(todo)
+		todoData := r.templateRenderer.PrepareData(todo)
+		if todoMap, ok := todoData.(map[string]interface{}); ok {
+			searchData["MatchedTodos"] = append(searchData["MatchedTodos"].([]map[string]interface{}), todoMap)
+		}
 	}
-	return nil
+
+	if err := r.templateRenderer.Render("search_result", searchData); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
 }
 
 // RenderList renders the list command result
 func (r *Renderer) RenderList(result *tdh.ListResult) error {
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		// Prepare list data with pre-rendered todos
-		listData := map[string]interface{}{
-			"Todos":      make([]map[string]interface{}, 0, len(result.Todos)),
-			"TotalCount": result.TotalCount,
-			"DoneCount":  result.DoneCount,
-		}
-
-		// Pre-render each todo
-		for _, todo := range result.Todos {
-			todoData := r.templateRenderer.PrepareData(todo)
-			if todoMap, ok := todoData.(map[string]interface{}); ok {
-				listData["Todos"] = append(listData["Todos"].([]map[string]interface{}), todoMap)
-			}
-		}
-
-		// Try to render with todo_list template
-		if err := r.templateRenderer.Render("todo_list", listData); err == nil {
-			return nil
-		}
-		// Fall back to individual rendering if todo_list fails
+	// Prepare list data with pre-rendered todos
+	listData := map[string]interface{}{
+		"Todos":      make([]map[string]interface{}, 0, len(result.Todos)),
+		"TotalCount": result.TotalCount,
+		"DoneCount":  result.DoneCount,
 	}
 
-	// Fallback to old rendering
-	if len(result.Todos) == 0 {
-		_, err := fmt.Fprintln(r.writer, "No todos found")
-		return err
-	}
-
+	// Pre-render each todo
 	for _, todo := range result.Todos {
-		r.renderTodo(todo)
+		todoData := r.templateRenderer.PrepareData(todo)
+		if todoMap, ok := todoData.(map[string]interface{}); ok {
+			listData["Todos"] = append(listData["Todos"].([]map[string]interface{}), todoMap)
+		}
 	}
 
-	_, err := fmt.Fprintf(r.writer, "\n%d todo(s), %d done\n",
-		result.TotalCount, result.DoneCount)
-	return err
-}
-
-// renderTodo renders a single todo (helper method)
-func (r *Renderer) renderTodo(todo *models.Todo) {
-	renderer := NewTodoRenderer(r.writer, true)
-	renderer.RenderTodo(todo)
+	return r.templateRenderer.Render("todo_list", listData)
 }
 
 // RenderError renders an error message
 func (r *Renderer) RenderError(err error) error {
-	_, writeErr := fmt.Fprintf(r.writer, "Error: %s\n", err.Error())
+	if renderErr := r.templateRenderer.Render("error", err.Error()); renderErr != nil {
+		return renderErr
+	}
+	_, writeErr := fmt.Fprintln(r.writer)
 	return writeErr
 }
 
