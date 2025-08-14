@@ -1,8 +1,6 @@
 package reorder
 
 import (
-	"sort"
-
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
@@ -25,7 +23,8 @@ func Execute(opts Options) (*Result, error) {
 	var count int
 
 	err := s.Update(func(collection *models.Collection) error {
-		count = reorder(collection)
+		// Use the collection's Reorder method
+		count = collection.Reorder()
 		// Make a copy of the todos for the result
 		reorderedTodos = make([]*models.Todo, len(collection.Todos))
 		copy(reorderedTodos, collection.Todos)
@@ -40,30 +39,4 @@ func Execute(opts Options) (*Result, error) {
 		ReorderedCount: count,
 		Todos:          reorderedTodos,
 	}, nil
-}
-
-// reorder sorts todos by their current position and reassigns sequential positions starting from 1
-// Returns the number of todos that had their position changed
-func reorder(c *models.Collection) int {
-	if len(c.Todos) == 0 {
-		return 0
-	}
-
-	// Sort todos by their current position
-	// Using a stable sort to maintain relative order of todos with same position
-	sort.SliceStable(c.Todos, func(i, j int) bool {
-		return c.Todos[i].Position < c.Todos[j].Position
-	})
-
-	// Reassign positions sequentially starting from 1
-	changed := 0
-	for i := range c.Todos {
-		newPosition := i + 1
-		if c.Todos[i].Position != newPosition {
-			c.Todos[i].Position = newPosition
-			changed++
-		}
-	}
-
-	return changed
 }

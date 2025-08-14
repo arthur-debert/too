@@ -89,3 +89,9 @@ func (c *Collection) Clone() *Collection {
 	}
 	return clone
 }
+
+// Reorder sorts todos by their current position and reassigns sequential positions.
+// Returns the number of todos that had their position changed.
+func (c *Collection) Reorder() int {
+	return ReorderTodos(c.Todos)
+}
