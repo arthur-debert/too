@@ -7,9 +7,9 @@ import (
 )
 
 var cleanCmd = &cobra.Command{
-	Use:   "clean",
-	Short: "Remove finished todos",
-	Long:  `Remove all todos marked as done from the collection.`,
+	Use:   msgCleanUse,
+	Short: msgCleanShort,
+	Long:  msgCleanLong,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		collectionPath, _ := cmd.Flags().GetString("data-path")

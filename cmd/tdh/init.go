@@ -7,10 +7,10 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:     "init",
-	Aliases: []string{"i"},
-	Short:   "Initialize a new todo collection (alias: i)",
-	Long:    `Initialize a new todo collection in the specified location or the default location (~/.todos.json).`,
+	Use:     msgInitUse,
+	Aliases: aliasesInit,
+	Short:   msgInitShort,
+	Long:    msgInitLong,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		collectionPath, _ := cmd.Flags().GetString("data-path")

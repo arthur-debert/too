@@ -12,10 +12,10 @@ var (
 )
 
 var listCmd = &cobra.Command{
-	Use:     "list",
-	Aliases: []string{"ls"},
-	Short:   "List all todos (alias: ls)",
-	Long:    `List all todos in the collection.`,
+	Use:     msgListUse,
+	Aliases: aliasesList,
+	Short:   msgListShort,
+	Long:    msgListLong,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		collectionPath, _ := cmd.Flags().GetString("data-path")
@@ -38,8 +38,8 @@ var listCmd = &cobra.Command{
 
 func init() {
 	// Add flags for filtering
-	listCmd.Flags().BoolVarP(&showDone, "done", "d", false, "print done todos")
-	listCmd.Flags().BoolVarP(&showAll, "all", "a", false, "print all todos")
+	listCmd.Flags().BoolVarP(&showDone, "done", "d", false, msgFlagDone)
+	listCmd.Flags().BoolVarP(&showAll, "all", "a", false, msgFlagAll)
 
 	rootCmd.AddCommand(listCmd)
 }

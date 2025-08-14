@@ -8,7 +8,7 @@ import (
 
 func main() {
 	if err := Execute(); err != nil {
-		log.Error().Err(err).Msg("Command failed")
+		log.Error().Err(err).Msg(msgCommandFailed)
 		os.Exit(1)
 	}
 }

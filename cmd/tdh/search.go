@@ -9,10 +9,10 @@ import (
 )
 
 var searchCmd = &cobra.Command{
-	Use:     "search <query>",
-	Aliases: []string{"s"},
-	Short:   "Search for todos (alias: s)",
-	Long:    `Search for todos containing the specified text.`,
+	Use:     msgSearchUse,
+	Aliases: aliasesSearch,
+	Short:   msgSearchShort,
+	Long:    msgSearchLong,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Join all arguments as the search query
@@ -40,6 +40,6 @@ var searchCmd = &cobra.Command{
 }
 
 func init() {
-	searchCmd.Flags().BoolP("case-sensitive", "s", false, "Perform case-sensitive search")
+	searchCmd.Flags().BoolP("case-sensitive", "s", false, msgFlagCaseSensitive)
 	rootCmd.AddCommand(searchCmd)
 }

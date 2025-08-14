@@ -9,10 +9,10 @@ import (
 )
 
 var toggleCmd = &cobra.Command{
-	Use:     "toggle <position>",
-	Aliases: []string{"t"},
-	Short:   "Toggle the status of a todo (alias: t)",
-	Long:    `Toggle the status of a todo between pending and done.`,
+	Use:     msgToggleUse,
+	Aliases: aliasesToggle,
+	Short:   msgToggleShort,
+	Long:    msgToggleLong,
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Parse position

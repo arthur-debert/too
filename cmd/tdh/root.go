@@ -14,10 +14,9 @@ var (
 	verbosity int
 
 	rootCmd = &cobra.Command{
-		Use:   "tdh",
-		Short: "A simple command-line todo list manager",
-		Long: `tdh is a simple command-line todo list manager that helps you track tasks.
-It stores todos in a JSON file and provides commands to add, modify, toggle, and search todos.`,
+		Use:     "tdh",
+		Short:   msgRootShort,
+		Long:    msgRootLong,
 		Version: version.Info(),
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
@@ -73,11 +72,11 @@ func init() {
 	// will be global for your application.
 
 	// Set version template
-	rootCmd.SetVersionTemplate("tdh version {{.Version}}\n")
+	rootCmd.SetVersionTemplate(msgRootVersion)
 
 	// Verbosity flag for logging
-	rootCmd.PersistentFlags().CountVarP(&verbosity, "verbose", "v", "Increase verbosity (-v, -vv, -vvv)")
+	rootCmd.PersistentFlags().CountVarP(&verbosity, "verbose", "v", msgFlagVerbose)
 
 	// Add persistent flags
-	rootCmd.PersistentFlags().StringP("data-path", "p", "", "path to todo collection (default: $HOME/.todos.json)")
+	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
 }

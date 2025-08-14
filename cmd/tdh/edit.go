@@ -10,10 +10,10 @@ import (
 )
 
 var editCmd = &cobra.Command{
-	Use:     "edit <position> <text>",
-	Aliases: []string{"modify", "m", "e"},
-	Short:   "Edit the text of an existing todo (aliases: modify, m, e)",
-	Long:    `Edit the text of an existing todo by its position.`,
+	Use:     msgEditUse,
+	Aliases: aliasesEdit,
+	Short:   msgEditShort,
+	Long:    msgEditLong,
 	Args:    cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Parse position

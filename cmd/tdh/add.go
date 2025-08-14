@@ -9,10 +9,10 @@ import (
 )
 
 var addCmd = &cobra.Command{
-	Use:     "add <text>",
-	Aliases: []string{"a", "new", "create"},
-	Short:   "Add a new todo (aliases: a, new, create)",
-	Long:    `Add a new todo with the specified text.`,
+	Use:     msgAddUse,
+	Aliases: aliasesAdd,
+	Short:   msgAddShort,
+	Long:    msgAddLong,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Join all arguments as the todo text
