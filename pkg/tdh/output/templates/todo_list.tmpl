@@ -2,7 +2,7 @@
 {{- range .Todos -}}
 {{template "todo_item.tmpl" .}}
 {{ end -}}
-{{cyan (printf "%d todo(s), %d done" .TotalCount .DoneCount)}}
+<cyan>{{.TotalCount}} todo(s), {{.DoneCount}} done</cyan>
 {{- else -}}
-{{yellow "No todos found"}}
+<yellow>No todos found</yellow>
 {{- end -}}

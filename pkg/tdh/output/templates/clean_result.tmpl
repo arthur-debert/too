@@ -1,9 +1,9 @@
 {{- if eq .RemovedCount 0 -}}
-{{yellow "No finished todos to clean"}}
+<yellow>No finished todos to clean</yellow>
 {{- else -}}
-{{green (printf "Removed %d finished todo(s)" .RemovedCount)}}
+<green>Removed {{.RemovedCount}} finished todo(s)</green>
 {{- range .RemovedTodos }}
-  - {{gray (printf "#%d" .Position)}}: {{.Text}}
+  - <gray>#{{.Position}}</gray>: {{.Text}}
 {{- end }}
 {{- end }}
-{{cyan (printf "%d active todo(s) remaining" .ActiveCount)}}
+<cyan>{{.ActiveCount}} active todo(s) remaining</cyan>

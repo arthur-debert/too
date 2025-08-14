@@ -1,1 +1,1 @@
-{{gray (padPosition .Position)}} | {{if isDone .}}{{green "✓"}}{{else}}{{red "✕"}}{{end}} {{.Text}}
+<gray>{{padPosition .Position}}</gray> | {{if isDone .}}<done>✓</done>{{else}}<pending>✕</pending>{{end}} {{.Text}}

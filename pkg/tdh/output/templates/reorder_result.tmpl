@@ -1,10 +1,10 @@
 {{- if eq .ReorderedCount 0 -}}
-{{yellow "All todos are already in sequential order"}}
+<yellow>All todos are already in sequential order</yellow>
 {{- else -}}
-{{green (printf "Reordered %d todo(s) to sequential positions" .ReorderedCount)}}
+<green>Reordered {{.ReorderedCount}} todo(s) to sequential positions</green>
 {{- if .Todos }}
 
-{{cyan "Current order:"}}
+<cyan>Current order:</cyan>
 {{- range .Todos }}
 {{template "todo_item.tmpl" .}}
 {{- end }}

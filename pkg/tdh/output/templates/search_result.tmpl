@@ -1,8 +1,8 @@
 {{- if .MatchedTodos -}}
-{{cyan (printf "Found %d todo(s) matching '%s':" (len .MatchedTodos) .Query)}}
+<cyan>Found {{len .MatchedTodos}} todo(s) matching '{{.Query}}':</cyan>
 {{- range .MatchedTodos }}
 {{template "todo_item.tmpl" .}}
 {{- end }}
 {{- else -}}
-{{yellow (printf "No todos found matching '%s'" .Query)}}
+<yellow>No todos found matching '{{.Query}}'</yellow>
 {{- end -}}
