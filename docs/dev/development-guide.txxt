@@ -4,188 +4,221 @@ This guide provides comprehensive information for tdh contributors,
 covering quick start, conventions, and architecture.
 
 
-Quick Start
------------
+1. Quick Start
 
-Prerequisites:
-    • Go 1.23 or later
-    • Git
-    • A Unix-like environment (macOS, Linux, WSL)
-
-Initial Setup:
-    1. Clone and enter the repository:
-        git clone https://github.com/arthur-debert/tdh.git
-        cd tdh
-
-    2. Source the environment variables if not using direnv:
-        source .envrc
-
-    3. Install pre-commit hooks (MANDATORY):
-        scripts/pre-commit install
-
-    4. Run tests to verify setup:
-        scripts/test
-
-Essential Commands:
-    • scripts/build - Build the CLI binary
-    • scripts/test - Run all tests with race detection
-    • scripts/lint - Run golangci-lint
-    • scripts/test-with-cov - Generate coverage report
-    • scripts/pre-commit - Run all pre-commit checks
-
-Development Workflow:
-    1. Create a feature branch:
-        • For GitHub issues: gh issue develop -c <issue-id>
-        • Otherwise: git checkout -b feature/description
-
-    2. Write tests first (TDD encouraged)
-
-    3. Implement with proper logging
-
-    4. Run tests and lint before committing
-
-    5. Pre-commit hooks will catch any issues
-
-    6. Create PR with issue reference for auto-close
-
-
-Architecture Overview
----------------------
-
-tdh follows a strict separation of concerns:
-
-CLI Layer (cmd/):
-    • Thin layer using Cobra framework
-    • Only handles argument parsing and validation
-    • Help text and user messages
-    • Output formatting via pkg/tdh/display
-    • NO business logic
-
-Business Logic (pkg/):
-    • pkg/tdh/commands.go - API entry points
-    • pkg/tdh/commands/ - Implementation packages
-    • Pure Go functions with typed parameters
-    • Returns structured data, never prints
-    • pkg/tdh/output/ - Template-based rendering
-
-Data Flow:
-    1. User runs command: tdh add "todo text"
-    2. cmd/tdh/add.go parses arguments and flags
-    3. Calls pkg/tdh.Add(text, options)
-    4. Business logic processes and returns result
-    5. pkg/tdh/display renders output using templates
-
-Message Management:
-    All user-facing strings are centralized in cmd/tdh/msgs.go:
-    • Command descriptions and usage
-    • Flag descriptions
-    • Error messages
-    • Command aliases
-
-    This provides complete visibility of the "copy deck" and ensures
-    consistency across all commands.
-
-
-Coding Conventions
-------------------
-
-Error Handling:
-    ALL errors must have both code and message:
-
-    // Creating errors
-    err := errors.New(errors.ErrTodoNotFound, "todo not found: %d", id)
-
-    // Testing errors - ALWAYS test codes, never messages
-    var tdhErr errors.TdhError
-    require.True(t, errors.As(err, &tdhErr))
-    assert.Equal(t, errors.ErrTodoNotFound, tdhErr.Code())
-
-Logging:
-    Logging is MANDATORY for all new code:
-
-    logger := logging.GetLogger("tdh.commands.add")
-    logger.Debug().
-        Str("text", todoText).
-        Int("position", result.Position).
-        Msg("todo added successfully")
-
-    Log levels:
-    • TRACE (-vvv): Detailed execution flow
-    • DEBUG (-vv): Debugging information
-    • INFO (-v): General information
-    • WARN: Warnings and recoverable errors
-    • ERROR: Operation failures
-
-Testing:
-    • Use test utilities from pkg/testutil
-    • Always use ExampleTodo() for consistent test data
-    • Test error codes, not error messages
-    • Use assertion libraries for cleaner tests
-
-Code Quality:
-    • Pre-commit hooks are MANDATORY
-    • No magic strings - use constants
-    • Type-safe code throughout
-    • Follow existing patterns
-
-
-Key Design Decisions
---------------------
-
-Storage:
-    • JSON file storage (default: ~/.todos.json)
-    • Collection type handles serialization
-    • Each command: load → modify → save
-    • See docs/design/store.txxt for details
-
-Command Aliases:
-    • init (i), add (a), edit (e, m, modify)
-    • toggle (t), reorder (r), search (s), list (ls)
-    • Global flags: --done (-d), --all (-a)
-
-Build System:
-    • Always use scripts/* for operations
-    • Never compile binaries in root directory
-    • Meta-tools in separate binaries:
-        - cmd/tdh-completion
-        - cmd/tdh-manpage
-
-
-Documentation Standards
------------------------
-
-Format:
-    • ALL documentation must use txxt format
-    • See docs/dev/specs/txxt-primer.txxt for syntax
-    • 4-space indentation for paragraphs
-    • No markdown-style headers
-
-Organization:
-    • docs/design/ - Architecture and design documents
-    • docs/dev/ - Developer guides and conventions
-    • docs/user/ - End-user documentation
-    • Inline Go docs for API documentation
-
-
-Common Patterns
----------------
-
-Adding a New Command:
-    1. Create cmd/tdh/newcmd.go with Cobra command
-    2. Add strings to cmd/tdh/msgs.go
-    3. Create pkg/tdh/commands/newcmd/newcmd.go
-    4. Add API function to pkg/tdh/commands.go
-    5. Create result type and template
-    6. Write comprehensive tests
-
-Testing Commands:
-    // Use testutil for consistent test data
-    todos := testutil.ExampleTodoList()
+    Prerequisites:
     
-    // Test the business logic, not CLI parsing
-    result, err := tdh.Add("New todo", tdh.AddOptions{})
-    require.NoError(t, err)
-    assert.Equal(t, 3, result.Todo.Position)
+        • Go 1.23 or later
+        • Git
+        • A Unix-like environment (macOS, Linux, WSL)
+
+    Initial Setup:
+    
+        1. Clone and enter the repository:
+        
+            -- bash
+            git clone https://github.com/arthur-debert/tdh.git
+            cd tdh
+            --
+
+        2. Source the environment variables if not using direnv:
+        
+            -- bash
+            source .envrc
+            --
+
+        3. Install pre-commit hooks (MANDATORY):
+        
+            -- bash
+            scripts/pre-commit install
+            --
+
+        4. Run tests to verify setup:
+        
+            -- bash
+            scripts/test
+            --
+
+    Essential Commands:
+    
+        • scripts/build - Build the CLI binary
+        • scripts/test - Run all tests with race detection
+        • scripts/lint - Run golangci-lint
+        • scripts/test-with-cov - Generate coverage report
+        • scripts/pre-commit - Run all pre-commit checks
+
+    Development Workflow:
+    
+        1. Create a feature branch:
+            • For GitHub issues: gh issue develop -c <issue-id>
+            • Otherwise: git checkout -b feature/description
+
+        2. Write tests first (TDD encouraged)
+
+        3. Implement with proper logging
+
+        4. Run tests and lint before committing
+
+        5. Pre-commit hooks will catch any issues
+
+        6. Create PR with issue reference for auto-close
+
+
+2. Architecture Overview
+
+    tdh follows a strict separation of concerns:
+
+    CLI Layer (cmd/):
+    
+        • Thin layer using Cobra framework
+        • Only handles argument parsing and validation
+        • Help text and user messages
+        • Output formatting via pkg/tdh/display
+        • NO business logic
+
+    Business Logic (pkg/):
+    
+        • pkg/tdh/commands.go - API entry points
+        • pkg/tdh/commands/ - Implementation packages
+        • Pure Go functions with typed parameters
+        • Returns structured data, never prints
+        • pkg/tdh/output/ - Template-based rendering
+
+    Data Flow:
+    
+        1. User runs command: tdh add "todo text"
+        2. cmd/tdh/add.go parses arguments and flags
+        3. Calls pkg/tdh.Add(text, options)
+        4. Business logic processes and returns result
+        5. pkg/tdh/display renders output using templates
+
+    Message Management:
+    
+        All user-facing strings are centralized in cmd/tdh/msgs.go:
+        
+        • Command descriptions and usage
+        • Flag descriptions
+        • Error messages
+        • Command aliases
+
+        This provides complete visibility of the "copy deck" and ensures
+        consistency across all commands.
+
+
+3. Coding Conventions
+
+    Error Handling:
+    
+        ALL errors must have both code and message:
+
+        -- go
+        // Creating errors
+        err := errors.New(errors.ErrTodoNotFound, "todo not found: %d", id)
+
+        // Testing errors - ALWAYS test codes, never messages
+        var tdhErr errors.TdhError
+        require.True(t, errors.As(err, &tdhErr))
+        assert.Equal(t, errors.ErrTodoNotFound, tdhErr.Code())
+        --
+
+    Logging:
+    
+        Logging is MANDATORY for all new code:
+
+        -- go
+        logger := logging.GetLogger("tdh.commands.add")
+        logger.Debug().
+            Str("text", todoText).
+            Int("position", result.Position).
+            Msg("todo added successfully")
+        --
+
+        Log levels:
+        
+        • TRACE (-vvv): Detailed execution flow
+        • DEBUG (-vv): Debugging information
+        • INFO (-v): General information
+        • WARN: Warnings and recoverable errors
+        • ERROR: Operation failures
+
+    Testing:
+    
+        • Use test utilities from pkg/testutil
+        • Always use ExampleTodo() for consistent test data
+        • Test error codes, not error messages
+        • Use assertion libraries for cleaner tests
+
+    Code Quality:
+    
+        • Pre-commit hooks are MANDATORY
+        • No magic strings - use constants
+        • Type-safe code throughout
+        • Follow existing patterns
+
+
+4. Key Design Decisions
+
+    Storage:
+    
+        • JSON file storage (default: ~/.todos.json)
+        • Collection type handles serialization
+        • Each command: load → modify → save
+        • See docs/design/store.txxt for details
+
+    Command Aliases:
+    
+        • init (i), add (a), edit (e, m, modify)
+        • toggle (t), reorder (r), search (s), list (ls)
+        • Global flags: --done (-d), --all (-a)
+
+    Build System:
+    
+        • Always use scripts/* for operations
+        • Never compile binaries in root directory
+        • Meta-tools in separate binaries:
+            - cmd/tdh-completion
+            - cmd/tdh-manpage
+
+
+5. Documentation Standards
+
+    Format:
+    
+        • ALL documentation must use txxt format
+        • See docs/dev/specs/txxt-primer.txxt for syntax
+        • 4-space indentation for paragraphs
+        • No markdown-style headers
+
+    Organization:
+    
+        • docs/design/ - Architecture and design documents
+        • docs/dev/ - Developer guides and conventions
+        • docs/user/ - End-user documentation
+        • Inline Go docs for API documentation
+
+
+6. Common Patterns
+
+    Adding a New Command:
+    
+        1. Create cmd/tdh/newcmd.go with Cobra command
+        2. Add strings to cmd/tdh/msgs.go
+        3. Create pkg/tdh/commands/newcmd/newcmd.go
+        4. Add API function to pkg/tdh/commands.go
+        5. Create result type and template
+        6. Write comprehensive tests
+
+    Testing Commands:
+    
+        -- go
+        // Use testutil for consistent test data
+        todos := testutil.ExampleTodoList()
+        
+        // Test the business logic, not CLI parsing
+        result, err := tdh.Add("New todo", tdh.AddOptions{})
+        require.NoError(t, err)
+        assert.Equal(t, 3, result.Todo.Position)
+        --
 
 
 Remember: The goal is safe, testable, and maintainable code. When in

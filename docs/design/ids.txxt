@@ -1,0 +1,77 @@
+                ID and Reference System
+
+This document describes the dual identifier system used in tdh for todo items.
+
+
+1. Background
+
+    A simple incremental ID system has two main usability problems:
+    
+        • Non-Sequential Numbers: When items are completed or removed, gaps 
+          appear in the list (e.g., 1, 3, 4). This doesn't match the user's 
+          mental model of a simple list.
+          
+        • Ever-Growing Numbers: Over time, IDs become large (e.g., 432), 
+          making them cumbersome to type for common commands. This clashes 
+          with the goal of being a fast, convenient tool.
+
+
+2. Implementation: Dual Identifier System
+
+    tdh uses a dual identifier system for every todo item:
+
+    ID (Internal):
+    
+        A permanent, stable, unique identifier (UUID). This ID is never 
+        shown to the user. It is used internally for any logic that 
+        requires an unchanging reference to an item.
+
+    Position (External):
+    
+        A mutable, sequential integer (1, 2, 3...). This is the number 
+        the user sees and interacts with in all commands. It represents 
+        the item's position in the full, unfiltered list.
+
+    The guiding philosophy is that the user's list should always look 
+    clean and sequential, like a paper to-do list.
+
+
+3. Command Behavior
+
+    This system affects command behavior as follows:
+
+    tdh add "New item":
+    
+        The new item is assigned a unique internal ID and is appended to 
+        the list, receiving the next available Position number (e.g., if 
+        there are 3 items, the new one becomes Position 4).
+
+    tdh ls and tdh search:
+    
+        These commands always display the persistent Position number. When 
+        a list is filtered or searched, the displayed numbers correspond to 
+        their position in the overall list, meaning they may appear 
+        non-sequential (e.g., a search result might show items 1 and 3). 
+        This is a crucial safety feature to ensure user actions are unambiguous.
+
+    tdh toggle <pos>:
+    
+        This command toggles the item at the specified Position. The system 
+        maintains the current position numbers after toggling.
+
+    tdh reorder:
+    
+        This command explicitly reorders the list to ensure sequential 
+        positions starting from 1. This is useful after operations that 
+        may create gaps.
+
+    tdh clean:
+    
+        This command removes all completed (done) todos from the list. 
+        Positions are maintained for remaining items.
+
+    Note: tdh does not have a command to delete individual todos. The 
+    philosophy is that todos should be marked as done (tdh toggle) and 
+    then cleaned up in batch (tdh clean). This prevents accidental 
+    deletion of individual items and maintains a history of completed 
+    work until explicitly cleaned.
