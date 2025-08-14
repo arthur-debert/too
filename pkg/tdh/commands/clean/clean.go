@@ -1,7 +1,6 @@
 package clean
 
 import (
-	"github.com/arthur-debert/tdh/pkg/tdh/internal/helpers"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
@@ -34,7 +33,7 @@ func Execute(opts Options) (*Result, error) {
 	// Then remove them in the update transaction
 	var activeCount int
 	err = s.Update(func(collection *models.Collection) error {
-		activeCount = helpers.RemoveFinishedTodos(collection)
+		activeCount = removeFinishedTodos(collection)
 		return nil
 	})
 
@@ -47,4 +46,17 @@ func Execute(opts Options) (*Result, error) {
 		RemovedTodos: removedTodos,
 		ActiveCount:  activeCount,
 	}, nil
+}
+
+// removeFinishedTodos removes all done todos from a collection.
+// Returns the count of remaining active todos.
+func removeFinishedTodos(c *models.Collection) int {
+	var activeTodos []*models.Todo
+	for _, todo := range c.Todos {
+		if todo.Status != models.StatusDone {
+			activeTodos = append(activeTodos, todo)
+		}
+	}
+	c.Todos = activeTodos
+	return len(activeTodos)
 }

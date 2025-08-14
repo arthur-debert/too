@@ -62,8 +62,16 @@ func TestToggleCommand(t *testing.T) {
 	s := store.NewStore(dbPath)
 	collection, err := s.Load()
 	require.NoError(t, err)
-	found, err := tdh.Find(collection, int(addResult.Todo.ID))
-	require.NoError(t, err)
+
+	// Find the todo by ID
+	var found *models.Todo
+	for _, todo := range collection.Todos {
+		if todo.ID == addResult.Todo.ID {
+			found = todo
+			break
+		}
+	}
+	require.NotNil(t, found, "todo not found")
 	assert.Equal(t, models.StatusDone, found.Status)
 }
 
