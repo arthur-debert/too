@@ -1,5 +1,5 @@
 /*
-Package lipbaml provides a simple template engine for rich terminal rendering.
+Package lipbalm provides a simple template engine for rich terminal rendering.
 
 It offers two main functions:
   - `Render`: Processes a string with Go's text/template engine and then expands
@@ -9,7 +9,7 @@ It offers two main functions:
 
 Usage with Go templating:
 
-	styles := lipbaml.StyleMap{
+	styles := lipbalm.StyleMap{
 		"title": lipgloss.NewStyle().Bold(true),
 		"date":  lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
 	}
@@ -21,14 +21,14 @@ Usage with Go templating:
 		Title: "Hello, World!",
 		Date:  "2025-08-15",
 	}
-	output, err := lipbaml.Render(template, data, styles)
+	output, err := lipbalm.Render(template, data, styles)
 	fmt.Println(output)
 
 Usage for tag expansion only:
 
-	styles := lipbaml.StyleMap{ "title": lipgloss.NewStyle().Bold(true) }
+	styles := lipbalm.StyleMap{ "title": lipgloss.NewStyle().Bold(true) }
 	input := `<title>Hello, World!</title>`
-	output, err := lipbaml.ExpandTags(input, styles)
+	output, err := lipbalm.ExpandTags(input, styles)
 	fmt.Println(output)
 
 Tags:
@@ -48,4 +48,4 @@ content.
 
 In the example above, the "✓" will only be rendered in plain text mode.
 */
-package lipbaml
+package lipbalm

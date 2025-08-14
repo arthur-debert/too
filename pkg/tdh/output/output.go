@@ -14,7 +14,7 @@ func NewRenderer(w io.Writer) *Renderer {
 		w = os.Stdout
 	}
 
-	// Create lipbaml renderer with colors enabled
+	// Create lipbalm renderer with colors enabled
 	renderer, _ := NewLipbamlRenderer(w, true)
 	return renderer
 }

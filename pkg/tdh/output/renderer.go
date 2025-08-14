@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/arthur-debert/tdh/pkg/lipbaml"
+	"github.com/arthur-debert/tdh/pkg/lipbalm"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/output/styles"
@@ -20,15 +20,15 @@ import (
 //go:embed templates/*.tmpl
 var templateFS embed.FS
 
-// LipbamlRenderer is a renderer that uses lipbaml for styled output
+// LipbamlRenderer is a renderer that uses lipbalm for styled output
 type LipbamlRenderer struct {
 	writer    io.Writer
 	useColor  bool
-	styles    lipbaml.StyleMap
+	styles    lipbalm.StyleMap
 	templates map[string]string
 }
 
-// NewLipbamlRenderer creates a new lipbaml-based renderer
+// NewLipbamlRenderer creates a new lipbalm-based renderer
 func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	if w == nil {
 		w = os.Stdout
@@ -42,10 +42,10 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	} else {
 		lipglossRenderer.SetColorProfile(termenv.Ascii)
 	}
-	lipbaml.SetDefaultRenderer(lipglossRenderer)
+	lipbalm.SetDefaultRenderer(lipglossRenderer)
 
 	// Define the style map with semantic names
-	styleMap := lipbaml.StyleMap{
+	styleMap := lipbalm.StyleMap{
 		// Status and result styles
 		"success": lipgloss.NewStyle().
 			Foreground(styles.SUCCESS_COLOR),
@@ -148,11 +148,11 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 			return "", fmt.Errorf("failed to execute template: %w", err)
 		}
 
-		// Now expand the lipbaml tags
-		return lipbaml.ExpandTags(buf.String(), r.styles)
+		// Now expand the lipbalm tags
+		return lipbalm.ExpandTags(buf.String(), r.styles)
 	}
 
-	// For simple templates, we need to parse with functions first, then use lipbaml
+	// For simple templates, we need to parse with functions first, then use lipbalm
 	tmpl, err := template.New(templateName).Funcs(template.FuncMap(r.templateFuncs())).Parse(tmplContent)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
@@ -163,11 +163,11 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 		return "", fmt.Errorf("failed to execute template: %w", err)
 	}
 
-	// Now expand the lipbaml tags
-	return lipbaml.ExpandTags(buf.String(), r.styles)
+	// Now expand the lipbalm tags
+	return lipbalm.ExpandTags(buf.String(), r.styles)
 }
 
-// RenderAdd renders the add command result using lipbaml
+// RenderAdd renders the add command result using lipbalm
 func (r *LipbamlRenderer) RenderAdd(result *tdh.AddResult) error {
 	output, err := r.renderTemplate("add_result", result)
 	if err != nil {
@@ -177,7 +177,7 @@ func (r *LipbamlRenderer) RenderAdd(result *tdh.AddResult) error {
 	return err
 }
 
-// RenderToggle renders the toggle command result using lipbaml
+// RenderToggle renders the toggle command result using lipbalm
 func (r *LipbamlRenderer) RenderToggle(result *tdh.ToggleResult) error {
 	output, err := r.renderTemplate("toggle_result", result)
 	if err != nil {
@@ -187,7 +187,7 @@ func (r *LipbamlRenderer) RenderToggle(result *tdh.ToggleResult) error {
 	return err
 }
 
-// RenderModify renders the modify command result using lipbaml
+// RenderModify renders the modify command result using lipbalm
 func (r *LipbamlRenderer) RenderModify(result *tdh.ModifyResult) error {
 	output, err := r.renderTemplate("modify_result", result)
 	if err != nil {
@@ -197,7 +197,7 @@ func (r *LipbamlRenderer) RenderModify(result *tdh.ModifyResult) error {
 	return err
 }
 
-// RenderInit renders the init command result using lipbaml
+// RenderInit renders the init command result using lipbalm
 func (r *LipbamlRenderer) RenderInit(result *tdh.InitResult) error {
 	output, err := r.renderTemplate("init_result", result)
 	if err != nil {
@@ -207,7 +207,7 @@ func (r *LipbamlRenderer) RenderInit(result *tdh.InitResult) error {
 	return err
 }
 
-// RenderClean renders the clean command result using lipbaml
+// RenderClean renders the clean command result using lipbalm
 func (r *LipbamlRenderer) RenderClean(result *tdh.CleanResult) error {
 	output, err := r.renderTemplate("clean_result", result)
 	if err != nil {
@@ -217,7 +217,7 @@ func (r *LipbamlRenderer) RenderClean(result *tdh.CleanResult) error {
 	return err
 }
 
-// RenderReorder renders the reorder command result using lipbaml
+// RenderReorder renders the reorder command result using lipbalm
 func (r *LipbamlRenderer) RenderReorder(result *tdh.ReorderResult) error {
 	output, err := r.renderTemplate("reorder_result", result)
 	if err != nil {
@@ -227,7 +227,7 @@ func (r *LipbamlRenderer) RenderReorder(result *tdh.ReorderResult) error {
 	return err
 }
 
-// RenderSearch renders the search command result using lipbaml
+// RenderSearch renders the search command result using lipbalm
 func (r *LipbamlRenderer) RenderSearch(result *tdh.SearchResult) error {
 	output, err := r.renderTemplate("search_result", result)
 	if err != nil {
@@ -237,7 +237,7 @@ func (r *LipbamlRenderer) RenderSearch(result *tdh.SearchResult) error {
 	return err
 }
 
-// RenderList renders the list command result using lipbaml
+// RenderList renders the list command result using lipbalm
 func (r *LipbamlRenderer) RenderList(result *tdh.ListResult) error {
 	output, err := r.renderTemplate("todo_list", result)
 	if err != nil {

@@ -1,4 +1,4 @@
-package lipbaml
+package lipbalm
 
 import (
 	"bytes"
@@ -26,7 +26,7 @@ func SetDefaultRenderer(renderer *lipgloss.Renderer) {
 // and then applies lipgloss styles based on the XML-like tags.
 func Render(templateString string, data interface{}, styles StyleMap) (string, error) {
 	// Phase 1: Go template expansion
-	tmpl, err := template.New("lipbaml").Parse(templateString)
+	tmpl, err := template.New("lipbalm").Parse(templateString)
 	if err != nil {
 		return "", err
 	}
@@ -50,7 +50,7 @@ func ExpandTags(s string, styles StyleMap) (string, error) {
 	if err := doc.ReadFromString("<root>" + s + "</root>"); err != nil {
 		// If parsing fails, it might be because the template is not valid XML.
 		// In this case, we'll return the raw expanded template.
-		// This is a fallback for templates that don't use lipbaml tags.
+		// This is a fallback for templates that don't use lipbalm tags.
 		return s, nil
 	}
 
