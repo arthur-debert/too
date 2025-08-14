@@ -1,6 +1,6 @@
                 Nested Lists Design Specification
 
-NOTE: This is a proposed feature that has not been implemented yet.
+NOTE: This feature has been partially implemented. See implementation status below.
 
 This document outlines the design for implementing arbitrarily nested
 todo lists in tdh.
@@ -37,7 +37,10 @@ todo lists in tdh.
         intuitive behavior:
         
         • Toggle: Toggling a parent's status (e.g., to "done") will recursively 
-          apply the same status to all of its descendants.
+          apply the same status to all of its descendants. This maintains the 
+          invariant that a parent and all its children must have the same status.
+          A "done" task cannot have "pending" subtasks, as this would be logically
+          inconsistent - you cannot complete a task if its subtasks are incomplete.
         • Delete: Deleting a parent will delete all of its descendants by default. 
           An --unwrap flag will be provided to delete the parent but promote its 
           children to the parent's level, preventing accidental mass deletion.
@@ -104,3 +107,35 @@ todo lists in tdh.
         removed or toggled, the reordering of Position numbers will only 
         affect the direct siblings of that item. This ensures that unrelated 
         branches of the list remain stable and predictable.
+
+
+5. Implementation Status
+
+    As of the latest update, the following features have been implemented:
+
+    Completed:
+    
+        • Data Model: The Todo struct has been extended with ID, ParentID, 
+          Position, and Items fields for nested structure support.
+        
+        • FindItemByPositionPath: The core function for traversing the hierarchy
+          using dot-notation paths (e.g., "1.2.3") is fully implemented.
+        
+        • Add Command with --parent: Users can create nested todos using the
+          --parent flag with position paths.
+        
+        • Recursive Toggle: Toggling a parent applies the same status to all
+          descendants, maintaining the invariant that a parent cannot be "done"
+          if any children are "pending".
+        
+        • Hierarchical Display: The ls command shows nested todos with proper
+          indentation and dot-notation paths.
+        
+        • Migration: Automatic migration of flat lists to the new structure.
+
+    Not Yet Implemented:
+    
+        • Move Command: Relocating items within the hierarchy.
+        • Delete with --unwrap: Option to delete parent while promoting children.
+        • List --depth flag: Controlling display depth.
+        • Context-aware reordering: Currently reorders entire tree.

@@ -41,7 +41,10 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 			newStatus = models.StatusPending
 		}
 
-		// Apply the new status to the todo and all its descendants
+		// Apply the new status to the todo and all its descendants.
+		// Business Rule: A parent's status must match all its children.
+		// A "done" item cannot have "pending" children, and vice versa.
+		// This ensures logical consistency in the task hierarchy.
 		applyStatusRecursive(todo, newStatus, time.Now())
 
 		newStatusStr := string(newStatus)
@@ -66,7 +69,9 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	return result, nil
 }
 
-// applyStatusRecursive applies a status to a todo and all its descendants
+// applyStatusRecursive applies a status to a todo and all its descendants.
+// This ensures the invariant that a parent and all its children must have
+// the same status - a completed task cannot have incomplete subtasks.
 func applyStatusRecursive(todo *models.Todo, status models.TodoStatus, timestamp time.Time) {
 	todo.Status = status
 	todo.Modified = timestamp
