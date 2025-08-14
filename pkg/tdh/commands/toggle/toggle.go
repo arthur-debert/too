@@ -35,10 +35,16 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		// Capture old status
 		oldStatus := string(todo.Status)
 
-		// Toggle the todo and all its children recursively
-		toggleRecursive(todo)
+		// Determine new status
+		newStatus := models.StatusDone
+		if todo.Status == models.StatusDone {
+			newStatus = models.StatusPending
+		}
 
-		newStatus := string(todo.Status)
+		// Apply the new status to the todo and all its descendants
+		applyStatusRecursive(todo, newStatus, time.Now())
+
+		newStatusStr := string(newStatus)
 
 		// Auto-reorder after toggle
 		collection.Reorder()
@@ -47,7 +53,7 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		result = &Result{
 			Todo:      todo,
 			OldStatus: oldStatus,
-			NewStatus: newStatus,
+			NewStatus: newStatusStr,
 		}
 
 		return nil
@@ -60,29 +66,12 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	return result, nil
 }
 
-// toggleRecursive toggles a todo and all its children to match the parent's new status
-func toggleRecursive(todo *models.Todo) {
-	// Toggle the parent
-	todo.Toggle()
-
-	// Apply the parent's new status to all children recursively
-	timestamp := time.Now()
-	for _, child := range todo.Items {
-		child.Status = todo.Status
-		child.Modified = timestamp
-		// Recursively apply to grandchildren
-		applyStatusRecursive(child, todo.Status, timestamp)
-	}
-}
-
 // applyStatusRecursive applies a status to a todo and all its descendants
 func applyStatusRecursive(todo *models.Todo, status models.TodoStatus, timestamp time.Time) {
 	todo.Status = status
 	todo.Modified = timestamp
 
 	for _, child := range todo.Items {
-		child.Status = status
-		child.Modified = timestamp
 		applyStatusRecursive(child, status, timestamp)
 	}
 }
