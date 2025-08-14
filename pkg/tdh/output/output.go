@@ -204,6 +204,29 @@ func (r *Renderer) RenderClean(result *tdh.CleanResult) error {
 
 // RenderReorder renders the reorder command result
 func (r *Renderer) RenderReorder(result *tdh.ReorderResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		// Prepare reorder data with pre-rendered todos
+		reorderData := map[string]interface{}{
+			"ReorderedCount": result.ReorderedCount,
+			"Todos":          make([]map[string]interface{}, 0, len(result.Todos)),
+		}
+
+		// Pre-render each todo
+		for _, todo := range result.Todos {
+			todoData := r.templateRenderer.PrepareData(todo)
+			if todoMap, ok := todoData.(map[string]interface{}); ok {
+				reorderData["Todos"] = append(reorderData["Todos"].([]map[string]interface{}), todoMap)
+			}
+		}
+
+		if err := r.templateRenderer.Render("reorder_result", reorderData); err == nil {
+			_, _ = fmt.Fprintln(r.writer)
+			return nil
+		}
+	}
+
+	// Fallback to old rendering
 	if result.ReorderedCount == 0 {
 		_, err := fmt.Fprintln(r.writer, "All todos are already in sequential order")
 		return err
