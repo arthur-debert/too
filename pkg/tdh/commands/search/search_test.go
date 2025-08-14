@@ -1,6 +1,8 @@
 package search_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/commands/search"
@@ -204,5 +206,24 @@ func TestSearchCommand(t *testing.T) {
 			assert.Equal(t, tc.expectedCount, len(result.MatchedTodos),
 				"Query '%s' should match %d todos", tc.query, tc.expectedCount)
 		}
+	})
+
+	t.Run("returns error when store operation fails", func(t *testing.T) {
+		// Create a read-only directory to force a store error
+		dir := t.TempDir()
+		dbPath := filepath.Join(dir, "todos.json")
+
+		// Write invalid JSON to cause a Find error
+		err := os.WriteFile(dbPath, []byte("invalid json"), 0644)
+		assert.NoError(t, err)
+
+		opts := search.Options{
+			CollectionPath: dbPath,
+			CaseSensitive:  false,
+		}
+		result, err := search.Execute("test", opts)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
 	})
 }
