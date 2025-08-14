@@ -117,3 +117,9 @@ func NewStore(path string) Store {
 func ResetCache() {
 	cachedDBPath = ""
 }
+
+// NewMemoryStore creates a new in-memory store for testing purposes.
+// This store keeps all data in memory and does not persist to disk.
+func NewMemoryStore() Store {
+	return internal.NewMemoryStore()
+}
