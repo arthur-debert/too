@@ -123,6 +123,15 @@ func (r *Renderer) RenderInit(result *tdh.InitResult) error {
 
 // RenderAdd renders the add command result
 func (r *Renderer) RenderAdd(result *tdh.AddResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		if err := r.templateRenderer.Render("add_result", result); err == nil {
+			_, _ = fmt.Fprintln(r.writer)
+			return nil
+		}
+	}
+
+	// Fallback to old rendering
 	_, err := fmt.Fprintf(r.writer, "Added todo #%d: %s\n", result.Todo.Position, result.Todo.Text)
 	return err
 }
