@@ -138,6 +138,15 @@ func (r *Renderer) RenderAdd(result *tdh.AddResult) error {
 
 // RenderModify renders the modify command result
 func (r *Renderer) RenderModify(result *tdh.ModifyResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		if err := r.templateRenderer.Render("modify_result", result); err == nil {
+			_, _ = fmt.Fprintln(r.writer)
+			return nil
+		}
+	}
+
+	// Fallback to old rendering
 	if _, err := fmt.Fprintf(r.writer, "Modified todo #%d\n", result.Todo.Position); err != nil {
 		return err
 	}
