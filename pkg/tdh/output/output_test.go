@@ -75,9 +75,9 @@ func TestRenderer_TemplateIntegration(t *testing.T) {
 	var buf bytes.Buffer
 	renderer := NewRenderer(&buf)
 
-	// Check that template renderer was created
-	if renderer.templateRenderer == nil {
-		t.Error("Template renderer should be initialized")
+	// Check that renderer was created successfully
+	if renderer == nil {
+		t.Error("Renderer should be initialized")
 	}
 
 	// Test rendering a list

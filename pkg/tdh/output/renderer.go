@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/pterm/pterm"
 )
@@ -129,4 +130,81 @@ func (r *TemplateRenderer) Render(templateName string, data interface{}) error {
 func (r *TemplateRenderer) PrepareData(data interface{}) interface{} {
 	// Pass raw data - let templates handle all formatting
 	return data
+}
+
+// RenderInit renders the init command result
+func (r *TemplateRenderer) RenderInit(result *tdh.InitResult) error {
+	if err := r.Render("init_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderAdd renders the add command result
+func (r *TemplateRenderer) RenderAdd(result *tdh.AddResult) error {
+	if err := r.Render("add_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderModify renders the modify command result
+func (r *TemplateRenderer) RenderModify(result *tdh.ModifyResult) error {
+	if err := r.Render("modify_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderToggle renders the toggle command result
+func (r *TemplateRenderer) RenderToggle(result *tdh.ToggleResult) error {
+	if err := r.Render("toggle_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderClean renders the clean command result
+func (r *TemplateRenderer) RenderClean(result *tdh.CleanResult) error {
+	if err := r.Render("clean_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderReorder renders the reorder command result
+func (r *TemplateRenderer) RenderReorder(result *tdh.ReorderResult) error {
+	if err := r.Render("reorder_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderSearch renders the search command result
+func (r *TemplateRenderer) RenderSearch(result *tdh.SearchResult) error {
+	if err := r.Render("search_result", result); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintln(r.writer)
+	return err
+}
+
+// RenderList renders the list command result
+func (r *TemplateRenderer) RenderList(result *tdh.ListResult) error {
+	return r.Render("todo_list", result)
+}
+
+// RenderError renders an error message
+func (r *TemplateRenderer) RenderError(err error) error {
+	if renderErr := r.Render("error", err.Error()); renderErr != nil {
+		return renderErr
+	}
+	_, writeErr := fmt.Fprintln(r.writer)
+	return writeErr
 }
