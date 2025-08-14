@@ -18,11 +18,11 @@ func TestToggleCommand(t *testing.T) {
 
 		// Get the todo ID (it will be 1 since it's the first todo)
 		collection, _ := store.Load()
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		// Toggle the todo
 		opts := toggle.Options{CollectionPath: store.Path()}
-		result, err := toggle.Execute(int(todoID), opts)
+		result, err := toggle.Execute(todoPosition, opts)
 
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
@@ -35,7 +35,7 @@ func TestToggleCommand(t *testing.T) {
 		testutil.AssertNoError(t, err)
 
 		// Use testutil to find and verify the todo
-		todo := testutil.AssertTodoByID(t, collection.Todos, todoID)
+		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
 		testutil.AssertTodoHasStatus(t, todo, models.StatusDone)
 	})
 
@@ -47,11 +47,11 @@ func TestToggleCommand(t *testing.T) {
 
 		// Get the todo ID
 		collection, _ := store.Load()
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		// Toggle the todo
 		opts := toggle.Options{CollectionPath: store.Path()}
-		result, err := toggle.Execute(int(todoID), opts)
+		result, err := toggle.Execute(todoPosition, opts)
 
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
@@ -62,7 +62,7 @@ func TestToggleCommand(t *testing.T) {
 		// Verify persistence
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByID(t, collection.Todos, todoID)
+		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
 		testutil.AssertTodoHasStatus(t, todo, models.StatusPending)
 	})
 
@@ -93,13 +93,13 @@ func TestToggleCommand(t *testing.T) {
 			{Text: "Last pending", Status: models.StatusPending},
 		})
 
-		// Get the middle todo's ID
+		// Get the middle todo's position
 		collection, _ := store.Load()
-		middleTodoID := collection.Todos[1].ID
+		middleTodoPosition := collection.Todos[1].Position
 
 		// Toggle the middle todo
 		opts := toggle.Options{CollectionPath: store.Path()}
-		result, err := toggle.Execute(int(middleTodoID), opts)
+		result, err := toggle.Execute(middleTodoPosition, opts)
 
 		testutil.AssertNoError(t, err)
 		assert.Equal(t, "done", result.OldStatus)
@@ -169,11 +169,11 @@ func TestToggleCommand(t *testing.T) {
 		// Get initial state
 		collection, _ := store.Load()
 		originalModified := collection.Todos[0].Modified
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		// Toggle the todo
 		opts := toggle.Options{CollectionPath: store.Path()}
-		result, err := toggle.Execute(int(todoID), opts)
+		result, err := toggle.Execute(todoPosition, opts)
 
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
@@ -203,14 +203,14 @@ func TestToggleCommand(t *testing.T) {
 		store := testutil.CreatePopulatedStore(t, "My todo")
 
 		collection, _ := store.Load()
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		opts := toggle.Options{CollectionPath: store.Path()}
-		result, err := toggle.Execute(int(todoID), opts)
+		result, err := toggle.Execute(todoPosition, opts)
 
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result.Todo)
-		assert.Equal(t, todoID, result.Todo.ID)
+		assert.Equal(t, todoPosition, result.Todo.Position)
 		assert.Equal(t, "My todo", result.Todo.Text)
 		assert.Equal(t, models.StatusDone, result.Todo.Status)
 		assert.Equal(t, "pending", result.OldStatus)

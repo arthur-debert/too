@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // TodoStatus represents the status of a todo item
@@ -16,7 +18,8 @@ const (
 
 // Todo represents a single task in the to-do list.
 type Todo struct {
-	ID       int64      `json:"id"`
+	ID       string     `json:"id"`       // UUID for stable internal reference
+	Position int        `json:"position"` // Sequential position for user interaction
 	Text     string     `json:"text"`
 	Status   TodoStatus `json:"status"`
 	Modified time.Time  `json:"modified"`
@@ -36,15 +39,17 @@ func NewCollection() *Collection {
 
 // CreateTodo creates a new todo with the given text and adds it to the collection.
 func (c *Collection) CreateTodo(text string) *Todo {
-	var highestID int64 = 0
+	// Find the highest position
+	var highestPosition = 0
 	for _, todo := range c.Todos {
-		if todo.ID > highestID {
-			highestID = todo.ID
+		if todo.Position > highestPosition {
+			highestPosition = todo.Position
 		}
 	}
 
 	newTodo := &Todo{
-		ID:       highestID + 1,
+		ID:       uuid.New().String(),
+		Position: highestPosition + 1,
 		Text:     text,
 		Status:   StatusPending,
 		Modified: time.Now(),
@@ -67,6 +72,7 @@ func (t *Todo) Toggle() {
 func (t *Todo) Clone() *Todo {
 	return &Todo{
 		ID:       t.ID,
+		Position: t.Position,
 		Text:     t.Text,
 		Status:   t.Status,
 		Modified: t.Modified,

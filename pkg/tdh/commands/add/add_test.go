@@ -24,7 +24,7 @@ func TestAddCommand(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.NotNil(t, result.Todo)
 		assert.Equal(t, "My first todo", result.Todo.Text)
-		assert.Equal(t, int64(1), result.Todo.ID)
+		assert.Equal(t, 1, result.Todo.Position)
 		assert.Equal(t, models.StatusPending, result.Todo.Status)
 
 		// Verify it was saved using testutil
@@ -45,7 +45,7 @@ func TestAddCommand(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "New todo", result.Todo.Text)
-		assert.Equal(t, int64(3), result.Todo.ID) // Should be 3 after two existing
+		assert.Equal(t, 3, result.Todo.Position) // Should be 3 after two existing
 
 		// Verify all todos are present
 		collection, err := store.Load()
@@ -158,17 +158,17 @@ func TestAddCommand(t *testing.T) {
 		// Add first todo
 		result1, err := add.Execute("First", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, int64(1), result1.Todo.ID)
+		assert.Equal(t, 1, result1.Todo.Position)
 
 		// Add second todo
 		result2, err := add.Execute("Second", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, int64(2), result2.Todo.ID)
+		assert.Equal(t, 2, result2.Todo.Position)
 
 		// Add third todo
 		result3, err := add.Execute("Third", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, int64(3), result3.Todo.ID)
+		assert.Equal(t, 3, result3.Todo.Position)
 
 		// Verify all are saved
 		collection, err := store.Load()

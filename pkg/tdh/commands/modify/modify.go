@@ -21,7 +21,7 @@ type Result struct {
 }
 
 // Execute modifies the text of an existing todo
-func Execute(id int, newText string, opts Options) (*Result, error) {
+func Execute(position int, newText string, opts Options) (*Result, error) {
 	if newText == "" {
 		return nil, fmt.Errorf("new todo text cannot be empty")
 	}
@@ -32,7 +32,7 @@ func Execute(id int, newText string, opts Options) (*Result, error) {
 
 	err := s.Update(func(collection *models.Collection) error {
 		var err error
-		todo, err = helpers.Find(collection, id)
+		todo, err = helpers.FindByPosition(collection, position)
 		if err != nil {
 			return fmt.Errorf("todo not found: %w", err)
 		}

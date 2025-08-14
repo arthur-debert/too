@@ -48,14 +48,14 @@ func Add(text string, opts AddOptions) (*AddResult, error) {
 	return cmdAdd.Execute(text, opts)
 }
 
-// Modify modifies the text of an existing todo
-func Modify(id int, newText string, opts ModifyOptions) (*ModifyResult, error) {
-	return cmdModify.Execute(id, newText, opts)
+// Modify modifies the text of an existing todo by position
+func Modify(position int, newText string, opts ModifyOptions) (*ModifyResult, error) {
+	return cmdModify.Execute(position, newText, opts)
 }
 
-// Toggle toggles the status of a todo
-func Toggle(id int, opts ToggleOptions) (*ToggleResult, error) {
-	return cmdToggle.Execute(id, opts)
+// Toggle toggles the status of a todo by position
+func Toggle(position int, opts ToggleOptions) (*ToggleResult, error) {
+	return cmdToggle.Execute(position, opts)
 }
 
 // Clean removes finished todos from the collection
@@ -64,8 +64,8 @@ func Clean(opts CleanOptions) (*CleanResult, error) {
 }
 
 // Reorder swaps the position of two todos
-func Reorder(idA, idB int, opts ReorderOptions) (*ReorderResult, error) {
-	return cmdReorder.Execute(idA, idB, opts)
+func Reorder(positionA, positionB int, opts ReorderOptions) (*ReorderResult, error) {
+	return cmdReorder.Execute(positionA, positionB, opts)
 }
 
 // Search searches for todos containing the query string
