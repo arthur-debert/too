@@ -159,6 +159,15 @@ func (r *Renderer) RenderModify(result *tdh.ModifyResult) error {
 
 // RenderToggle renders the toggle command result
 func (r *Renderer) RenderToggle(result *tdh.ToggleResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		if err := r.templateRenderer.Render("toggle_result", result); err == nil {
+			_, _ = fmt.Fprintln(r.writer)
+			return nil
+		}
+	}
+
+	// Fallback to old rendering
 	_, err := fmt.Fprintf(r.writer, "Toggled todo #%d from %s to %s\n",
 		result.Todo.Position, result.OldStatus, result.NewStatus)
 	return err
