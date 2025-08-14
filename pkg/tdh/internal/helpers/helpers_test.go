@@ -11,9 +11,9 @@ import (
 func TestFind(t *testing.T) {
 	t.Run("finds existing todo by ID", func(t *testing.T) {
 		collection := models.NewCollection()
-		_ = collection.CreateTodo("First")
-		todo2 := collection.CreateTodo("Second")
-		_ = collection.CreateTodo("Third")
+		_, _ = collection.CreateTodo("First", "")
+		todo2, _ := collection.CreateTodo("Second", "")
+		_, _ = collection.CreateTodo("Third", "")
 
 		// Find middle todo
 		found, err := helpers.Find(collection, todo2.Position)
@@ -27,9 +27,9 @@ func TestFind(t *testing.T) {
 
 	t.Run("finds first todo", func(t *testing.T) {
 		collection := models.NewCollection()
-		todo1 := collection.CreateTodo("First")
-		collection.CreateTodo("Second")
-		collection.CreateTodo("Third")
+		todo1, _ := collection.CreateTodo("First", "")
+		_, _ = collection.CreateTodo("Second", "")
+		_, _ = collection.CreateTodo("Third", "")
 
 		found, err := helpers.Find(collection, 1)
 
@@ -41,9 +41,9 @@ func TestFind(t *testing.T) {
 
 	t.Run("finds last todo", func(t *testing.T) {
 		collection := models.NewCollection()
-		collection.CreateTodo("First")
-		collection.CreateTodo("Second")
-		todo3 := collection.CreateTodo("Third")
+		_, _ = collection.CreateTodo("First", "")
+		_, _ = collection.CreateTodo("Second", "")
+		todo3, _ := collection.CreateTodo("Third", "")
 
 		found, err := helpers.Find(collection, todo3.Position)
 
@@ -55,8 +55,8 @@ func TestFind(t *testing.T) {
 
 	t.Run("returns error for non-existent ID", func(t *testing.T) {
 		collection := models.NewCollection()
-		collection.CreateTodo("First")
-		collection.CreateTodo("Second")
+		_, _ = collection.CreateTodo("First", "")
+		_, _ = collection.CreateTodo("Second", "")
 
 		found, err := helpers.Find(collection, 999)
 
@@ -67,7 +67,7 @@ func TestFind(t *testing.T) {
 
 	t.Run("returns error for negative ID", func(t *testing.T) {
 		collection := models.NewCollection()
-		collection.CreateTodo("First")
+		_, _ = collection.CreateTodo("First", "")
 
 		found, err := helpers.Find(collection, -1)
 
@@ -78,7 +78,7 @@ func TestFind(t *testing.T) {
 
 	t.Run("returns error for zero ID", func(t *testing.T) {
 		collection := models.NewCollection()
-		collection.CreateTodo("First")
+		_, _ = collection.CreateTodo("First", "")
 
 		found, err := helpers.Find(collection, 0)
 
@@ -138,7 +138,7 @@ func TestFind(t *testing.T) {
 
 	t.Run("returns actual todo reference not copy", func(t *testing.T) {
 		collection := models.NewCollection()
-		todo := collection.CreateTodo("Original")
+		todo, _ := collection.CreateTodo("Original", "")
 
 		found, err := helpers.Find(collection, todo.Position)
 

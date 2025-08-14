@@ -27,7 +27,7 @@ func CreatePopulatedStore(t *testing.T, texts ...string) store.Store {
 	collection := models.NewCollection()
 
 	for _, text := range texts {
-		collection.CreateTodo(text)
+		_, _ = collection.CreateTodo(text, "")
 	}
 
 	if err := s.Save(collection); err != nil {
@@ -50,7 +50,7 @@ func CreateStoreWithSpecs(t *testing.T, specs []TodoSpec) store.Store {
 	collection := models.NewCollection()
 
 	for _, spec := range specs {
-		todo := collection.CreateTodo(spec.Text)
+		todo, _ := collection.CreateTodo(spec.Text, "")
 		todo.Status = spec.Status
 	}
 

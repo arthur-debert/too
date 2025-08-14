@@ -43,24 +43,43 @@ func NewCollection() *Collection {
 }
 
 // CreateTodo creates a new todo with the given text and adds it to the collection.
-func (c *Collection) CreateTodo(text string) *Todo {
-	// Find the highest position
-	var highestPosition = 0
-	for _, todo := range c.Todos {
-		if todo.Position > highestPosition {
-			highestPosition = todo.Position
-		}
-	}
-
+// If parentID is empty, adds to root level. Otherwise, adds as child of the specified parent.
+func (c *Collection) CreateTodo(text string, parentID string) (*Todo, error) {
 	newTodo := &Todo{
 		ID:       uuid.New().String(),
-		Position: highestPosition + 1,
+		ParentID: parentID,
 		Text:     text,
 		Status:   StatusPending,
 		Modified: time.Now(),
+		Items:    []*Todo{},
 	}
-	c.Todos = append(c.Todos, newTodo)
-	return newTodo
+
+	if parentID == "" {
+		// Add to root level
+		newTodo.Position = c.findHighestPosition(c.Todos) + 1
+		c.Todos = append(c.Todos, newTodo)
+	} else {
+		// Find parent and add as child
+		parent := c.FindItemByID(parentID)
+		if parent == nil {
+			return nil, fmt.Errorf("parent todo with ID %s not found", parentID)
+		}
+		newTodo.Position = c.findHighestPosition(parent.Items) + 1
+		parent.Items = append(parent.Items, newTodo)
+	}
+
+	return newTodo, nil
+}
+
+// findHighestPosition finds the highest position in a slice of todos
+func (c *Collection) findHighestPosition(todos []*Todo) int {
+	var highest = 0
+	for _, todo := range todos {
+		if todo.Position > highest {
+			highest = todo.Position
+		}
+	}
+	return highest
 }
 
 // Toggle changes the status of a todo between pending and done.
@@ -138,6 +157,25 @@ func migrateTodo(t *Todo) {
 		}
 		migrateTodo(child)
 	}
+}
+
+// FindItemByID finds a todo item by its ID, searching recursively through the tree
+func (c *Collection) FindItemByID(id string) *Todo {
+	return findItemByIDInSlice(c.Todos, id)
+}
+
+// findItemByIDInSlice recursively searches for a todo by ID in a slice
+func findItemByIDInSlice(todos []*Todo, id string) *Todo {
+	for _, todo := range todos {
+		if todo.ID == id {
+			return todo
+		}
+		// Recursively search in children
+		if found := findItemByIDInSlice(todo.Items, id); found != nil {
+			return found
+		}
+	}
+	return nil
 }
 
 // FindItemByPositionPath finds a todo item by its dot-notation position path (e.g., "1.2.3")

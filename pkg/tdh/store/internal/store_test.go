@@ -78,7 +78,8 @@ func TestJSONFileStore_Save(t *testing.T) {
 		dbPath := filepath.Join(dir, "test.json")
 		store := internal.NewJSONFileStore(dbPath)
 		collection := models.NewCollection()
-		collection.CreateTodo("My new todo")
+		_, err = collection.CreateTodo("My new todo", "")
+		require.NoError(t, err)
 
 		err = store.Save(collection)
 		require.NoError(t, err)
@@ -107,7 +108,7 @@ func TestJSONFileStore_Update(t *testing.T) {
 
 		var todo *models.Todo
 		err = store.Update(func(collection *models.Collection) error {
-			todo = collection.CreateTodo("Updated from transaction")
+			todo, _ = collection.CreateTodo("Updated from transaction", "")
 			return nil
 		})
 
@@ -130,7 +131,8 @@ func TestMemoryStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, collection.Todos)
 
-		collection.CreateTodo("In-memory todo")
+		_, err = collection.CreateTodo("In-memory todo", "")
+		require.NoError(t, err)
 		err = store.Save(collection)
 		require.NoError(t, err)
 
@@ -144,7 +146,7 @@ func TestMemoryStore(t *testing.T) {
 		store := internal.NewMemoryStore()
 		var todo *models.Todo
 		err := store.Update(func(collection *models.Collection) error {
-			todo = collection.CreateTodo("Updated in-memory")
+			todo, _ = collection.CreateTodo("Updated in-memory", "")
 			return nil
 		})
 
@@ -234,13 +236,13 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 		// Create initial collection with one todo
 		collection := models.NewCollection()
-		todo1 := collection.CreateTodo("Original todo")
+		todo1, _ := collection.CreateTodo("Original todo", "")
 		err = store.Save(collection)
 		require.NoError(t, err)
 
 		// Attempt an update that fails
 		err = store.Update(func(c *models.Collection) error {
-			c.CreateTodo("This should be rolled back")
+			_, _ = c.CreateTodo("This should be rolled back", "")
 			c.Todos[0].Text = "Modified text"
 			return errors.New("simulated error")
 		})
@@ -261,13 +263,13 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 		// Create initial collection with one todo
 		collection := models.NewCollection()
-		todo1 := collection.CreateTodo("Original todo")
+		todo1, _ := collection.CreateTodo("Original todo", "")
 		err := store.Save(collection)
 		require.NoError(t, err)
 
 		// Attempt an update that fails
 		err = store.Update(func(c *models.Collection) error {
-			c.CreateTodo("This should be rolled back")
+			_, _ = c.CreateTodo("This should be rolled back", "")
 			c.Todos[0].Text = "Modified text"
 			return errors.New("simulated error")
 		})
@@ -288,14 +290,14 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 		// Create initial collection with one todo
 		collection := models.NewCollection()
-		collection.CreateTodo("Original todo")
+		_, _ = collection.CreateTodo("Original todo", "")
 		err := store.Save(collection)
 		require.NoError(t, err)
 
 		// Perform a successful update
 		var newTodo *models.Todo
 		err = store.Update(func(c *models.Collection) error {
-			newTodo = c.CreateTodo("New todo")
+			newTodo, _ = c.CreateTodo("New todo", "")
 			c.Todos[0].Text = "Modified text"
 			return nil
 		})
@@ -388,7 +390,7 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 
 		store := internal.NewJSONFileStore(dbPath)
 		collection := models.NewCollection()
-		collection.CreateTodo("Test")
+		_, _ = collection.CreateTodo("Test", "")
 
 		// This should fail during temp file creation
 		err = store.Save(collection)
@@ -407,10 +409,10 @@ func TestStore_Find(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Setup initial data
 			collection := models.NewCollection()
-			collection.CreateTodo("Buy milk")
-			doneTodo := collection.CreateTodo("Buy eggs")
+			_, _ = collection.CreateTodo("Buy milk", "")
+			doneTodo, _ := collection.CreateTodo("Buy eggs", "")
 			doneTodo.Toggle()
-			collection.CreateTodo("Buy bread and milk")
+			_, _ = collection.CreateTodo("Buy bread and milk", "")
 			err := s.Save(collection)
 			require.NoError(t, err)
 
@@ -480,7 +482,7 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 
 		// Create a collection with nested todos
 		collection := models.NewCollection()
-		parent := collection.CreateTodo("Parent task")
+		parent, _ := collection.CreateTodo("Parent task", "")
 
 		child1 := &models.Todo{
 			ID:       "child-1",
@@ -593,7 +595,7 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 
 		// Create a 5-level deep structure
 		collection := models.NewCollection()
-		level1 := collection.CreateTodo("Level 1")
+		level1, _ := collection.CreateTodo("Level 1", "")
 
 		level2 := &models.Todo{
 			ID: "level-2", ParentID: level1.ID, Position: 1,

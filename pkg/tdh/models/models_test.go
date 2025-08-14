@@ -6,6 +6,7 @@ import (
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewCollection(t *testing.T) {
@@ -23,13 +24,16 @@ func TestCollection_CreateTodo(t *testing.T) {
 		collection := models.NewCollection()
 		beforeCreate := time.Now()
 
-		todo := collection.CreateTodo("Test todo")
+		todo, err := collection.CreateTodo("Test todo", "")
 		afterCreate := time.Now()
 
+		require.NoError(t, err)
 		assert.NotNil(t, todo)
 		assert.Equal(t, 1, todo.Position)
 		assert.Equal(t, "Test todo", todo.Text)
 		assert.Equal(t, models.StatusPending, todo.Status)
+		assert.Empty(t, todo.ParentID)
+		assert.NotNil(t, todo.Items)
 		assert.True(t, todo.Modified.After(beforeCreate) || todo.Modified.Equal(beforeCreate))
 		assert.True(t, todo.Modified.Before(afterCreate) || todo.Modified.Equal(afterCreate))
 	})
@@ -37,8 +41,9 @@ func TestCollection_CreateTodo(t *testing.T) {
 	t.Run("adds todo to collection", func(t *testing.T) {
 		collection := models.NewCollection()
 
-		todo := collection.CreateTodo("Test todo")
+		todo, err := collection.CreateTodo("Test todo", "")
 
+		require.NoError(t, err)
 		assert.Len(t, collection.Todos, 1)
 		assert.Equal(t, todo, collection.Todos[0])
 	})
@@ -46,9 +51,12 @@ func TestCollection_CreateTodo(t *testing.T) {
 	t.Run("assigns incremental IDs", func(t *testing.T) {
 		collection := models.NewCollection()
 
-		todo1 := collection.CreateTodo("First")
-		todo2 := collection.CreateTodo("Second")
-		todo3 := collection.CreateTodo("Third")
+		todo1, err := collection.CreateTodo("First", "")
+		require.NoError(t, err)
+		todo2, err := collection.CreateTodo("Second", "")
+		require.NoError(t, err)
+		todo3, err := collection.CreateTodo("Third", "")
+		require.NoError(t, err)
 
 		assert.NotEmpty(t, todo1.ID) // Should have UUID
 		assert.NotEmpty(t, todo2.ID)
@@ -71,7 +79,8 @@ func TestCollection_CreateTodo(t *testing.T) {
 		}
 
 		// Create new todo - should get Position 6 (highest + 1)
-		newTodo := collection.CreateTodo("New todo")
+		newTodo, err := collection.CreateTodo("New todo", "")
+		require.NoError(t, err)
 
 		assert.Equal(t, 6, newTodo.Position)
 	})
@@ -79,7 +88,8 @@ func TestCollection_CreateTodo(t *testing.T) {
 	t.Run("handles empty text", func(t *testing.T) {
 		collection := models.NewCollection()
 
-		todo := collection.CreateTodo("")
+		todo, err := collection.CreateTodo("", "")
+		require.NoError(t, err)
 
 		assert.Equal(t, "", todo.Text)
 		assert.Equal(t, 1, todo.Position)
@@ -88,12 +98,62 @@ func TestCollection_CreateTodo(t *testing.T) {
 	t.Run("creates multiple todos with different timestamps", func(t *testing.T) {
 		collection := models.NewCollection()
 
-		todo1 := collection.CreateTodo("First")
+		todo1, err := collection.CreateTodo("First", "")
+		require.NoError(t, err)
 		time.Sleep(2 * time.Millisecond) // Small delay to ensure different timestamps
-		todo2 := collection.CreateTodo("Second")
+		todo2, err := collection.CreateTodo("Second", "")
+		require.NoError(t, err)
 
 		assert.NotEqual(t, todo1.Modified, todo2.Modified)
 		assert.True(t, todo2.Modified.After(todo1.Modified))
+	})
+
+	t.Run("creates nested todo with parent", func(t *testing.T) {
+		collection := models.NewCollection()
+
+		// Create parent
+		parent, err := collection.CreateTodo("Parent todo", "")
+		require.NoError(t, err)
+
+		// Create child
+		child, err := collection.CreateTodo("Child todo", parent.ID)
+		require.NoError(t, err)
+
+		assert.NotNil(t, child)
+		assert.Equal(t, parent.ID, child.ParentID)
+		assert.Equal(t, 1, child.Position)
+		assert.Equal(t, "Child todo", child.Text)
+		assert.Len(t, parent.Items, 1)
+		assert.Equal(t, child, parent.Items[0])
+	})
+
+	t.Run("creates multiple nested todos", func(t *testing.T) {
+		collection := models.NewCollection()
+
+		// Create parent
+		parent, err := collection.CreateTodo("Parent", "")
+		require.NoError(t, err)
+
+		// Create children
+		child1, err := collection.CreateTodo("Child 1", parent.ID)
+		require.NoError(t, err)
+		child2, err := collection.CreateTodo("Child 2", parent.ID)
+		require.NoError(t, err)
+		child3, err := collection.CreateTodo("Child 3", parent.ID)
+		require.NoError(t, err)
+
+		assert.Len(t, parent.Items, 3)
+		assert.Equal(t, 1, child1.Position)
+		assert.Equal(t, 2, child2.Position)
+		assert.Equal(t, 3, child3.Position)
+	})
+
+	t.Run("returns error for non-existent parent", func(t *testing.T) {
+		collection := models.NewCollection()
+
+		_, err := collection.CreateTodo("Orphan todo", "non-existent-id")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "parent todo with ID non-existent-id not found")
 	})
 }
 
@@ -281,8 +341,8 @@ func TestCollection_Clone(t *testing.T) {
 
 	t.Run("creates deep copy of collection with todos", func(t *testing.T) {
 		original := models.NewCollection()
-		todo1 := original.CreateTodo("First")
-		todo2 := original.CreateTodo("Second")
+		todo1, _ := original.CreateTodo("First", "")
+		todo2, _ := original.CreateTodo("Second", "")
 		todo2.Status = models.StatusDone
 
 		clone := original.Clone()
@@ -302,13 +362,13 @@ func TestCollection_Clone(t *testing.T) {
 
 	t.Run("clone is independent of original", func(t *testing.T) {
 		original := models.NewCollection()
-		original.CreateTodo("First")
-		original.CreateTodo("Second")
+		_, _ = original.CreateTodo("First", "")
+		_, _ = original.CreateTodo("Second", "")
 
 		clone := original.Clone()
 
 		// Modify clone
-		clone.CreateTodo("Third")
+		_, _ = clone.CreateTodo("Third", "")
 		clone.Todos[0].Text = "Modified"
 		clone.Todos[1].Toggle()
 
@@ -729,5 +789,71 @@ func TestFindItemByPositionPath(t *testing.T) {
 		item, err = collection.FindItemByPositionPath("5.10")
 		assert.NoError(t, err)
 		assert.Equal(t, "Child at position 10", item.Text)
+	})
+}
+
+func TestFindItemByID(t *testing.T) {
+	// Helper to create a test collection with nested structure
+	createTestCollection := func() *models.Collection {
+		collection := models.NewCollection()
+
+		// Create parent
+		parent, _ := collection.CreateTodo("Parent", "")
+
+		// Create children
+		child1, _ := collection.CreateTodo("Child 1", parent.ID)
+		_, _ = collection.CreateTodo("Child 2", parent.ID)
+
+		// Create grandchild
+		_, _ = collection.CreateTodo("Grandchild", child1.ID)
+
+		return collection
+	}
+
+	t.Run("finds top-level todo by ID", func(t *testing.T) {
+		collection := createTestCollection()
+		parent := collection.Todos[0]
+
+		found := collection.FindItemByID(parent.ID)
+		assert.NotNil(t, found)
+		assert.Equal(t, parent.ID, found.ID)
+		assert.Equal(t, "Parent", found.Text)
+	})
+
+	t.Run("finds nested todo by ID", func(t *testing.T) {
+		collection := createTestCollection()
+		parent := collection.Todos[0]
+		child1 := parent.Items[0]
+
+		found := collection.FindItemByID(child1.ID)
+		assert.NotNil(t, found)
+		assert.Equal(t, child1.ID, found.ID)
+		assert.Equal(t, "Child 1", found.Text)
+	})
+
+	t.Run("finds deeply nested todo by ID", func(t *testing.T) {
+		collection := createTestCollection()
+		parent := collection.Todos[0]
+		child1 := parent.Items[0]
+		grandchild := child1.Items[0]
+
+		found := collection.FindItemByID(grandchild.ID)
+		assert.NotNil(t, found)
+		assert.Equal(t, grandchild.ID, found.ID)
+		assert.Equal(t, "Grandchild", found.Text)
+	})
+
+	t.Run("returns nil for non-existent ID", func(t *testing.T) {
+		collection := createTestCollection()
+
+		found := collection.FindItemByID("non-existent-id")
+		assert.Nil(t, found)
+	})
+
+	t.Run("handles empty collection", func(t *testing.T) {
+		collection := models.NewCollection()
+
+		found := collection.FindItemByID("any-id")
+		assert.Nil(t, found)
 	})
 }
