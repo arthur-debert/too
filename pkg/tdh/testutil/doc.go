@@ -1,5 +1,18 @@
 // Package testutil provides domain-specific test helpers and assertions for tdh tests.
 //
+// # Testing Strategy
+//
+// The core testing strategy is to separate business logic from I/O.
+//
+//   - For command and business logic tests (the common case), use the setup helpers
+//     like CreatePopulatedStore() to get a fast, in-memory store.
+//
+//   - For tests of the storage layer itself, use t.TempDir() to create safe,
+//     temporary file-based stores.
+//
+// Always prefer the custom assertions in this package (e.g., AssertTodoInList)
+// over manual checks to make tests clearer and more robust.
+//
 // This package reduces boilerplate in tests and makes them more expressive by providing
 // focused helper functions for common test scenarios.
 //
