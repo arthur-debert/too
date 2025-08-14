@@ -10,6 +10,7 @@ import (
 // Options contains options for the add command
 type Options struct {
 	CollectionPath string
+	ParentPath     string // Dot-notation path to parent item (e.g., "1.2")
 }
 
 // Result contains the result of the add command
@@ -28,8 +29,26 @@ func Execute(text string, opts Options) (*Result, error) {
 
 	err := s.Update(func(collection *models.Collection) error {
 		var err error
-		todo, err = collection.CreateTodo(text, "")
-		return err
+
+		// If parent path is specified, find the parent item
+		if opts.ParentPath != "" {
+			parent, err := collection.FindItemByPositionPath(opts.ParentPath)
+			if err != nil {
+				return fmt.Errorf("invalid parent path %q: %w", opts.ParentPath, err)
+			}
+			todo, err = collection.CreateTodo(text, parent.ID)
+			if err != nil {
+				return err
+			}
+		} else {
+			// No parent specified, create at root level
+			todo, err = collection.CreateTodo(text, "")
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	if err != nil {

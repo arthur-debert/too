@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	addParentFlag string
+)
+
 var addCmd = &cobra.Command{
 	Use:     msgAddUse,
 	Aliases: aliasesAdd,
@@ -24,6 +28,7 @@ var addCmd = &cobra.Command{
 		// Call business logic
 		result, err := tdh.Add(text, tdh.AddOptions{
 			CollectionPath: collectionPath,
+			ParentPath:     addParentFlag,
 		})
 		if err != nil {
 			return err
@@ -36,5 +41,6 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
+	addCmd.Flags().StringVarP(&addParentFlag, "parent", "p", "", "Parent item position (e.g., 1.2)")
 	rootCmd.AddCommand(addCmd)
 }

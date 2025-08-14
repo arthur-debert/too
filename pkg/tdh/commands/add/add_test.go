@@ -222,4 +222,210 @@ func TestAddCommand(t *testing.T) {
 		_, err = os.Stat(nonExistentPath)
 		assert.NoError(t, err)
 	})
+
+	t.Run("adds todo with parent", func(t *testing.T) {
+		// Create store with a parent todo
+		store := testutil.CreatePopulatedStore(t, "Parent todo")
+
+		opts := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "1",
+		}
+		result, err := add.Execute("Child todo", opts)
+
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "Child todo", result.Todo.Text)
+		assert.Equal(t, 1, result.Todo.Position) // First child of parent
+
+		// Verify the structure
+		collection, err := store.Load()
+		testutil.AssertNoError(t, err)
+		testutil.AssertCollectionSize(t, collection, 1) // One top-level todo
+
+		parent := collection.Todos[0]
+		assert.Equal(t, "Parent todo", parent.Text)
+		assert.Len(t, parent.Items, 1)
+		assert.Equal(t, "Child todo", parent.Items[0].Text)
+		assert.Equal(t, parent.ID, parent.Items[0].ParentID)
+	})
+
+	t.Run("adds todo with nested parent path", func(t *testing.T) {
+		// Create a nested structure using file store
+		store := testutil.CreatePopulatedStore(t) // Empty store
+
+		// Create the initial structure using the add command itself
+		// First, create the parent
+		opts1 := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "",
+		}
+		result1, err := add.Execute("Level 1", opts1)
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result1)
+
+		// Then create a child
+		opts2 := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "1",
+		}
+		result2, err := add.Execute("Level 2", opts2)
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result2)
+
+		// Verify the structure before adding grandchild
+		collection, err := store.Load()
+		testutil.AssertNoError(t, err)
+		t.Logf("Total top-level todos: %d", len(collection.Todos))
+		if len(collection.Todos) > 0 {
+			t.Logf("Parent position: %d, has %d items", collection.Todos[0].Position, len(collection.Todos[0].Items))
+			if len(collection.Todos[0].Items) > 0 {
+				t.Logf("Child position: %d", collection.Todos[0].Items[0].Position)
+			}
+		}
+
+		// Add a grandchild
+		opts := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "1.1",
+		}
+		result, err := add.Execute("Level 3", opts)
+
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "Level 3", result.Todo.Text)
+
+		// Verify the structure
+		collection, err = store.Load()
+		testutil.AssertNoError(t, err)
+
+		assert.Len(t, collection.Todos[0].Items[0].Items, 1)
+		grandchild := collection.Todos[0].Items[0].Items[0]
+		assert.Equal(t, "Level 3", grandchild.Text)
+		assert.Equal(t, collection.Todos[0].Items[0].ID, grandchild.ParentID)
+	})
+
+	t.Run("returns error for invalid parent path", func(t *testing.T) {
+		store := testutil.CreatePopulatedStore(t, "Parent todo")
+
+		invalidPaths := []string{
+			"99",    // Non-existent position
+			"1.99",  // Non-existent child
+			"abc",   // Invalid format
+			"0",     // Invalid position (must be >= 1)
+			"-1",    // Negative position
+			"1.2.3", // Path too deep for structure
+		}
+
+		for _, path := range invalidPaths {
+			opts := add.Options{
+				CollectionPath: store.Path(),
+				ParentPath:     path,
+			}
+			result, err := add.Execute("Child todo", opts)
+
+			assert.Error(t, err, "Expected error for path: %s", path)
+			assert.Nil(t, result)
+			assert.Contains(t, err.Error(), "invalid parent path")
+		}
+	})
+
+	t.Run("adds multiple children to same parent", func(t *testing.T) {
+		store := testutil.CreatePopulatedStore(t, "Parent todo")
+
+		// Add first child
+		opts := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "1",
+		}
+		result1, err := add.Execute("First child", opts)
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, result1.Todo.Position)
+
+		// Add second child
+		result2, err := add.Execute("Second child", opts)
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 2, result2.Todo.Position)
+
+		// Add third child
+		result3, err := add.Execute("Third child", opts)
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 3, result3.Todo.Position)
+
+		// Verify the structure
+		collection, err := store.Load()
+		testutil.AssertNoError(t, err)
+
+		parent := collection.Todos[0]
+		assert.Len(t, parent.Items, 3)
+		assert.Equal(t, "First child", parent.Items[0].Text)
+		assert.Equal(t, "Second child", parent.Items[1].Text)
+		assert.Equal(t, "Third child", parent.Items[2].Text)
+	})
+
+	t.Run("preserves existing structure when adding with parent", func(t *testing.T) {
+		// Create complex initial structure
+		store := testutil.CreatePopulatedStore(t) // Empty store
+
+		// Create two top-level todos
+		opts1 := add.Options{CollectionPath: store.Path()}
+		_, err := add.Execute("Todo 1", opts1)
+		testutil.AssertNoError(t, err)
+
+		_, err = add.Execute("Todo 2", opts1)
+		testutil.AssertNoError(t, err)
+
+		// Add children to first todo
+		opts2 := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "1",
+		}
+		_, err = add.Execute("Child 1.1", opts2)
+		testutil.AssertNoError(t, err)
+
+		_, err = add.Execute("Child 1.2", opts2)
+		testutil.AssertNoError(t, err)
+
+		// Add a new child to the second todo
+		opts3 := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "2",
+		}
+		_, err = add.Execute("Child 2.1", opts3)
+		testutil.AssertNoError(t, err)
+
+		// Verify structure is preserved
+		collection, err := store.Load()
+		testutil.AssertNoError(t, err)
+
+		// First todo should be unchanged
+		assert.Len(t, collection.Todos[0].Items, 2)
+		assert.Equal(t, "Child 1.1", collection.Todos[0].Items[0].Text)
+		assert.Equal(t, "Child 1.2", collection.Todos[0].Items[1].Text)
+
+		// Second todo should have new child
+		assert.Len(t, collection.Todos[1].Items, 1)
+		assert.Equal(t, "Child 2.1", collection.Todos[1].Items[0].Text)
+	})
+
+	t.Run("handles empty parent path as root level", func(t *testing.T) {
+		store := testutil.CreatePopulatedStore(t, "Existing todo")
+
+		opts := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "", // Empty parent path
+		}
+		result, err := add.Execute("New root todo", opts)
+
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, 2, result.Todo.Position) // Second root-level todo
+
+		// Verify it's at root level
+		collection, err := store.Load()
+		testutil.AssertNoError(t, err)
+		testutil.AssertCollectionSize(t, collection, 2)
+		assert.Equal(t, "New root todo", collection.Todos[1].Text)
+		assert.Empty(t, collection.Todos[1].ParentID)
+	})
 }

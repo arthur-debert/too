@@ -10,7 +10,12 @@ const (
 	// Add command
 	msgAddUse   = "add <text>"
 	msgAddShort = "Add a new todo (aliases: a, new, create)"
-	msgAddLong  = "Add a new todo with the specified text."
+	msgAddLong  = `Add a new todo with the specified text.
+
+Use the --parent flag to create a sub-item under an existing todo:
+  tdh add "New subtask" --parent 1.2
+
+This creates a new todo as a child of the item at position 1.2.`
 
 	// Clean command
 	msgCleanUse   = "clean"
