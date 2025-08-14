@@ -1,0 +1,8 @@
+{{- if .MatchedTodos -}}
+Found {{len .MatchedTodos}} todo(s) matching '{{.Query}}':
+{{- range .MatchedTodos }}
+{{.Position}} | {{.Symbol}} {{.Text}}
+{{- end }}
+{{- else -}}
+No todos found matching '{{.Query}}'
+{{- end -}}

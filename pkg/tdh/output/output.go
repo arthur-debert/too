@@ -254,6 +254,29 @@ func (r *Renderer) RenderReorder(result *tdh.ReorderResult) error {
 
 // RenderSearch renders the search command result
 func (r *Renderer) RenderSearch(result *tdh.SearchResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		// Prepare search data with pre-rendered todos
+		searchData := map[string]interface{}{
+			"Query":        result.Query,
+			"MatchedTodos": make([]map[string]interface{}, 0, len(result.MatchedTodos)),
+		}
+
+		// Pre-render each todo
+		for _, todo := range result.MatchedTodos {
+			todoData := r.templateRenderer.PrepareData(todo)
+			if todoMap, ok := todoData.(map[string]interface{}); ok {
+				searchData["MatchedTodos"] = append(searchData["MatchedTodos"].([]map[string]interface{}), todoMap)
+			}
+		}
+
+		if err := r.templateRenderer.Render("search_result", searchData); err == nil {
+			_, _ = fmt.Fprintln(r.writer)
+			return nil
+		}
+	}
+
+	// Fallback to old rendering
 	if len(result.MatchedTodos) == 0 {
 		_, err := fmt.Fprintf(r.writer, "No todos found matching '%s'\n", result.Query)
 		return err
