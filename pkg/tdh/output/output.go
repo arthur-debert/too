@@ -175,6 +175,15 @@ func (r *Renderer) RenderToggle(result *tdh.ToggleResult) error {
 
 // RenderClean renders the clean command result
 func (r *Renderer) RenderClean(result *tdh.CleanResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		if err := r.templateRenderer.Render("clean_result", result); err == nil {
+			_, _ = fmt.Fprintln(r.writer)
+			return nil
+		}
+	}
+
+	// Fallback to old rendering
 	if result.RemovedCount == 0 {
 		if _, err := fmt.Fprintln(r.writer, "No finished todos to clean"); err != nil {
 			return err

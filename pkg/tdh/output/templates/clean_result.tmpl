@@ -1,0 +1,9 @@
+{{- if eq .RemovedCount 0 -}}
+No finished todos to clean
+{{- else -}}
+Removed {{.RemovedCount}} finished todo(s)
+{{- range .RemovedTodos }}
+  - #{{.Position}}: {{.Text}}
+{{- end }}
+{{- end }}
+{{.ActiveCount}} active todo(s) remaining
