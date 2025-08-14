@@ -1,204 +1,304 @@
 package output
 
 import (
-	"bytes"
-	"embed"
 	"fmt"
 	"io"
 	"os"
-	"strings"
-	"text/template"
 
+	"github.com/arthur-debert/tdh/pkg/lipbaml"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
-	"github.com/pterm/pterm"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
-//go:embed templates/*.tmpl
-var templateFS embed.FS
-
-// TemplateRenderer is the new template-based renderer
-type TemplateRenderer struct {
-	writer    io.Writer
-	templates map[string]*template.Template
-	useColor  bool
+// LipbamlRenderer is a renderer that uses lipbaml for styled output
+type LipbamlRenderer struct {
+	writer   io.Writer
+	useColor bool
+	styles   lipbaml.StyleMap
 }
 
-// NewTemplateRenderer creates a new template-based renderer
-func NewTemplateRenderer(w io.Writer, useColor bool) (*TemplateRenderer, error) {
+// NewLipbamlRenderer creates a new lipbaml-based renderer
+func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	if w == nil {
 		w = os.Stdout
 	}
 
-	r := &TemplateRenderer{
-		writer:    w,
-		templates: make(map[string]*template.Template),
-		useColor:  useColor,
+	// Set up lipgloss renderer with proper color detection
+	lipglossRenderer := lipgloss.NewRenderer(w)
+	if useColor {
+		// Force color output for testing
+		lipglossRenderer.SetColorProfile(termenv.TrueColor)
+	} else {
+		lipglossRenderer.SetColorProfile(termenv.Ascii)
+	}
+	lipbaml.SetDefaultRenderer(lipglossRenderer)
+
+	// Define the style map using colors similar to the template functions
+	styles := lipbaml.StyleMap{
+		// Basic colors matching template functions
+		"green": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}),
+		"red": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}),
+		"gray": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#495057", Dark: "#ADB5BD"}),
+		"yellow": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#F59F00", Dark: "#FCC419"}),
+		"cyan": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#1971C2", Dark: "#339AF0"}),
+
+		// Status-specific styles
+		"done": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}).
+			Bold(true),
+		"pending": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}).
+			Bold(true),
+
+		// Component styles
+		"position": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#495057", Dark: "#ADB5BD"}),
+		"success": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}),
+		"error": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}).
+			Bold(true),
+		"info": lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#1971C2", Dark: "#339AF0"}),
 	}
 
-	// Parse all templates together so they can reference each other
-	tmpl := template.New("").Funcs(r.templateFuncs())
+	return &LipbamlRenderer{
+		writer:   w,
+		useColor: useColor,
+		styles:   styles,
+	}, nil
+}
 
-	// Parse all template files
-	tmpl, err := tmpl.ParseFS(templateFS, "templates/*.tmpl")
+// RenderAdd renders the add command result using lipbaml
+func (r *LipbamlRenderer) RenderAdd(result *tdh.AddResult) error {
+	// Template matching add_result.tmpl:
+	// {{green "Added todo"}} {{gray (printf "#%d" .Todo.Position)}}: {{.Todo.Text}}
+	template := `<success>Added todo</success> <position>#{{.Todo.Position}}</position>: {{.Todo.Text}}`
+
+	output, err := lipbaml.Render(template, result, r.styles)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse templates: %w", err)
+		return fmt.Errorf("failed to render add result: %w", err)
 	}
 
-	// Store individual templates by name for easy access
-	for _, t := range tmpl.Templates() {
-		name := t.Name()
-		if name == "" {
-			continue
-		}
-		// Remove .tmpl extension
-		if strings.HasSuffix(name, ".tmpl") {
-			baseName := name[:len(name)-5]
-			r.templates[baseName] = t
-		}
-	}
-
-	return r, nil
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
 }
 
-// templateFuncs returns the custom template functions
-func (r *TemplateRenderer) templateFuncs() template.FuncMap {
-	return template.FuncMap{
-		"isDone": func(todo *models.Todo) bool {
-			return todo.Status == models.StatusDone
-		},
-		"isPending": func(todo *models.Todo) bool {
-			return todo.Status == models.StatusPending
-		},
-		"padPosition": func(pos int) string {
-			return fmt.Sprintf("%6d", pos)
-		},
-		// Color functions using pterm
-		"red": func(s string) string {
-			if r.useColor {
-				return pterm.FgRed.Sprint(s)
-			}
-			return s
-		},
-		"green": func(s string) string {
-			if r.useColor {
-				return pterm.FgGreen.Sprint(s)
-			}
-			return s
-		},
-		"gray": func(s string) string {
-			if r.useColor {
-				return pterm.FgGray.Sprint(s)
-			}
-			return s
-		},
-		"yellow": func(s string) string {
-			if r.useColor {
-				return pterm.FgYellow.Sprint(s)
-			}
-			return s
-		},
-		"cyan": func(s string) string {
-			if r.useColor {
-				return pterm.FgCyan.Sprint(s)
-			}
-			return s
-		},
-	}
-}
+// RenderToggle renders the toggle command result using lipbaml
+func (r *LipbamlRenderer) RenderToggle(result *tdh.ToggleResult) error {
+	// Template matching toggle_result.tmpl:
+	// {{cyan "Toggled todo"}} {{gray (printf "#%d" .Todo.Position)}} from {{red .OldStatus}} to {{green .NewStatus}}
+	template := `<cyan>Toggled todo</cyan> <gray>#{{.Todo.Position}}</gray> from <red>{{.OldStatus}}</red> to <green>{{.NewStatus}}</green>`
 
-// Render renders a template with the given data
-func (r *TemplateRenderer) Render(templateName string, data interface{}) error {
-	tmpl, ok := r.templates[templateName]
-	if !ok {
-		return fmt.Errorf("template '%s' not found", templateName)
-	}
-
-	// Execute template to get markup
-	var buf bytes.Buffer
-	err := tmpl.Execute(&buf, data)
+	output, err := lipbaml.Render(template, result, r.styles)
 	if err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
+		return fmt.Errorf("failed to render toggle result: %w", err)
 	}
 
-	// Write output directly - colors are already applied by template functions
-	_, err = r.writer.Write(buf.Bytes())
+	_, err = fmt.Fprintln(r.writer, output)
 	return err
 }
 
-// RenderInit renders the init command result
-func (r *TemplateRenderer) RenderInit(result *tdh.InitResult) error {
-	if err := r.Render("init_result", result); err != nil {
+// RenderModify renders the modify command result using lipbaml
+func (r *LipbamlRenderer) RenderModify(result *tdh.ModifyResult) error {
+	// Template matching modify_result.tmpl
+	template := `<info>Modified todo</info> <position>#{{.Todo.Position}}</position>: {{.Todo.Text}}`
+
+	output, err := lipbaml.Render(template, result, r.styles)
+	if err != nil {
+		return fmt.Errorf("failed to render modify result: %w", err)
+	}
+
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
+}
+
+// RenderInit renders the init command result using lipbaml
+func (r *LipbamlRenderer) RenderInit(result *tdh.InitResult) error {
+	template := `{{.Message}}`
+
+	output, err := lipbaml.Render(template, result, r.styles)
+	if err != nil {
+		return fmt.Errorf("failed to render init result: %w", err)
+	}
+
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
+}
+
+// renderTodoItem renders a single todo item (helper function)
+func (r *LipbamlRenderer) renderTodoItem(todo *models.Todo) (string, error) {
+	// Template matching todo_item.tmpl:
+	// {{gray (padPosition .Position)}} | {{if isDone .}}{{green "✓"}}{{else}}{{red "✕"}}{{end}} {{.Text}}
+	var template string
+	if todo.Status == models.StatusDone {
+		template = fmt.Sprintf(`<gray>%6d</gray> | <done>✓</done> {{.Text}}`, todo.Position)
+	} else {
+		template = fmt.Sprintf(`<gray>%6d</gray> | <pending>✕</pending> {{.Text}}`, todo.Position)
+	}
+
+	return lipbaml.Render(template, todo, r.styles)
+}
+
+// RenderClean renders the clean command result using lipbaml
+func (r *LipbamlRenderer) RenderClean(result *tdh.CleanResult) error {
+	if result.RemovedCount == 0 {
+		template := `<yellow>No finished todos to clean</yellow>`
+		output, err := lipbaml.Render(template, nil, r.styles)
+		if err != nil {
+			return fmt.Errorf("failed to render clean result: %w", err)
+		}
+		_, _ = fmt.Fprintln(r.writer, output)
+	} else {
+		template := `<green>Removed {{.RemovedCount}} finished todo(s)</green>`
+		output, err := lipbaml.Render(template, result, r.styles)
+		if err != nil {
+			return fmt.Errorf("failed to render clean header: %w", err)
+		}
+		_, _ = fmt.Fprintln(r.writer, output)
+
+		// Show removed todos
+		for _, todo := range result.RemovedTodos {
+			itemTemplate := fmt.Sprintf(`  - <gray>#%d</gray>: {{.Text}}`, todo.Position)
+			output, err := lipbaml.Render(itemTemplate, todo, r.styles)
+			if err != nil {
+				return fmt.Errorf("failed to render removed todo: %w", err)
+			}
+			_, _ = fmt.Fprintln(r.writer, output)
+		}
+	}
+
+	// Show remaining active count
+	summaryTemplate := `<cyan>{{.ActiveCount}} active todo(s) remaining</cyan>`
+	summary, err := lipbaml.Render(summaryTemplate, result, r.styles)
+	if err != nil {
+		return fmt.Errorf("failed to render clean summary: %w", err)
+	}
+	_, err = fmt.Fprintln(r.writer, summary)
+	return err
+}
+
+// RenderReorder renders the reorder command result using lipbaml
+func (r *LipbamlRenderer) RenderReorder(result *tdh.ReorderResult) error {
+	if result.ReorderedCount == 0 {
+		template := `<yellow>All todos are already in sequential order</yellow>`
+		output, err := lipbaml.Render(template, nil, r.styles)
+		if err != nil {
+			return fmt.Errorf("failed to render reorder result: %w", err)
+		}
+		_, err = fmt.Fprintln(r.writer, output)
 		return err
 	}
-	_, err := fmt.Fprintln(r.writer)
-	return err
+
+	// Show reorder count
+	template := `<green>Reordered {{.ReorderedCount}} todo(s) to sequential positions</green>`
+	output, err := lipbaml.Render(template, result, r.styles)
+	if err != nil {
+		return fmt.Errorf("failed to render reorder header: %w", err)
+	}
+	_, _ = fmt.Fprintln(r.writer, output)
+
+	// Show current order if todos are provided
+	if len(result.Todos) > 0 {
+		_, _ = fmt.Fprintln(r.writer)
+		header := `<cyan>Current order:</cyan>`
+		output, err := lipbaml.Render(header, nil, r.styles)
+		if err != nil {
+			return fmt.Errorf("failed to render reorder list header: %w", err)
+		}
+		_, _ = fmt.Fprintln(r.writer, output)
+
+		for _, todo := range result.Todos {
+			output, err := r.renderTodoItem(todo)
+			if err != nil {
+				return fmt.Errorf("failed to render todo item: %w", err)
+			}
+			_, _ = fmt.Fprintln(r.writer, output)
+		}
+	}
+
+	return nil
 }
 
-// RenderAdd renders the add command result
-func (r *TemplateRenderer) RenderAdd(result *tdh.AddResult) error {
-	if err := r.Render("add_result", result); err != nil {
+// RenderSearch renders the search command result using lipbaml
+func (r *LipbamlRenderer) RenderSearch(result *tdh.SearchResult) error {
+	if len(result.MatchedTodos) == 0 {
+		template := `<yellow>No todos found matching '{{.Query}}'</yellow>`
+		output, err := lipbaml.Render(template, result, r.styles)
+		if err != nil {
+			return fmt.Errorf("failed to render search result: %w", err)
+		}
+		_, err = fmt.Fprintln(r.writer, output)
 		return err
 	}
-	_, err := fmt.Fprintln(r.writer)
-	return err
+
+	// Show match count and query
+	headerTemplate := `<cyan>Found {{len .MatchedTodos}} todo(s) matching '{{.Query}}':</cyan>`
+	header, err := lipbaml.Render(headerTemplate, result, r.styles)
+	if err != nil {
+		return fmt.Errorf("failed to render search header: %w", err)
+	}
+	_, _ = fmt.Fprintln(r.writer, header)
+
+	// Show matched todos
+	for _, todo := range result.MatchedTodos {
+		output, err := r.renderTodoItem(todo)
+		if err != nil {
+			return fmt.Errorf("failed to render todo item: %w", err)
+		}
+		_, _ = fmt.Fprintln(r.writer, output)
+	}
+
+	return nil
 }
 
-// RenderModify renders the modify command result
-func (r *TemplateRenderer) RenderModify(result *tdh.ModifyResult) error {
-	if err := r.Render("modify_result", result); err != nil {
+// RenderList renders the list command result using lipbaml
+func (r *LipbamlRenderer) RenderList(result *tdh.ListResult) error {
+	if len(result.Todos) == 0 {
+		template := `<yellow>No todos found</yellow>`
+		output, err := lipbaml.Render(template, nil, r.styles)
+		if err != nil {
+			return fmt.Errorf("failed to render empty list: %w", err)
+		}
+		_, err = fmt.Fprintln(r.writer, output)
 		return err
 	}
-	_, err := fmt.Fprintln(r.writer)
-	return err
-}
 
-// RenderToggle renders the toggle command result
-func (r *TemplateRenderer) RenderToggle(result *tdh.ToggleResult) error {
-	if err := r.Render("toggle_result", result); err != nil {
-		return err
+	// Render each todo item
+	for _, todo := range result.Todos {
+		output, err := r.renderTodoItem(todo)
+		if err != nil {
+			return fmt.Errorf("failed to render todo item: %w", err)
+		}
+		_, _ = fmt.Fprintln(r.writer, output)
 	}
-	_, err := fmt.Fprintln(r.writer)
-	return err
-}
 
-// RenderClean renders the clean command result
-func (r *TemplateRenderer) RenderClean(result *tdh.CleanResult) error {
-	if err := r.Render("clean_result", result); err != nil {
-		return err
+	// Render summary
+	summaryTemplate := `<cyan>{{.TotalCount}} todo(s), {{.DoneCount}} done</cyan>`
+	summary, err := lipbaml.Render(summaryTemplate, result, r.styles)
+	if err != nil {
+		return fmt.Errorf("failed to render summary: %w", err)
 	}
-	_, err := fmt.Fprintln(r.writer)
+	_, err = fmt.Fprintln(r.writer, summary)
 	return err
-}
-
-// RenderReorder renders the reorder command result
-func (r *TemplateRenderer) RenderReorder(result *tdh.ReorderResult) error {
-	if err := r.Render("reorder_result", result); err != nil {
-		return err
-	}
-	_, err := fmt.Fprintln(r.writer)
-	return err
-}
-
-// RenderSearch renders the search command result
-func (r *TemplateRenderer) RenderSearch(result *tdh.SearchResult) error {
-	if err := r.Render("search_result", result); err != nil {
-		return err
-	}
-	_, err := fmt.Fprintln(r.writer)
-	return err
-}
-
-// RenderList renders the list command result
-func (r *TemplateRenderer) RenderList(result *tdh.ListResult) error {
-	return r.Render("todo_list", result)
 }
 
 // RenderError renders an error message
-func (r *TemplateRenderer) RenderError(err error) error {
-	if renderErr := r.Render("error", err.Error()); renderErr != nil {
+func (r *LipbamlRenderer) RenderError(err error) error {
+	template := `<error>Error:</error> {{.}}`
+
+	output, renderErr := lipbaml.Render(template, err.Error(), r.styles)
+	if renderErr != nil {
 		return renderErr
 	}
-	_, writeErr := fmt.Fprintln(r.writer)
+
+	_, writeErr := fmt.Fprintln(r.writer, output)
 	return writeErr
 }
