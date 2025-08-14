@@ -12,6 +12,7 @@ import (
 	"github.com/arthur-debert/tdh/pkg/lipbaml"
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
+	"github.com/arthur-debert/tdh/pkg/tdh/output/styles"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 )
@@ -43,44 +44,48 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	}
 	lipbaml.SetDefaultRenderer(lipglossRenderer)
 
-	// Define the style map using colors similar to the template functions
-	styles := lipbaml.StyleMap{
-		// Basic colors matching template functions
-		"green": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}),
-		"red": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}),
-		"gray": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#495057", Dark: "#ADB5BD"}),
-		"yellow": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#F59F00", Dark: "#FCC419"}),
-		"cyan": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#1971C2", Dark: "#339AF0"}),
-
-		// Status-specific styles
-		"done": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}).
-			Bold(true),
-		"pending": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}).
-			Bold(true),
-
-		// Component styles
-		"position": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#495057", Dark: "#ADB5BD"}),
+	// Define the style map with semantic names
+	styleMap := lipbaml.StyleMap{
+		// Status and result styles
 		"success": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}),
+			Foreground(styles.SUCCESS_COLOR),
 		"error": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}).
+			Foreground(styles.ERROR_COLOR).
 			Bold(true),
+		"warning": lipgloss.NewStyle().
+			Foreground(styles.WARNING_COLOR),
 		"info": lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#1971C2", Dark: "#339AF0"}),
+			Foreground(styles.INFO_COLOR),
+
+		// Todo state styles
+		"todo-done": lipgloss.NewStyle().
+			Foreground(styles.SUCCESS_COLOR).
+			Bold(true),
+		"todo-pending": lipgloss.NewStyle().
+			Foreground(styles.ERROR_COLOR).
+			Bold(true),
+
+		// UI element styles
+		"position": lipgloss.NewStyle().
+			Foreground(styles.SUBDUED_TEXT),
+		"muted": lipgloss.NewStyle().
+			Foreground(styles.MUTED_TEXT),
+		"subdued": lipgloss.NewStyle().
+			Foreground(styles.SUBDUED_TEXT),
+		"accent": lipgloss.NewStyle().
+			Foreground(styles.ACCENT_COLOR),
+		"count": lipgloss.NewStyle().
+			Foreground(styles.INFO_COLOR),
+		"label": lipgloss.NewStyle().
+			Foreground(styles.SUBDUED_TEXT),
+		"value": lipgloss.NewStyle().
+			Foreground(styles.PRIMARY_TEXT),
 	}
 
 	r := &LipbamlRenderer{
 		writer:    w,
 		useColor:  useColor,
-		styles:    styles,
+		styles:    styleMap,
 		templates: make(map[string]string),
 	}
 

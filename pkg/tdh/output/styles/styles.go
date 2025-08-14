@@ -10,11 +10,11 @@ var (
 
 	// Status styles
 	StatusDone = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"}).
+			Foreground(SUCCESS_COLOR).
 			Bold(true)
 
 	StatusPending = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}).
+			Foreground(ERROR_COLOR).
 			Bold(true)
 
 	// Symbol styles
@@ -23,13 +23,13 @@ var (
 
 	// Position number style
 	Position = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#495057", Dark: "#ADB5BD"}).
+			Foreground(SUBDUED_TEXT).
 			Align(lipgloss.Right).
 			Width(6)
 
 	// Separator style
 	Separator = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#868E96", Dark: "#6C757D"}).
+			Foreground(MUTED_TEXT).
 			SetString(" | ")
 
 	// Text styles
@@ -37,24 +37,24 @@ var (
 
 	// Hashtag highlighting
 	Hashtag = lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#F59F00", Dark: "#FCC419"}).
+		Foreground(ACCENT_COLOR).
 		Bold(true)
 
 	// Summary styles
 	Summary = lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#868E96", Dark: "#CED4DA"}).
+		Foreground(FAINT_TEXT).
 		MarginTop(1)
 
 	// Error styles
 	Error = lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#C92A2A", Dark: "#F03E3E"}).
+		Foreground(ERROR_COLOR).
 		Bold(true)
 
 	// Success styles
 	Success = lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#2B8A3E", Dark: "#37B24D"})
+		Foreground(SUCCESS_COLOR)
 
 	// Info styles
 	Info = lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "#1971C2", Dark: "#339AF0"})
+		Foreground(INFO_COLOR)
 )
