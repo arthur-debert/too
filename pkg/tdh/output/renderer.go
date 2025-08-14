@@ -126,12 +126,6 @@ func (r *TemplateRenderer) Render(templateName string, data interface{}) error {
 	return err
 }
 
-// PrepareData prepares data for template rendering
-func (r *TemplateRenderer) PrepareData(data interface{}) interface{} {
-	// Pass raw data - let templates handle all formatting
-	return data
-}
-
 // RenderInit renders the init command result
 func (r *TemplateRenderer) RenderInit(result *tdh.InitResult) error {
 	if err := r.Render("init_result", result); err != nil {
