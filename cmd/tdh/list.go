@@ -12,12 +12,13 @@ var (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all todos",
-	Long:  `List all todos in the collection.`,
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List all todos (alias: ls)",
+	Long:    `List all todos in the collection.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic with filtering options
 		result, err := tdh.List(tdh.ListOptions{

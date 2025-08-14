@@ -11,7 +11,7 @@ import (
 var searchCmd = &cobra.Command{
 	Use:     "search <query>",
 	Aliases: []string{"s"},
-	Short:   "Search for todos",
+	Short:   "Search for todos (alias: s)",
 	Long:    `Search for todos containing the specified text.`,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -19,7 +19,7 @@ var searchCmd = &cobra.Command{
 		query := strings.Join(args, " ")
 
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Get case-sensitive flag
 		caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")

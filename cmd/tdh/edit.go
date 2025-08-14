@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var modifyCmd = &cobra.Command{
-	Use:     "modify <id> <text>",
-	Aliases: []string{"m"},
-	Short:   "Modify the text of an existing todo",
-	Long:    `Modify the text of an existing todo by its ID.`,
+var editCmd = &cobra.Command{
+	Use:     "edit <id> <text>",
+	Aliases: []string{"modify", "m", "e"},
+	Short:   "Edit the text of an existing todo (aliases: modify, m, e)",
+	Long:    `Edit the text of an existing todo by its ID.`,
 	Args:    cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Parse ID
@@ -26,7 +26,7 @@ var modifyCmd = &cobra.Command{
 		text := strings.Join(args[1:], " ")
 
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
 		result, err := tdh.Modify(id, text, tdh.ModifyOptions{
@@ -43,5 +43,5 @@ var modifyCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(modifyCmd)
+	rootCmd.AddCommand(editCmd)
 }
