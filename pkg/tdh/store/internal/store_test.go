@@ -650,4 +650,95 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		assert.Equal(t, "Level 5", current.Text)
 		assert.Empty(t, current.Items)
 	})
+
+	t.Run("should automatically save migrated data", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-auto-migrate-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+
+		// Write old format data without Items field
+		oldData := `[
+			{"id": "test-id-1", "position": 1, "text": "First todo", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
+			{"id": "test-id-2", "position": 2, "text": "Second todo", "status": "done", "modified": "2024-01-01T00:00:00Z"}
+		]`
+		err = os.WriteFile(dbPath, []byte(oldData), 0600)
+		require.NoError(t, err)
+
+		// Load the store - this should trigger migration and save
+		store := internal.NewJSONFileStore(dbPath)
+		collection, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify migration happened
+		assert.Len(t, collection.Todos, 2)
+		for _, todo := range collection.Todos {
+			assert.NotNil(t, todo.Items)
+		}
+
+		// Read the file directly to verify it was saved with new format
+		savedData, err := os.ReadFile(dbPath)
+		require.NoError(t, err)
+
+		// The saved data should include the items field
+		assert.Contains(t, string(savedData), `"items"`)
+		assert.Contains(t, string(savedData), `"parentId"`)
+
+		// Load again to ensure the migrated format loads correctly
+		store2 := internal.NewJSONFileStore(dbPath)
+		collection2, err := store2.Load()
+		require.NoError(t, err)
+
+		assert.Len(t, collection2.Todos, 2)
+		assert.Equal(t, collection.Todos[0].ID, collection2.Todos[0].ID)
+		assert.Equal(t, collection.Todos[1].ID, collection2.Todos[1].ID)
+	})
+
+	t.Run("should migrate legacy integer ID format", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-legacy-migrate-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+
+		// Write truly old format with integer IDs
+		oldData := `[
+			{"id": 1, "text": "Legacy todo 1", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
+			{"id": 2, "text": "Legacy todo 2", "status": "done", "modified": "2024-01-01T00:00:00Z"},
+			{"id": 3, "text": "Legacy todo 3", "status": "pending", "modified": "2024-01-01T00:00:00Z"}
+		]`
+		err = os.WriteFile(dbPath, []byte(oldData), 0600)
+		require.NoError(t, err)
+
+		// Load the store - this should trigger migration
+		store := internal.NewJSONFileStore(dbPath)
+		collection, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify todos were loaded and migrated
+		assert.Len(t, collection.Todos, 3)
+
+		// Check that all todos have:
+		// - UUID strings as IDs (not the original integers)
+		// - Positions matching the original integer IDs
+		// - Items field initialized
+		// - Empty ParentID
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, 3, collection.Todos[2].Position)
+
+		for i, todo := range collection.Todos {
+			assert.NotEmpty(t, todo.ID, "Todo %d should have UUID", i)
+			assert.Len(t, todo.ID, 36, "Todo %d ID should be UUID length", i) // UUID with hyphens
+			assert.NotNil(t, todo.Items, "Todo %d should have Items initialized", i)
+			assert.Empty(t, todo.ParentID, "Todo %d should have empty ParentID", i)
+		}
+
+		// Verify the file was updated
+		savedData, err := os.ReadFile(dbPath)
+		require.NoError(t, err)
+		assert.Contains(t, string(savedData), `"items"`)
+		assert.NotContains(t, string(savedData), `"id": 1`) // Should not have integer IDs
+	})
 }

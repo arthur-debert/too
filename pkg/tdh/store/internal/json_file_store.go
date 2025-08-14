@@ -52,8 +52,27 @@ func (s *JSONFileStore) Load() (*models.Collection, error) {
 		collection.Todos = []*models.Todo{}
 	}
 
+	// Check if migration is needed by looking for todos without Items field initialized
+	needsMigration := false
+	for _, todo := range collection.Todos {
+		if todo.Items == nil {
+			needsMigration = true
+			break
+		}
+	}
+
 	// Migrate collection to support nested lists
 	models.MigrateCollection(collection)
+
+	// If migration was needed, save the migrated data back
+	if needsMigration {
+		if err := s.Save(collection); err != nil {
+			// Log the error but don't fail the load
+			// The migration will be attempted again next time
+			// This prevents data loss if save fails
+			fmt.Fprintf(os.Stderr, "Warning: Failed to save migrated data: %v\n", err)
+		}
+	}
 
 	return collection, nil
 }

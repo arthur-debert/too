@@ -27,7 +27,7 @@ type Todo struct {
 	Text     string     `json:"text"`
 	Status   TodoStatus `json:"status"`
 	Modified time.Time  `json:"modified"`
-	Items    []*Todo    `json:"items,omitempty"` // Child todo items
+	Items    []*Todo    `json:"items"` // Child todo items
 }
 
 // Collection represents a list of todos.
