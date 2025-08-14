@@ -8,6 +8,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	parentPath string
+)
+
 var addCmd = &cobra.Command{
 	Use:     msgAddUse,
 	Aliases: aliasesAdd,
@@ -18,12 +22,14 @@ var addCmd = &cobra.Command{
 		// Join all arguments as the todo text
 		text := strings.Join(args, " ")
 
-		// Get collection path from flag
+		// Get flags
 		collectionPath, _ := cmd.Flags().GetString("data-path")
+		parentPath, _ := cmd.Flags().GetString("parent")
 
 		// Call business logic
 		result, err := tdh.Add(text, tdh.AddOptions{
 			CollectionPath: collectionPath,
+			ParentPath:     parentPath,
 		})
 		if err != nil {
 			return err
@@ -36,5 +42,6 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
+	addCmd.Flags().StringVar(&parentPath, "parent", "", "parent todo position path (e.g., \"1.2\")")
 	rootCmd.AddCommand(addCmd)
 }

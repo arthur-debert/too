@@ -10,6 +10,7 @@ import (
 // Options contains options for the add command
 type Options struct {
 	CollectionPath string
+	ParentPath     string // Position path of parent todo (e.g., "1.2")
 }
 
 // Result contains the result of the add command
@@ -28,7 +29,18 @@ func Execute(text string, opts Options) (*Result, error) {
 
 	err := s.Update(func(collection *models.Collection) error {
 		var err error
-		todo, err = collection.CreateTodo(text, "")
+		var parentID string
+
+		// If parent path is specified, find the parent todo
+		if opts.ParentPath != "" {
+			parent, err := collection.FindItemByPositionPath(opts.ParentPath)
+			if err != nil {
+				return fmt.Errorf("parent todo not found: %w", err)
+			}
+			parentID = parent.ID
+		}
+
+		todo, err = collection.CreateTodo(text, parentID)
 		return err
 	})
 
