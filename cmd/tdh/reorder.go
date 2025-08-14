@@ -26,7 +26,7 @@ var reorderCmd = &cobra.Command{
 		}
 
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
 		result, err := tdh.Reorder(idA, idB, tdh.ReorderOptions{

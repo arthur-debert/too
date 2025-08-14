@@ -12,7 +12,7 @@ var cleanCmd = &cobra.Command{
 	Long:  `Remove all todos marked as done from the collection.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
 		result, err := tdh.Clean(tdh.CleanOptions{

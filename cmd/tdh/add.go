@@ -10,7 +10,7 @@ import (
 
 var addCmd = &cobra.Command{
 	Use:     "add <text>",
-	Aliases: []string{"a"},
+	Aliases: []string{"a", "new", "create"},
 	Short:   "Add a new todo",
 	Long:    `Add a new todo with the specified text.`,
 	Args:    cobra.MinimumNArgs(1),
@@ -19,7 +19,7 @@ var addCmd = &cobra.Command{
 		text := strings.Join(args, " ")
 
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
 		result, err := tdh.Add(text, tdh.AddOptions{

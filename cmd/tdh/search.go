@@ -19,7 +19,7 @@ var searchCmd = &cobra.Command{
 		query := strings.Join(args, " ")
 
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("collection")
+		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Get case-sensitive flag
 		caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")
