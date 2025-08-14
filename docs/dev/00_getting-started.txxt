@@ -18,7 +18,7 @@ Initial Setup
    cd tdh
    ```
 
-2. Source the environment variables:
+2. Source the environment variables ir not using direnv:
    ```
    source .envrc
    ```
@@ -44,7 +44,8 @@ Essential Commands
 Development Workflow
 --------------------
 
-1. Create a feature branch
+1. Create a feature branch, if working on a gh issue, use gh issue develop -c
+   <issue>
 2. Write tests first (TDD encouraged)
 3. Implement with proper logging
 4. Run tests and lint before committing
@@ -53,10 +54,8 @@ Development Workflow
 Key Rules
 ---------
 
-• NO direct filesystem operations - use synthfs
 • ALL errors need codes (not just messages)
 • Logging is MANDATORY for new code
-• Documentation must use txxt format
 • Test error codes, never error messages
 
 Next Steps
