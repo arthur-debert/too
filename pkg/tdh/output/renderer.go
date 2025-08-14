@@ -119,6 +119,43 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 		"padPosition": func(pos int) string {
 			return fmt.Sprintf("%6d", pos)
 		},
+		"getIndent": func(level int) string {
+			config := tdh.GetConfig()
+			indent := strings.Repeat(config.Display.IndentString, config.Display.IndentSize)
+			return strings.Repeat(indent, level)
+		},
+		"renderNestedTodos": func(todos []*models.Todo, parentPath string, level int) string {
+			var result strings.Builder
+			for _, todo := range todos {
+				path := parentPath
+				if path == "" {
+					path = fmt.Sprintf("%d", todo.Position)
+				} else {
+					path = fmt.Sprintf("%s.%d", parentPath, todo.Position)
+				}
+
+				// Render this todo with its path and indentation
+				indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
+				isDone := r.templateFuncs()["isDone"].(func(*models.Todo) bool)(todo)
+				statusSymbol := "✕"
+				statusStyle := "todo-pending"
+				if isDone {
+					statusSymbol = "✓"
+					statusStyle = "todo-done"
+				}
+
+				result.WriteString(fmt.Sprintf("%s<subdued>%6s</subdued> | <%s>%s</%s> %s\n",
+					indent, path, statusStyle, statusSymbol, statusStyle, todo.Text))
+
+				// Recursively render children
+				if len(todo.Items) > 0 {
+					childrenOutput := r.templateFuncs()["renderNestedTodos"].(func([]*models.Todo, string, int) string)(
+						todo.Items, path, level+1)
+					result.WriteString(childrenOutput)
+				}
+			}
+			return result.String()
+		},
 	}
 }
 

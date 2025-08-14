@@ -27,8 +27,9 @@ func Execute(text string, opts Options) (*Result, error) {
 	var todo *models.Todo
 
 	err := s.Update(func(collection *models.Collection) error {
-		todo = collection.CreateTodo(text)
-		return nil
+		var err error
+		todo, err = collection.CreateTodo(text, "")
+		return err
 	})
 
 	if err != nil {
