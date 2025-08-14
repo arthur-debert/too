@@ -1,0 +1,115 @@
+                Storage Layer Design
+
+This document describes the storage abstraction layer in tdh.
+
+
+Overview
+--------
+
+The storage layer provides a clean abstraction between business logic
+and data persistence, enabling:
+    • Unit testing without filesystem access
+    • Atomic operations and transactional updates
+    • Pluggable storage backends
+    • Efficient query-based data retrieval
+
+
+Current Implementation
+----------------------
+
+Store Interface:
+    The core abstraction is defined in pkg/tdh/store/store.go:
+
+    type Store interface {
+        Load() (*models.Collection, error)
+        Save(*models.Collection) error
+        Exists() bool
+        Update(func(collection *models.Collection) error) error
+        Find(query Query) (*FindResult, error)
+        Path() string
+    }
+
+Query System:
+    type Query struct {
+        Status       *models.TodoStatus
+        TextContains *string
+    }
+
+    type FindResult struct {
+        Todos      []*models.Todo
+        TotalCount int
+        DoneCount  int
+    }
+
+Implementations:
+
+    JSONFileStore:
+        • Default production implementation
+        • Stores todos in JSON format
+        • Atomic saves with temporary file + rename
+        • Find() loads full collection and filters in memory
+
+    MemoryStore:
+        • Used exclusively for testing
+        • No filesystem dependencies
+        • Fast and deterministic
+
+Factory Pattern:
+    func NewStore(path string) Store {
+        if strings.HasPrefix(path, ":memory:") {
+            return NewMemoryStore()
+        }
+        return NewJSONFileStore(path)
+    }
+
+Usage in Commands
+-----------------
+
+Commands use the store abstraction for all persistence:
+
+    func List(opts ListOptions) (*ListResult, error) {
+        s := store.NewStore(opts.CollectionPath)
+        
+        query := store.Query{}
+        if !opts.All {
+            status := models.StatusPending
+            query.Status = &status
+        }
+        
+        result, err := s.Find(query)
+        if err != nil {
+            return nil, err
+        }
+        
+        return &ListResult{
+            Todos:      result.Todos,
+            TotalCount: result.TotalCount,
+            DoneCount:  result.DoneCount,
+        }, nil
+    }
+
+
+Testing Strategy
+----------------
+
+Unit tests use MemoryStore for fast, isolated testing:
+    • No filesystem dependencies
+    • Deterministic behavior
+    • Easy setup with testutil helpers
+
+Integration tests verify JSONFileStore behavior:
+    • Atomic saves
+    • File format compatibility
+    • Error handling
+
+
+Future Enhancements
+-------------------
+
+The store interface enables future backends:
+    • SQLiteStore for better performance with large datasets
+    • CloudStore for synchronization capabilities
+    • EncryptedStore for security-sensitive data
+
+All backends implement the same interface, allowing seamless
+switching without changing business logic.

@@ -1,50 +1,106 @@
-Nested Lists Design Specification
+                Nested Lists Design Specification
 
-This document outlines the design for implementing arbitrarily nested todo lists in tdh.
+NOTE: This is a proposed feature that has not been implemented yet.
+
+This document outlines the design for implementing arbitrarily nested
+todo lists in tdh.
 
 1. Problem Analysis
 
-A simple, flat list is insufficient for organizing related tasks. Users need the ability to break down larger items into smaller sub-tasks, creating a natural hierarchy. The current system lacks the data model and command structure to support this. The goal is to add this capability while maintaining the speed and convenience of the existing interface.
+    A simple, flat list is insufficient for organizing related tasks. Users 
+    need the ability to break down larger items into smaller sub-tasks, 
+    creating a natural hierarchy. The current system lacks the data model 
+    and command structure to support this. The goal is to add this capability 
+    while maintaining the speed and convenience of the existing interface.
+
 
 2. Core Design: Data Model and Business Rules
 
-The implementation will be built on the following principles:
+    The implementation will be built on the following principles:
 
-- Data Model: The `Todo` struct will be extended to support a recursive, parent-child relationship. Each todo item will contain:
-    - ID: A permanent, internal UUID.
-    - ParentID: A UUID referencing the parent's ID. This is the key to enabling efficient move operations. For top-level items, this will be nil or a zero-value.
-    - Position: A mutable, user-facing integer that is always relative to its direct siblings.
-    - Items: An array of child `Todo` structs, allowing for arbitrary nesting.
+    Data Model:
+    
+        The Todo struct will be extended to support a recursive, parent-child 
+        relationship. Each todo item will contain:
+        
+        • ID: A permanent, internal UUID.
+        • ParentID: A UUID referencing the parent's ID. This is the key to 
+          enabling efficient move operations. For top-level items, this will 
+          be nil or a zero-value.
+        • Position: A mutable, user-facing integer that is always relative 
+          to its direct siblings.
+        • Items: An array of child Todo structs, allowing for arbitrary nesting.
 
-- Business Rules: Actions on parent items will propagate to their children to ensure intuitive behavior.
-    - Toggle: Toggling a parent's status (e.g., to "done") will recursively apply the same status to all of its descendants.
-    - Delete: Deleting a parent will delete all of its descendants by default. An `--unwrap` flag will be provided to delete the parent but promote its children to the parent's level, preventing accidental mass deletion.
-    - Move: Moving an item will update its `ParentID` and trigger a reordering of both its old and new sibling lists.
+    Business Rules:
+    
+        Actions on parent items will propagate to their children to ensure 
+        intuitive behavior:
+        
+        • Toggle: Toggling a parent's status (e.g., to "done") will recursively 
+          apply the same status to all of its descendants.
+        • Delete: Deleting a parent will delete all of its descendants by default. 
+          An --unwrap flag will be provided to delete the parent but promote its 
+          children to the parent's level, preventing accidental mass deletion.
+        • Move: Moving an item will update its ParentID and trigger a reordering 
+          of both its old and new sibling lists.
 
 3. Internal API
 
-The internal APIs will be updated to handle the new hierarchical structure.
+    The internal APIs will be updated to handle the new hierarchical structure.
 
-- Item Retrieval: A central, recursive function, `FindItemByPositionPath(collection, "1.2.1")`, will be the primary mechanism for locating items. It will parse the dot-notation string and traverse the `Items` arrays based on the `Position` field at each level.
+    Item Retrieval:
+    
+        A central, recursive function, FindItemByPositionPath(collection, "1.2.1"), 
+        will be the primary mechanism for locating items. It will parse the 
+        dot-notation string and traverse the Items arrays based on the Position 
+        field at each level.
 
-- Transactional Integrity: All operations that modify the tree structure—such as adding a sub-item, deleting, moving, or reordering—must be performed within a single, atomic `store.Update()` transaction. This guarantees that the data file is never left in a corrupted or inconsistent state.
+    Transactional Integrity:
+    
+        All operations that modify the tree structure—such as adding a sub-item, 
+        deleting, moving, or reordering—must be performed within a single, atomic 
+        store.Update() transaction. This guarantees that the data file is never 
+        left in a corrupted or inconsistent state.
+
 
 4. User-Facing API (CLI)
 
-The command-line interface will be extended to manage the hierarchy, using dot-notation for addressing items.
+    The command-line interface will be extended to manage the hierarchy, using 
+    dot-notation for addressing items.
 
-- Addressing Items: Users will interact with items using a `.`-separated path of `Position` numbers (e.g., `1`, `1.2`, `2.1.1`). This keeps interaction with top-level items simple while providing access to nested items.
+    Addressing Items:
+    
+        Users will interact with items using a dot-separated path of Position 
+        numbers (e.g., 1, 1.2, 2.1.1). This keeps interaction with top-level 
+        items simple while providing access to nested items.
 
-- `tdh add`: The add command will be enhanced with a `--parent` flag to create sub-items.
-    - `tdh a "New top-level task"`: Adds an item to the root of the list.
-    - `tdh a --parent 1.2 "New sub-task"`: Adds a new item as a child of the item at position `1.2`.
+    tdh add:
+    
+        The add command will be enhanced with a --parent flag to create sub-items:
+        
+        • tdh a "New top-level task": Adds an item to the root of the list.
+        • tdh a --parent 1.2 "New sub-task": Adds a new item as a child of 
+          the item at position 1.2.
 
-- `tdh ls`: The list command will be updated to control display depth.
-    - `tdh ls`: Renders the full, indented list by default.
-    - `tdh ls --depth 1`: Displays only the top-level items.
+    tdh ls:
+    
+        The list command will be updated to control display depth:
+        
+        • tdh ls: Renders the full, indented list by default.
+        • tdh ls --depth 1: Displays only the top-level items.
 
-- `tdh move`: A new command for restructuring the list.
-    - `tdh move <source> <destination_parent>`: Moves an item from its current location to become a child of the destination parent.
-    - Example: `tdh move 2.1.1 1` moves the item at `2.1.1` to be the last child of the item at `1`.
+    tdh move:
+    
+        A new command for restructuring the list:
+        
+        • tdh move <source> <destination_parent>: Moves an item from its 
+          current location to become a child of the destination parent.
+        • Example: tdh move 2.1.1 1 moves the item at 2.1.1 to be the last 
+          child of the item at 1.
 
-- Automatic Reordering: The "Auto-Reorder" feature will be context-aware. When an item is removed or toggled, the reordering of `Position` numbers will only affect the direct siblings of that item. This ensures that unrelated branches of the list remain stable and predictable.
+    Automatic Reordering:
+    
+        The "Auto-Reorder" feature will be context-aware. When an item is 
+        removed or toggled, the reordering of Position numbers will only 
+        affect the direct siblings of that item. This ensures that unrelated 
+        branches of the list remain stable and predictable.

@@ -1,55 +1,92 @@
-TESTING GUIDANCE
+                Testing Guide
 
-This project uses a test-driven approach with a focus on clear, fast, and reliable tests. We have a dedicated `testutil` package to make this easy. Please use it.
+This project uses test-driven development with a focus on clear, fast,
+and reliable tests.
 
-1. Unit Tests vs. Integration Tests
 
-The most important rule is to distinguish between testing logic and testing I/O.
+1. Test Types
 
-- UNIT TESTS (Preferred): Test business logic (e.g., in `pkg/tdh/commands.go`) without touching the file system. These are fast and reliable.
-  - **ALWAYS** use `testutil.CreatePopulatedStore(t, ...)` or `testutil.CreateStoreWithSpecs(t, ...)` for these tests. They provide an in-memory store that requires no cleanup.
-
-- INTEGRATION TESTS: These tests are for the storage layer (`pkg/tdh/store`) itself. They are the ONLY tests that should interact with the file system.
-  - Use `t.TempDir()` to create temporary directories that are cleaned up automatically.
-
-2. Use Setup Helpers for Test Arrangement
-
-Do not manually create stores or populate them in your tests. Use the helpers to arrange your test state in a single, readable line.
-
-- `CreatePopulatedStore(t, "Task 1", "Task 2")`: Quickly create a store with pending todos.
-- `CreateStoreWithSpecs(t, []testutil.TodoSpec{...})`: Create todos with specific statuses (e.g., `models.StatusDone`).
-
-3. Use Custom Assertions for Verification
-
-Do not write manual `for` loops or complex checks in your tests. Use the domain-specific assertions to make your tests clear and your failure messages helpful.
-
-Key Assertions:
-- `AssertTodoInList(t, todos, "Expected text")`
-- `AssertTodoNotInList(t, todos, "Unexpected text")`
-- `AssertTodoCount(t, result, 10, 3)` (Checks total and done counts)
-- `AssertTodoHasStatus(t, todo, models.StatusDone)`
-
-For a full list of helpers, see the `pkg/tdh/testutil` package.
-
-Example of a Good Test:
-
-func TestCleanCommand(t *testing.T) {
-    // 1. ARRANGE: Use a setup helper.
-    specs := []testutil.TodoSpec{
-        {Text: "Pending Item", Done: false},
-        {Text: "Done Item",    Done: true},
-    }
-    store, _ := testutil.CreateStoreWithSpecs(t, specs)
-
-    // 2. ACT: Call the function being tested.
-    cleanResult, err := tdh.Clean(CleanOptions{CollectionPath: store.Path()})
-    require.NoError(t, err)
-
-    // 3. ASSERT: Use custom assertions.
-    assert.Equal(t, 1, cleanResult.RemovedCount)
+    Unit Tests (Preferred):
     
-    // And verify the final state.
-    finalResult, _ := store.Find(store.Query{})
-    testutil.AssertTodoCount(t, finalResult, 1, 0)
-    testutil.AssertTodoNotInList(t, finalResult.Todos, "Done Item")
-}
+        Test business logic without filesystem access. Fast and reliable.
+        
+        • Always use testutil package for in-memory stores
+        • No manual store creation or cleanup needed
+        • Test the pkg/tdh API, not CLI parsing
+
+    Integration Tests:
+    
+        Only for testing the storage layer itself.
+        
+        • Use t.TempDir() for automatic cleanup
+        • Minimize filesystem tests
+
+
+2. Test Utilities
+
+    The testutil package provides helpers for consistent test data:
+
+    Store Creation:
+    
+        -- go
+        // Create store with pending todos
+        store := testutil.CreatePopulatedStore(t, "Task 1", "Task 2")
+        
+        // Create store with specific todo states
+        specs := []testutil.TodoSpec{
+            {Text: "Pending", Done: false},
+            {Text: "Done", Done: true},
+        }
+        store := testutil.CreateStoreWithSpecs(t, specs)
+        --
+
+    Assertions:
+    
+        • AssertTodoInList(t, todos, "Expected text")
+        • AssertTodoNotInList(t, todos, "Unexpected text")
+        • AssertTodoCount(t, result, total, doneCount)
+        • AssertTodoHasStatus(t, todo, models.StatusDone)
+
+    See pkg/tdh/testutil for the complete API.
+
+
+3. Test Pattern
+
+    Follow the Arrange-Act-Assert pattern:
+
+    -- go
+    func TestCleanCommand(t *testing.T) {
+        // ARRANGE: Set up test data
+        store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+            {Text: "Keep me", Done: false},
+            {Text: "Remove me", Done: true},
+        })
+        
+        // ACT: Execute the code under test
+        result, err := tdh.Clean(CleanOptions{
+            CollectionPath: store.Path(),
+        })
+        require.NoError(t, err)
+        
+        // ASSERT: Verify results
+        assert.Equal(t, 1, result.RemovedCount)
+        testutil.AssertTodoNotInList(t, result.Todos, "Remove me")
+    }
+    --
+
+
+4. Best Practices
+
+    DO:
+    
+        • Use testutil helpers for all todo creation
+        • Test error codes, not error messages
+        • Keep tests focused on single behavior
+        • Use table-driven tests for similar scenarios
+
+    DON'T:
+    
+        • Manually create stores or todos
+        • Write complex verification loops
+        • Test CLI parsing in unit tests
+        • Touch the filesystem unless testing storage
