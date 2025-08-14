@@ -188,7 +188,7 @@ func TestJSONFileStore_ErrorHandling(t *testing.T) {
 		_, err = store.Load()
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to open store file")
+		assert.Contains(t, err.Error(), "failed to read store file")
 		assert.Contains(t, err.Error(), file.Name())
 	})
 

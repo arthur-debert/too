@@ -23,22 +23,20 @@ func NewJSONFileStore(path string) *JSONFileStore {
 
 // Load reads the collection from the JSON file.
 func (s *JSONFileStore) Load() (*models.Collection, error) {
-	// Try to migrate if needed (best effort, don't fail on migration errors)
-	_ = MigrateToUUIDAndPosition(s.PathValue)
-
 	collection := models.NewCollection()
 
-	file, err := os.OpenFile(s.PathValue, os.O_RDONLY, 0600)
+	// Read the entire file
+	data, err := os.ReadFile(s.PathValue)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// File doesn't exist, start with empty collection
 			return collection, nil
 		}
-		return nil, fmt.Errorf("failed to open store file %s: %w", s.PathValue, err)
+		return nil, fmt.Errorf("failed to read store file %s: %w", s.PathValue, err)
 	}
-	defer func() { _ = file.Close() }()
 
-	err = json.NewDecoder(file).Decode(&collection.Todos)
+	// Use the new loader that handles both formats
+	todos, err := LoadTodosWithMigration(data)
 	if err != nil {
 		// Handle empty file case
 		if errors.Is(err, io.EOF) {
@@ -46,6 +44,8 @@ func (s *JSONFileStore) Load() (*models.Collection, error) {
 		}
 		return nil, fmt.Errorf("failed to decode JSON from %s: %w", s.PathValue, err)
 	}
+
+	collection.Todos = todos
 
 	// Ensure non-nil slice
 	if collection.Todos == nil {
