@@ -1,0 +1,9 @@
+{{- if .Todos -}}
+{{- range .Todos -}}
+{{.Position}} | {{.Symbol}} {{.Text}}
+{{ end -}}
+
+{{.TotalCount}} todo(s), {{.DoneCount}} done
+{{- else -}}
+No todos found
+{{- end -}}

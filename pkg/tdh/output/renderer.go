@@ -148,7 +148,7 @@ func (r *TemplateRenderer) Render(templateName string, data interface{}) error {
 	}
 
 	// Prepare data for rendering
-	renderData := r.prepareData(data)
+	renderData := r.PrepareData(data)
 
 	// Execute template
 	var buf bytes.Buffer
@@ -162,8 +162,8 @@ func (r *TemplateRenderer) Render(templateName string, data interface{}) error {
 	return err
 }
 
-// prepareData prepares data for template rendering
-func (r *TemplateRenderer) prepareData(data interface{}) interface{} {
+// PrepareData prepares data for template rendering
+func (r *TemplateRenderer) PrepareData(data interface{}) interface{} {
 	// If it's a Todo, enrich it with rendered elements
 	if todo, ok := data.(*models.Todo); ok {
 		// Format position with padding

@@ -213,25 +213,38 @@ func (r *Renderer) RenderSearch(result *tdh.SearchResult) error {
 
 // RenderList renders the list command result
 func (r *Renderer) RenderList(result *tdh.ListResult) error {
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		// Prepare list data with pre-rendered todos
+		listData := map[string]interface{}{
+			"Todos":      make([]map[string]interface{}, 0, len(result.Todos)),
+			"TotalCount": result.TotalCount,
+			"DoneCount":  result.DoneCount,
+		}
+
+		// Pre-render each todo
+		for _, todo := range result.Todos {
+			todoData := r.templateRenderer.PrepareData(todo)
+			if todoMap, ok := todoData.(map[string]interface{}); ok {
+				listData["Todos"] = append(listData["Todos"].([]map[string]interface{}), todoMap)
+			}
+		}
+
+		// Try to render with todo_list template
+		if err := r.templateRenderer.Render("todo_list", listData); err == nil {
+			return nil
+		}
+		// Fall back to individual rendering if todo_list fails
+	}
+
+	// Fallback to old rendering
 	if len(result.Todos) == 0 {
 		_, err := fmt.Fprintln(r.writer, "No todos found")
 		return err
 	}
 
-	// Use template renderer if available
-	if r.templateRenderer != nil {
-		for _, todo := range result.Todos {
-			if err := r.templateRenderer.Render("todo_item", todo); err != nil {
-				// Fallback to old renderer on error
-				r.renderTodo(todo)
-			}
-			_, _ = fmt.Fprintln(r.writer)
-		}
-	} else {
-		// Fallback to old rendering
-		for _, todo := range result.Todos {
-			r.renderTodo(todo)
-		}
+	for _, todo := range result.Todos {
+		r.renderTodo(todo)
 	}
 
 	_, err := fmt.Fprintf(r.writer, "\n%d todo(s), %d done\n",
