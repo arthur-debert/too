@@ -38,7 +38,7 @@ func (r *TodoRenderer) RenderTodo(t *models.Todo) {
 	var symbol string
 	var color ct.Color
 
-	if t.Status == "done" {
+	if t.Status == models.StatusDone {
 		color = ct.Green
 		symbol = "✓"
 	} else {

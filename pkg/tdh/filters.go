@@ -8,7 +8,7 @@ import (
 // WARNING: This modifies the collection in place, removing all non-pending todos.
 func ListPendingTodos(c *models.Collection) {
 	for i := len(c.Todos) - 1; i >= 0; i-- {
-		if c.Todos[i].Status != "pending" {
+		if c.Todos[i].Status != models.StatusPending {
 			RemoveAtIndex(c, i)
 		}
 	}
@@ -18,7 +18,7 @@ func ListPendingTodos(c *models.Collection) {
 // WARNING: This modifies the collection in place, removing all non-done todos.
 func ListDoneTodos(c *models.Collection) {
 	for i := len(c.Todos) - 1; i >= 0; i-- {
-		if c.Todos[i].Status != "done" {
+		if c.Todos[i].Status != models.StatusDone {
 			RemoveAtIndex(c, i)
 		}
 	}
@@ -28,7 +28,7 @@ func ListDoneTodos(c *models.Collection) {
 func FilterPending(c *models.Collection) []*models.Todo {
 	var pending []*models.Todo
 	for _, todo := range c.Todos {
-		if todo.Status == "pending" {
+		if todo.Status == models.StatusPending {
 			pending = append(pending, todo)
 		}
 	}
@@ -39,7 +39,7 @@ func FilterPending(c *models.Collection) []*models.Todo {
 func FilterDone(c *models.Collection) []*models.Todo {
 	var done []*models.Todo
 	for _, todo := range c.Todos {
-		if todo.Status == "done" {
+		if todo.Status == models.StatusDone {
 			done = append(done, todo)
 		}
 	}

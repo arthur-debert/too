@@ -31,7 +31,7 @@ type Query struct {
 // This helper function encapsulates the common filtering logic used by all store implementations.
 func (q Query) MatchesTodo(todo *models.Todo) bool {
 	// Apply status filter
-	if q.Status != nil && todo.Status != *q.Status {
+	if q.Status != nil && string(todo.Status) != *q.Status {
 		return false
 	}
 

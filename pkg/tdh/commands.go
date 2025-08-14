@@ -25,7 +25,7 @@ func Init(opts InitOptions) (*InitResult, error) {
 
 	if !s.Exists() {
 		// Create an empty collection to initialize the file
-		if err := s.Save(models.NewCollection(s.Path())); err != nil {
+		if err := s.Save(models.NewCollection()); err != nil {
 			return nil, fmt.Errorf("failed to create store file: %w", err)
 		}
 		return &InitResult{
@@ -142,9 +142,9 @@ func Toggle(id int, opts ToggleOptions) (*ToggleResult, error) {
 		if err != nil {
 			return fmt.Errorf("todo not found: %w", err)
 		}
-		oldStatus = todo.Status
+		oldStatus = string(todo.Status)
 		todo.Toggle()
-		newStatus = todo.Status
+		newStatus = string(todo.Status)
 		return nil
 	})
 
@@ -176,7 +176,7 @@ func Clean(opts CleanOptions) (*CleanResult, error) {
 	s := store.NewStore(opts.CollectionPath)
 
 	// First, find all done todos using Find API
-	doneStatus := "done"
+	doneStatus := string(models.StatusDone)
 	query := store.Query{Status: &doneStatus}
 	findResult, err := s.Find(query)
 	if err != nil {
@@ -298,9 +298,9 @@ func List(opts ListOptions) (*ListResult, error) {
 	// Build query based on options
 	var query store.Query
 	if !opts.ShowAll {
-		status := "pending"
+		status := string(models.StatusPending)
 		if opts.ShowDone {
-			status = "done"
+			status = string(models.StatusDone)
 		}
 		query.Status = &status
 	}

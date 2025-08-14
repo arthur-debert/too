@@ -4,24 +4,32 @@ import (
 	"time"
 )
 
+// TodoStatus represents the status of a todo item
+type TodoStatus string
+
+const (
+	// StatusPending indicates the todo is not yet completed
+	StatusPending TodoStatus = "pending"
+	// StatusDone indicates the todo has been completed
+	StatusDone TodoStatus = "done"
+)
+
 // Todo represents a single task in the to-do list.
 type Todo struct {
-	ID       int64  `json:"id"`
-	Text     string `json:"text"`
-	Status   string `json:"status"`
-	Modified string `json:"modified"`
+	ID       int64      `json:"id"`
+	Text     string     `json:"text"`
+	Status   TodoStatus `json:"status"`
+	Modified time.Time  `json:"modified"`
 }
 
 // Collection represents a list of todos.
 type Collection struct {
-	Todos []*Todo
-	Path  string
+	Todos []*Todo `json:"todos"`
 }
 
-// NewCollection creates a new collection with the given path.
-func NewCollection(path string) *Collection {
+// NewCollection creates a new collection.
+func NewCollection() *Collection {
 	return &Collection{
-		Path:  path,
 		Todos: []*Todo{},
 	}
 }
@@ -38,20 +46,21 @@ func (c *Collection) CreateTodo(text string) *Todo {
 	newTodo := &Todo{
 		ID:       highestID + 1,
 		Text:     text,
-		Status:   "pending",
-		Modified: time.Now().Local().String(),
+		Status:   StatusPending,
+		Modified: time.Now(),
 	}
 	c.Todos = append(c.Todos, newTodo)
 	return newTodo
 }
 
-// Toggle changes the status of a todo between "pending" and "done".
+// Toggle changes the status of a todo between pending and done.
 func (t *Todo) Toggle() {
-	if t.Status == "done" {
-		t.Status = "pending"
+	if t.Status == StatusDone {
+		t.Status = StatusPending
 	} else {
-		t.Status = "done"
+		t.Status = StatusDone
 	}
+	t.Modified = time.Now()
 }
 
 // Clone creates a deep copy of the todo.
@@ -67,7 +76,6 @@ func (t *Todo) Clone() *Todo {
 // Clone creates a deep copy of the collection.
 func (c *Collection) Clone() *Collection {
 	clone := &Collection{
-		Path:  c.Path,
 		Todos: make([]*Todo, len(c.Todos)),
 	}
 	for i, todo := range c.Todos {

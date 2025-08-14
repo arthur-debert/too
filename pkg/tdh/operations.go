@@ -28,7 +28,7 @@ func RemoveAtIndex(c *models.Collection, item int) {
 func RemoveFinishedTodos(c *models.Collection) int {
 	var activeTodos []*models.Todo
 	for _, todo := range c.Todos {
-		if todo.Status != "done" {
+		if todo.Status != models.StatusDone {
 			activeTodos = append(activeTodos, todo)
 		}
 	}

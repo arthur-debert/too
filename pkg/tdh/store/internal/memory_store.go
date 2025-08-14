@@ -15,7 +15,7 @@ type MemoryStore struct {
 // NewMemoryStore creates a new MemoryStore.
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		Collection: models.NewCollection(""),
+		Collection: models.NewCollection(),
 	}
 }
 
