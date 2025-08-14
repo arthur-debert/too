@@ -11,7 +11,7 @@ import (
 var toggleCmd = &cobra.Command{
 	Use:     "toggle <id>",
 	Aliases: []string{"t"},
-	Short:   "Toggle the status of a todo",
+	Short:   "Toggle the status of a todo (alias: t)",
 	Long:    `Toggle the status of a todo between pending and done.`,
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

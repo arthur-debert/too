@@ -11,7 +11,7 @@ import (
 var searchCmd = &cobra.Command{
 	Use:     "search <query>",
 	Aliases: []string{"s"},
-	Short:   "Search for todos",
+	Short:   "Search for todos (alias: s)",
 	Long:    `Search for todos containing the specified text.`,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

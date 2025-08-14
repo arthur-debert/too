@@ -11,7 +11,7 @@ import (
 var reorderCmd = &cobra.Command{
 	Use:     "reorder <id1> <id2>",
 	Aliases: []string{"r"},
-	Short:   "Swap the position of two todos",
+	Short:   "Swap the position of two todos (alias: r)",
 	Long:    `Swap the position of two todos by their IDs.`,
 	Args:    cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {

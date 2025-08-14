@@ -14,7 +14,7 @@ var (
 var listCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls"},
-	Short:   "List all todos",
+	Short:   "List all todos (alias: ls)",
 	Long:    `List all todos in the collection.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag

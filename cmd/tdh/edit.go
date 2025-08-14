@@ -12,7 +12,7 @@ import (
 var editCmd = &cobra.Command{
 	Use:     "edit <id> <text>",
 	Aliases: []string{"modify", "m", "e"},
-	Short:   "Edit the text of an existing todo",
+	Short:   "Edit the text of an existing todo (aliases: modify, m, e)",
 	Long:    `Edit the text of an existing todo by its ID.`,
 	Args:    cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
