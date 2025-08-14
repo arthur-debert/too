@@ -96,7 +96,8 @@ func MakeOutput(t *models.Todo, useColor bool) {
 
 // Renderer handles output formatting for tdh commands
 type Renderer struct {
-	writer io.Writer
+	writer           io.Writer
+	templateRenderer *TemplateRenderer
 }
 
 // NewRenderer creates a new renderer
@@ -104,7 +105,14 @@ func NewRenderer(w io.Writer) *Renderer {
 	if w == nil {
 		w = os.Stdout
 	}
-	return &Renderer{writer: w}
+
+	// Try to create template renderer
+	templateRenderer, _ := NewTemplateRenderer(w, true)
+
+	return &Renderer{
+		writer:           w,
+		templateRenderer: templateRenderer,
+	}
 }
 
 // RenderInit renders the init command result
@@ -210,10 +218,20 @@ func (r *Renderer) RenderList(result *tdh.ListResult) error {
 		return err
 	}
 
-	// Optional: render with a template if needed
-	// For now, use simple output
-	for _, todo := range result.Todos {
-		r.renderTodo(todo)
+	// Use template renderer if available
+	if r.templateRenderer != nil {
+		for _, todo := range result.Todos {
+			if err := r.templateRenderer.Render("todo_item", todo); err != nil {
+				// Fallback to old renderer on error
+				r.renderTodo(todo)
+			}
+			_, _ = fmt.Fprintln(r.writer)
+		}
+	} else {
+		// Fallback to old rendering
+		for _, todo := range result.Todos {
+			r.renderTodo(todo)
+		}
 	}
 
 	_, err := fmt.Fprintf(r.writer, "\n%d todo(s), %d done\n",
