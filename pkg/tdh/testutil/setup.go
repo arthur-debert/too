@@ -74,3 +74,39 @@ func TempDir(t *testing.T) string {
 	t.Helper()
 	return t.TempDir()
 }
+
+// CreateNestedStore creates a file-based store with a nested todo structure for testing.
+// The created structure looks like:
+//  1. Parent todo
+//     1.1 Sub-task 1.1
+//     1.2 Sub-task 1.2
+//     1.2.1 Grandchild 1.2.1
+//  2. Another top-level todo
+func CreateNestedStore(t *testing.T) store.Store {
+	t.Helper()
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.json")
+	s := store.NewStore(dbPath)
+
+	collection := models.NewCollection()
+
+	// Create parent todo
+	parent, _ := collection.CreateTodo("Parent todo", "")
+
+	// Create sub-tasks
+	_, _ = collection.CreateTodo("Sub-task 1.1", parent.ID)
+	subTask2, _ := collection.CreateTodo("Sub-task 1.2", parent.ID)
+
+	// Create grandchild
+	_, _ = collection.CreateTodo("Grandchild 1.2.1", subTask2.ID)
+
+	// Create another top-level todo
+	_, _ = collection.CreateTodo("Another top-level todo", "")
+
+	if err := s.Save(collection); err != nil {
+		t.Fatalf("failed to save collection: %v", err)
+	}
+
+	return s
+}

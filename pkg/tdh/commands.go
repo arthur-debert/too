@@ -53,9 +53,9 @@ func Modify(position int, newText string, opts ModifyOptions) (*ModifyResult, er
 	return cmdModify.Execute(position, newText, opts)
 }
 
-// Toggle toggles the status of a todo by position
-func Toggle(position int, opts ToggleOptions) (*ToggleResult, error) {
-	return cmdToggle.Execute(position, opts)
+// Toggle toggles the status of a todo by position path
+func Toggle(positionPath string, opts ToggleOptions) (*ToggleResult, error) {
+	return cmdToggle.Execute(positionPath, opts)
 }
 
 // Clean removes finished todos from the collection
