@@ -23,7 +23,7 @@ func NewJSONFileStore(path string) *JSONFileStore {
 
 // Load reads the collection from the JSON file.
 func (s *JSONFileStore) Load() (*models.Collection, error) {
-	collection := models.NewCollection(s.PathValue)
+	collection := models.NewCollection()
 
 	file, err := os.OpenFile(s.PathValue, os.O_RDONLY, 0600)
 	if err != nil {

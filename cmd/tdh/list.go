@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/arthur-debert/tdh/pkg/tdh"
-	"github.com/arthur-debert/tdh/pkg/tdh/display"
+	"github.com/arthur-debert/tdh/pkg/tdh/output"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ var listCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer := display.NewRenderer(nil)
+		renderer := output.NewRenderer(nil)
 		return renderer.RenderList(result)
 	},
 }

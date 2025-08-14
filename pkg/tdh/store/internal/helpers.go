@@ -7,7 +7,7 @@ import "github.com/arthur-debert/tdh/pkg/tdh/models"
 func CountTodos(todos []*models.Todo) (totalCount, doneCount int) {
 	totalCount = len(todos)
 	for _, todo := range todos {
-		if todo.Status == "done" {
+		if todo.Status == models.StatusDone {
 			doneCount++
 		}
 	}

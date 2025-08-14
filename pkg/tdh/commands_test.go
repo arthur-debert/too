@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
+	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,15 +56,23 @@ func TestToggleCommand(t *testing.T) {
 	toggleResult, err := tdh.Toggle(int(addResult.Todo.ID), toggleOpts)
 
 	require.NoError(t, err)
-	assert.Equal(t, "done", toggleResult.NewStatus)
+	assert.Equal(t, string(models.StatusDone), toggleResult.NewStatus)
 
 	// Verify it was saved
 	s := store.NewStore(dbPath)
 	collection, err := s.Load()
 	require.NoError(t, err)
-	found, err := tdh.Find(collection, int(addResult.Todo.ID))
-	require.NoError(t, err)
-	assert.Equal(t, "done", found.Status)
+
+	// Find the todo by ID
+	var found *models.Todo
+	for _, todo := range collection.Todos {
+		if todo.ID == addResult.Todo.ID {
+			found = todo
+			break
+		}
+	}
+	require.NotNil(t, found, "todo not found")
+	assert.Equal(t, models.StatusDone, found.Status)
 }
 
 func TestCleanCommand(t *testing.T) {

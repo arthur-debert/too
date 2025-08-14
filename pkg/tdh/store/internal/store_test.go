@@ -76,7 +76,7 @@ func TestJSONFileStore_Save(t *testing.T) {
 
 		dbPath := filepath.Join(dir, "test.json")
 		store := internal.NewJSONFileStore(dbPath)
-		collection := models.NewCollection(dbPath)
+		collection := models.NewCollection()
 		collection.CreateTodo("My new todo")
 
 		err = store.Save(collection)
@@ -101,7 +101,7 @@ func TestJSONFileStore_Update(t *testing.T) {
 		store := internal.NewJSONFileStore(dbPath)
 
 		// Initial save
-		err = store.Save(models.NewCollection(dbPath))
+		err = store.Save(models.NewCollection())
 		require.NoError(t, err)
 
 		var todo *models.Todo
@@ -163,7 +163,7 @@ func TestMemoryStore(t *testing.T) {
 		_, err := store.Load()
 		assert.Error(t, err)
 
-		err = store.Save(models.NewCollection(""))
+		err = store.Save(models.NewCollection())
 		assert.Error(t, err)
 
 		err = store.Update(func(c *models.Collection) error { return nil })
@@ -212,7 +212,7 @@ func TestJSONFileStore_ErrorHandling(t *testing.T) {
 	t.Run("should return descriptive error when save fails", func(t *testing.T) {
 		// Use a non-existent directory for the store path
 		store := internal.NewJSONFileStore("/non-existent-dir/todos.json")
-		collection := models.NewCollection("")
+		collection := models.NewCollection()
 
 		err := store.Save(collection)
 
@@ -232,7 +232,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 		store := internal.NewJSONFileStore(dbPath)
 
 		// Create initial collection with one todo
-		collection := models.NewCollection(dbPath)
+		collection := models.NewCollection()
 		todo1 := collection.CreateTodo("Original todo")
 		err = store.Save(collection)
 		require.NoError(t, err)
@@ -259,7 +259,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 		store := internal.NewMemoryStore()
 
 		// Create initial collection with one todo
-		collection := models.NewCollection("")
+		collection := models.NewCollection()
 		todo1 := collection.CreateTodo("Original todo")
 		err := store.Save(collection)
 		require.NoError(t, err)
@@ -286,7 +286,7 @@ func TestStore_TransactionRollback(t *testing.T) {
 		store := internal.NewMemoryStore()
 
 		// Create initial collection with one todo
-		collection := models.NewCollection("")
+		collection := models.NewCollection()
 		collection.CreateTodo("Original todo")
 		err := store.Save(collection)
 		require.NoError(t, err)
@@ -355,7 +355,6 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 		dbPath := filepath.Join(dir, "test.json")
 		store := internal.NewJSONFileStore(dbPath)
 		collection := &models.Collection{
-			Path:  dbPath,
 			Todos: nil,
 		}
 
@@ -387,7 +386,7 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		store := internal.NewJSONFileStore(dbPath)
-		collection := models.NewCollection(dbPath)
+		collection := models.NewCollection()
 		collection.CreateTodo("Test")
 
 		// This should fail during temp file creation
@@ -406,7 +405,7 @@ func TestStore_Find(t *testing.T) {
 	for name, s := range stores {
 		t.Run(name, func(t *testing.T) {
 			// Setup initial data
-			collection := models.NewCollection("")
+			collection := models.NewCollection()
 			collection.CreateTodo("Buy milk")
 			doneTodo := collection.CreateTodo("Buy eggs")
 			doneTodo.Toggle()
@@ -415,7 +414,7 @@ func TestStore_Find(t *testing.T) {
 			require.NoError(t, err)
 
 			t.Run("should find by status", func(t *testing.T) {
-				doneStatus := "done"
+				doneStatus := string(models.StatusDone)
 				query := store.Query{Status: &doneStatus}
 				results, err := s.Find(query)
 				require.NoError(t, err)
@@ -443,7 +442,7 @@ func TestStore_Find(t *testing.T) {
 
 			t.Run("should combine filters", func(t *testing.T) {
 				text := "milk"
-				pendingStatus := "pending"
+				pendingStatus := string(models.StatusPending)
 				query := store.Query{TextContains: &text, Status: &pendingStatus}
 				results, err := s.Find(query)
 				require.NoError(t, err)
