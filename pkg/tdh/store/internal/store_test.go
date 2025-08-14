@@ -468,3 +468,184 @@ func newTestJSONFileStore(t *testing.T) store.Store {
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return internal.NewJSONFileStore(filepath.Join(dir, "test.json"))
 }
+
+func TestJSONFileStore_NestedTodos(t *testing.T) {
+	t.Run("should save and load nested todos", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-nested-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+		store := internal.NewJSONFileStore(dbPath)
+
+		// Create a collection with nested todos
+		collection := models.NewCollection()
+		parent := collection.CreateTodo("Parent task")
+
+		child1 := &models.Todo{
+			ID:       "child-1",
+			ParentID: parent.ID,
+			Position: 1,
+			Text:     "Child task 1",
+			Status:   models.StatusPending,
+			Modified: parent.Modified,
+			Items:    []*models.Todo{},
+		}
+
+		child2 := &models.Todo{
+			ID:       "child-2",
+			ParentID: parent.ID,
+			Position: 2,
+			Text:     "Child task 2",
+			Status:   models.StatusDone,
+			Modified: parent.Modified,
+			Items:    []*models.Todo{},
+		}
+
+		grandchild := &models.Todo{
+			ID:       "grandchild-1",
+			ParentID: child1.ID,
+			Position: 1,
+			Text:     "Grandchild task",
+			Status:   models.StatusPending,
+			Modified: parent.Modified,
+			Items:    []*models.Todo{},
+		}
+
+		child1.Items = []*models.Todo{grandchild}
+		parent.Items = []*models.Todo{child1, child2}
+
+		// Save the collection
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		// Load it back
+		loaded, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify structure is preserved
+		assert.Len(t, loaded.Todos, 1)
+		assert.Equal(t, "Parent task", loaded.Todos[0].Text)
+		assert.Len(t, loaded.Todos[0].Items, 2)
+
+		// Verify children
+		assert.Equal(t, "Child task 1", loaded.Todos[0].Items[0].Text)
+		assert.Equal(t, "Child task 2", loaded.Todos[0].Items[1].Text)
+		assert.Equal(t, models.StatusDone, loaded.Todos[0].Items[1].Status)
+
+		// Verify grandchild
+		assert.Len(t, loaded.Todos[0].Items[0].Items, 1)
+		assert.Equal(t, "Grandchild task", loaded.Todos[0].Items[0].Items[0].Text)
+
+		// Verify ParentIDs are preserved
+		assert.Equal(t, parent.ID, loaded.Todos[0].Items[0].ParentID)
+		assert.Equal(t, parent.ID, loaded.Todos[0].Items[1].ParentID)
+		assert.Equal(t, child1.ID, loaded.Todos[0].Items[0].Items[0].ParentID)
+	})
+
+	t.Run("should migrate flat todos to nested structure", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-migrate-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+
+		// Write old format data without nested structure
+		oldData := `[
+			{"id": "existing-id-1", "position": 1, "text": "First todo", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
+			{"id": "existing-id-2", "position": 2, "text": "Second todo", "status": "done", "modified": "2024-01-01T00:00:00Z"}
+		]`
+		err = os.WriteFile(dbPath, []byte(oldData), 0600)
+		require.NoError(t, err)
+
+		store := internal.NewJSONFileStore(dbPath)
+		collection, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify migration happened
+		assert.Len(t, collection.Todos, 2)
+
+		// All todos should have Items initialized
+		for _, todo := range collection.Todos {
+			assert.NotNil(t, todo.Items)
+			assert.Empty(t, todo.ParentID) // Top-level todos have empty ParentID
+		}
+
+		// Save and reload to ensure persistence
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		reloaded, err := store.Load()
+		require.NoError(t, err)
+		assert.Len(t, reloaded.Todos, 2)
+		for _, todo := range reloaded.Todos {
+			assert.NotNil(t, todo.Items)
+		}
+	})
+
+	t.Run("should handle deeply nested structures", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-deep-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+		store := internal.NewJSONFileStore(dbPath)
+
+		// Create a 5-level deep structure
+		collection := models.NewCollection()
+		level1 := collection.CreateTodo("Level 1")
+
+		level2 := &models.Todo{
+			ID: "level-2", ParentID: level1.ID, Position: 1,
+			Text: "Level 2", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level3 := &models.Todo{
+			ID: "level-3", ParentID: level2.ID, Position: 1,
+			Text: "Level 3", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level4 := &models.Todo{
+			ID: "level-4", ParentID: level3.ID, Position: 1,
+			Text: "Level 4", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level5 := &models.Todo{
+			ID: "level-5", ParentID: level4.ID, Position: 1,
+			Text: "Level 5", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level4.Items = []*models.Todo{level5}
+		level3.Items = []*models.Todo{level4}
+		level2.Items = []*models.Todo{level3}
+		level1.Items = []*models.Todo{level2}
+
+		// Save and reload
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		loaded, err := store.Load()
+		require.NoError(t, err)
+
+		// Navigate to the deepest level
+		current := loaded.Todos[0]
+		assert.Equal(t, "Level 1", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 2", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 3", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 4", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 5", current.Text)
+		assert.Empty(t, current.Items)
+	})
+}

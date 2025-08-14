@@ -1,7 +1,5 @@
 {{- if .Todos -}}
-{{- range .Todos -}}
-{{template "todo_item.tmpl" .}}
-{{ end -}}
+{{renderNestedTodos .Todos "" 0 -}}
 <count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
 {{- else -}}
 <warning>No todos found</warning>

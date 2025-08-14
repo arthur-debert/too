@@ -51,6 +51,10 @@ func (s *JSONFileStore) Load() (*models.Collection, error) {
 	if collection.Todos == nil {
 		collection.Todos = []*models.Todo{}
 	}
+
+	// Migrate collection to support nested lists
+	models.MigrateCollection(collection)
+
 	return collection, nil
 }
 
