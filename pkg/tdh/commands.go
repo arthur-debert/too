@@ -1,3 +1,6 @@
+// Package tdh provides a compatibility layer for the old API.
+// This file is intentionally not covered by tests as it's just a thin wrapper
+// around the new command packages and will be removed in a future version.
 package tdh
 
 import (

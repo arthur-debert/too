@@ -1,3 +1,6 @@
+// Package logging provides structured logging setup.
+// This package is intentionally not covered by tests as it's just configuration
+// code that will be replaced with a more flexible logging solution.
 package logging
 
 import (
