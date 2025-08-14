@@ -16,11 +16,11 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the first todo's ID
 		collection, _ := store.Load()
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		// Execute modify command
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(int(todoID), "Modified todo text", opts)
+		result, err := modify.Execute(todoPosition, "Modified todo text", opts)
 
 		// Verify result
 		testutil.AssertNoError(t, err)
@@ -32,7 +32,7 @@ func TestModifyCommand(t *testing.T) {
 		// Verify persistence using testutil
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByID(t, collection.Todos, todoID)
+		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
 		assert.Equal(t, "Modified todo text", todo.Text)
 
 		// Ensure other todos are unchanged
@@ -47,11 +47,11 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the todo's ID
 		collection, _ := store.Load()
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		// Modify the todo
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(int(todoID), "Completed task (updated)", opts)
+		result, err := modify.Execute(todoPosition, "Completed task (updated)", opts)
 
 		// Verify status is preserved
 		testutil.AssertNoError(t, err)
@@ -60,7 +60,7 @@ func TestModifyCommand(t *testing.T) {
 		// Verify in persistence
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByID(t, collection.Todos, todoID)
+		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
 		testutil.AssertTodoHasStatus(t, todo, models.StatusDone)
 	})
 
@@ -90,11 +90,11 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the todo's ID
 		collection, _ := store.Load()
-		todoID := collection.Todos[0].ID
+		todoPosition := collection.Todos[0].Position
 
 		// Try to modify with empty text
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(int(todoID), "", opts)
+		result, err := modify.Execute(todoPosition, "", opts)
 
 		// Verify error
 		assert.Error(t, err)
@@ -104,7 +104,7 @@ func TestModifyCommand(t *testing.T) {
 		// Verify no changes were made
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByID(t, collection.Todos, todoID)
+		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
 		assert.Equal(t, "Original text", todo.Text)
 	})
 
@@ -118,11 +118,11 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the second todo's ID
 		collection, _ := store.Load()
-		secondTodoID := collection.Todos[1].ID
+		secondTodoPosition := collection.Todos[1].Position
 
 		// Modify only the second todo
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(int(secondTodoID), "Second todo (modified)", opts)
+		result, err := modify.Execute(secondTodoPosition, "Second todo (modified)", opts)
 
 		// Verify correct todo was modified
 		testutil.AssertNoError(t, err)

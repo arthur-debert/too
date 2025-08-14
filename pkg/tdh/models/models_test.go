@@ -27,7 +27,7 @@ func TestCollection_CreateTodo(t *testing.T) {
 		afterCreate := time.Now()
 
 		assert.NotNil(t, todo)
-		assert.Equal(t, int64(1), todo.ID)
+		assert.Equal(t, 1, todo.Position)
 		assert.Equal(t, "Test todo", todo.Text)
 		assert.Equal(t, models.StatusPending, todo.Status)
 		assert.True(t, todo.Modified.After(beforeCreate) || todo.Modified.Equal(beforeCreate))
@@ -50,25 +50,30 @@ func TestCollection_CreateTodo(t *testing.T) {
 		todo2 := collection.CreateTodo("Second")
 		todo3 := collection.CreateTodo("Third")
 
-		assert.Equal(t, int64(1), todo1.ID)
-		assert.Equal(t, int64(2), todo2.ID)
-		assert.Equal(t, int64(3), todo3.ID)
+		assert.NotEmpty(t, todo1.ID) // Should have UUID
+		assert.NotEmpty(t, todo2.ID)
+		assert.NotEmpty(t, todo3.ID)
+		assert.NotEqual(t, todo1.ID, todo2.ID) // UUIDs should be unique
+		assert.NotEqual(t, todo2.ID, todo3.ID)
+		assert.Equal(t, 1, todo1.Position)
+		assert.Equal(t, 2, todo2.Position)
+		assert.Equal(t, 3, todo3.Position)
 	})
 
 	t.Run("handles gaps in IDs correctly", func(t *testing.T) {
 		collection := models.NewCollection()
 
-		// Manually add todos with non-sequential IDs
+		// Manually add todos with non-sequential positions
 		collection.Todos = []*models.Todo{
-			{ID: 1, Text: "First", Status: models.StatusPending},
-			{ID: 5, Text: "Fifth", Status: models.StatusPending},
-			{ID: 3, Text: "Third", Status: models.StatusPending},
+			{ID: "id-1", Position: 1, Text: "First", Status: models.StatusPending},
+			{ID: "id-2", Position: 5, Text: "Fifth", Status: models.StatusPending},
+			{ID: "id-3", Position: 3, Text: "Third", Status: models.StatusPending},
 		}
 
-		// Create new todo - should get ID 6 (highest + 1)
+		// Create new todo - should get Position 6 (highest + 1)
 		newTodo := collection.CreateTodo("New todo")
 
-		assert.Equal(t, int64(6), newTodo.ID)
+		assert.Equal(t, 6, newTodo.Position)
 	})
 
 	t.Run("handles empty text", func(t *testing.T) {
@@ -77,7 +82,7 @@ func TestCollection_CreateTodo(t *testing.T) {
 		todo := collection.CreateTodo("")
 
 		assert.Equal(t, "", todo.Text)
-		assert.Equal(t, int64(1), todo.ID)
+		assert.Equal(t, 1, todo.Position)
 	})
 
 	t.Run("creates multiple todos with different timestamps", func(t *testing.T) {
@@ -95,7 +100,8 @@ func TestCollection_CreateTodo(t *testing.T) {
 func TestTodo_Toggle(t *testing.T) {
 	t.Run("toggles from pending to done", func(t *testing.T) {
 		todo := &models.Todo{
-			ID:       1,
+			ID:       "test-id-1",
+			Position: 1,
 			Text:     "Test",
 			Status:   models.StatusPending,
 			Modified: time.Now().Add(-time.Hour),
@@ -111,7 +117,8 @@ func TestTodo_Toggle(t *testing.T) {
 
 	t.Run("toggles from done to pending", func(t *testing.T) {
 		todo := &models.Todo{
-			ID:       1,
+			ID:       "test-id-1",
+			Position: 1,
 			Text:     "Test",
 			Status:   models.StatusDone,
 			Modified: time.Now().Add(-time.Hour),
@@ -127,7 +134,8 @@ func TestTodo_Toggle(t *testing.T) {
 
 	t.Run("updates modified time on toggle", func(t *testing.T) {
 		todo := &models.Todo{
-			ID:       1,
+			ID:       "test-id-1",
+			Position: 1,
 			Text:     "Test",
 			Status:   models.StatusPending,
 			Modified: time.Now().Add(-24 * time.Hour), // Yesterday
@@ -147,7 +155,8 @@ func TestTodo_Toggle(t *testing.T) {
 func TestTodo_Clone(t *testing.T) {
 	t.Run("creates exact copy of todo", func(t *testing.T) {
 		original := &models.Todo{
-			ID:       42,
+			ID:       "test-id-42",
+			Position: 42,
 			Text:     "Original todo",
 			Status:   models.StatusDone,
 			Modified: time.Now().Add(-time.Hour),
@@ -163,7 +172,8 @@ func TestTodo_Clone(t *testing.T) {
 
 	t.Run("clone is independent of original", func(t *testing.T) {
 		original := &models.Todo{
-			ID:       1,
+			ID:       "test-id-1",
+			Position: 1,
 			Text:     "Original",
 			Status:   models.StatusPending,
 			Modified: time.Now(),
@@ -174,12 +184,13 @@ func TestTodo_Clone(t *testing.T) {
 		// Modify clone
 		clone.Text = "Modified"
 		clone.Status = models.StatusDone
-		clone.ID = 99
+		clone.ID = "test-id-99"
 
 		// Original should be unchanged
 		assert.Equal(t, "Original", original.Text)
 		assert.Equal(t, models.StatusPending, original.Status)
-		assert.Equal(t, int64(1), original.ID)
+		assert.Equal(t, "test-id-1", original.ID)
+		assert.Equal(t, 1, original.Position)
 	})
 }
 

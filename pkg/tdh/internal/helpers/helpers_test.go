@@ -16,11 +16,12 @@ func TestFind(t *testing.T) {
 		_ = collection.CreateTodo("Third")
 
 		// Find middle todo
-		found, err := helpers.Find(collection, int(todo2.ID))
+		found, err := helpers.Find(collection, todo2.Position)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, found)
 		assert.Equal(t, todo2.ID, found.ID)
+		assert.Equal(t, todo2.Position, found.Position)
 		assert.Equal(t, "Second", found.Text)
 	})
 
@@ -44,7 +45,7 @@ func TestFind(t *testing.T) {
 		collection.CreateTodo("Second")
 		todo3 := collection.CreateTodo("Third")
 
-		found, err := helpers.Find(collection, int(todo3.ID))
+		found, err := helpers.Find(collection, todo3.Position)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, found)
@@ -61,7 +62,7 @@ func TestFind(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, found)
-		assert.Contains(t, err.Error(), "todo with id 999 was not found")
+		assert.Contains(t, err.Error(), "todo with position 999 was not found")
 	})
 
 	t.Run("returns error for negative ID", func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestFind(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, found)
-		assert.Contains(t, err.Error(), "todo with id -1 was not found")
+		assert.Contains(t, err.Error(), "todo with position -1 was not found")
 	})
 
 	t.Run("returns error for zero ID", func(t *testing.T) {
@@ -83,7 +84,7 @@ func TestFind(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, found)
-		assert.Contains(t, err.Error(), "todo with id 0 was not found")
+		assert.Contains(t, err.Error(), "todo with position 0 was not found")
 	})
 
 	t.Run("works with empty collection", func(t *testing.T) {
@@ -93,23 +94,24 @@ func TestFind(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, found)
-		assert.Contains(t, err.Error(), "todo with id 1 was not found")
+		assert.Contains(t, err.Error(), "todo with position 1 was not found")
 	})
 
 	t.Run("handles non-sequential IDs", func(t *testing.T) {
 		collection := models.NewCollection()
-		// Manually create todos with non-sequential IDs
+		// Manually create todos with non-sequential positions
 		collection.Todos = []*models.Todo{
-			{ID: 5, Text: "Fifth", Status: models.StatusPending},
-			{ID: 10, Text: "Tenth", Status: models.StatusPending},
-			{ID: 3, Text: "Third", Status: models.StatusPending},
+			{ID: "id-1", Position: 5, Text: "Fifth", Status: models.StatusPending},
+			{ID: "id-2", Position: 10, Text: "Tenth", Status: models.StatusPending},
+			{ID: "id-3", Position: 3, Text: "Third", Status: models.StatusPending},
 		}
 
-		// Should find ID 10
+		// Should find position 10
 		found, err := helpers.Find(collection, 10)
 		assert.NoError(t, err)
 		assert.NotNil(t, found)
-		assert.Equal(t, int64(10), found.ID)
+		assert.Equal(t, "id-2", found.ID)
+		assert.Equal(t, 10, found.Position)
 		assert.Equal(t, "Tenth", found.Text)
 
 		// Should not find ID 7
@@ -118,18 +120,19 @@ func TestFind(t *testing.T) {
 		assert.Nil(t, found)
 	})
 
-	t.Run("handles very large ID", func(t *testing.T) {
+	t.Run("handles very large position", func(t *testing.T) {
 		collection := models.NewCollection()
-		// Create todo with large ID
+		// Create todo with large position
 		collection.Todos = []*models.Todo{
-			{ID: 2147483647, Text: "Max int32", Status: models.StatusPending}, // Max int32
+			{ID: "id-large", Position: 2147483647, Text: "Max int32", Status: models.StatusPending}, // Max int32
 		}
 
 		found, err := helpers.Find(collection, 2147483647)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, found)
-		assert.Equal(t, int64(2147483647), found.ID)
+		assert.Equal(t, "id-large", found.ID)
+		assert.Equal(t, 2147483647, found.Position)
 		assert.Equal(t, "Max int32", found.Text)
 	})
 
@@ -137,7 +140,7 @@ func TestFind(t *testing.T) {
 		collection := models.NewCollection()
 		todo := collection.CreateTodo("Original")
 
-		found, err := helpers.Find(collection, int(todo.ID))
+		found, err := helpers.Find(collection, todo.Position)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, found)

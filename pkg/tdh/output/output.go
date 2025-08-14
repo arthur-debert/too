@@ -46,9 +46,9 @@ func (r *TodoRenderer) RenderTodo(t *models.Todo) {
 		symbol = "✕"
 	}
 
-	// Right-align the ID with padding
-	spaceCount := 6 - len(strconv.FormatInt(t.ID, 10))
-	_, _ = fmt.Fprint(r.writer, strings.Repeat(" ", spaceCount), t.ID, " | ")
+	// Right-align the Position with padding
+	spaceCount := 6 - len(strconv.Itoa(t.Position))
+	_, _ = fmt.Fprint(r.writer, strings.Repeat(" ", spaceCount), t.Position, " | ")
 
 	// Print status symbol with color
 	if r.useColor {
@@ -115,13 +115,13 @@ func (r *Renderer) RenderInit(result *tdh.InitResult) error {
 
 // RenderAdd renders the add command result
 func (r *Renderer) RenderAdd(result *tdh.AddResult) error {
-	_, err := fmt.Fprintf(r.writer, "Added todo #%d: %s\n", result.Todo.ID, result.Todo.Text)
+	_, err := fmt.Fprintf(r.writer, "Added todo #%d: %s\n", result.Todo.Position, result.Todo.Text)
 	return err
 }
 
 // RenderModify renders the modify command result
 func (r *Renderer) RenderModify(result *tdh.ModifyResult) error {
-	if _, err := fmt.Fprintf(r.writer, "Modified todo #%d\n", result.Todo.ID); err != nil {
+	if _, err := fmt.Fprintf(r.writer, "Modified todo #%d\n", result.Todo.Position); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintf(r.writer, "  Old: %s\n", result.OldText); err != nil {
@@ -134,7 +134,7 @@ func (r *Renderer) RenderModify(result *tdh.ModifyResult) error {
 // RenderToggle renders the toggle command result
 func (r *Renderer) RenderToggle(result *tdh.ToggleResult) error {
 	_, err := fmt.Fprintf(r.writer, "Toggled todo #%d from %s to %s\n",
-		result.Todo.ID, result.OldStatus, result.NewStatus)
+		result.Todo.Position, result.OldStatus, result.NewStatus)
 	return err
 }
 
@@ -149,7 +149,7 @@ func (r *Renderer) RenderClean(result *tdh.CleanResult) error {
 			return err
 		}
 		for _, todo := range result.RemovedTodos {
-			if _, err := fmt.Fprintf(r.writer, "  - #%d: %s\n", todo.ID, todo.Text); err != nil {
+			if _, err := fmt.Fprintf(r.writer, "  - #%d: %s\n", todo.Position, todo.Text); err != nil {
 				return err
 			}
 		}
@@ -161,7 +161,7 @@ func (r *Renderer) RenderClean(result *tdh.CleanResult) error {
 // RenderReorder renders the reorder command result
 func (r *Renderer) RenderReorder(result *tdh.ReorderResult) error {
 	_, err := fmt.Fprintf(r.writer, "Swapped todos #%d and #%d\n",
-		result.TodoA.ID, result.TodoB.ID)
+		result.TodoA.Position, result.TodoB.Position)
 	return err
 }
 

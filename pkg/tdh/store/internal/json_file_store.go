@@ -23,6 +23,9 @@ func NewJSONFileStore(path string) *JSONFileStore {
 
 // Load reads the collection from the JSON file.
 func (s *JSONFileStore) Load() (*models.Collection, error) {
+	// Try to migrate if needed (best effort, don't fail on migration errors)
+	_ = MigrateToUUIDAndPosition(s.PathValue)
+
 	collection := models.NewCollection()
 
 	file, err := os.OpenFile(s.PathValue, os.O_RDONLY, 0600)

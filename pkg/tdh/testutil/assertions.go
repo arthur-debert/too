@@ -66,7 +66,7 @@ func AssertCollectionSize(t *testing.T, collection *models.Collection, expectedS
 
 // AssertTodoByID finds a todo by ID and verifies it exists.
 // Returns the todo if found, allowing further assertions.
-func AssertTodoByID(t *testing.T, todos []*models.Todo, id int64) *models.Todo {
+func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo {
 	t.Helper()
 
 	for _, todo := range todos {
@@ -75,7 +75,22 @@ func AssertTodoByID(t *testing.T, todos []*models.Todo, id int64) *models.Todo {
 		}
 	}
 
-	t.Errorf("todo with ID %d not found", id)
+	t.Errorf("todo with ID %q not found", id)
+	return nil
+}
+
+// AssertTodoByPosition finds a todo by position and verifies it exists.
+// Returns the todo if found, allowing further assertions.
+func AssertTodoByPosition(t *testing.T, todos []*models.Todo, position int) *models.Todo {
+	t.Helper()
+
+	for _, todo := range todos {
+		if todo.Position == position {
+			return todo
+		}
+	}
+
+	t.Errorf("todo with position %d not found", position)
 	return nil
 }
 

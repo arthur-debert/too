@@ -6,13 +6,12 @@ import (
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 )
 
-// Find finds a todo by its ID in a collection.
-func Find(c *models.Collection, id int) (*models.Todo, error) {
-	id64 := int64(id)
+// Find finds a todo by its position in a collection.
+func Find(c *models.Collection, position int) (*models.Todo, error) {
 	for _, todo := range c.Todos {
-		if id64 == todo.ID {
+		if position == todo.Position {
 			return todo, nil
 		}
 	}
-	return nil, fmt.Errorf("todo with id %d was not found", id)
+	return nil, fmt.Errorf("todo with position %d was not found", position)
 }

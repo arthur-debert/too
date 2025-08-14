@@ -21,12 +21,12 @@ func TestReorderCommand(t *testing.T) {
 
 		// Get the collection to verify initial state
 		collection, _ := store.Load()
-		firstID := collection.Todos[0].ID
-		thirdID := collection.Todos[2].ID
+		firstPosition := collection.Todos[0].Position
+		thirdPosition := collection.Todos[2].Position
 
 		// Execute reorder command to swap first and third
 		opts := reorder.Options{CollectionPath: store.Path()}
-		result, err := reorder.Execute(int(firstID), int(thirdID), opts)
+		result, err := reorder.Execute(int(firstPosition), int(thirdPosition), opts)
 
 		// Verify result
 		testutil.AssertNoError(t, err)
@@ -41,9 +41,9 @@ func TestReorderCommand(t *testing.T) {
 		// After swap, the IDs are also swapped, so:
 		// Position 0 should have third todo with first ID
 		// Position 2 should have first todo with third ID
-		assert.Equal(t, firstID, collection.Todos[0].ID)
+		assert.Equal(t, firstPosition, collection.Todos[0].Position)
 		assert.Equal(t, "Third todo", collection.Todos[0].Text)
-		assert.Equal(t, thirdID, collection.Todos[2].ID)
+		assert.Equal(t, thirdPosition, collection.Todos[2].Position)
 		assert.Equal(t, "First todo", collection.Todos[2].Text)
 
 		// Other todos should remain unchanged
@@ -61,12 +61,12 @@ func TestReorderCommand(t *testing.T) {
 
 		// Get IDs
 		collection, _ := store.Load()
-		idA := collection.Todos[0].ID
-		idB := collection.Todos[1].ID
+		posA := collection.Todos[0].Position
+		posB := collection.Todos[1].Position
 
 		// Swap adjacent todos
 		opts := reorder.Options{CollectionPath: store.Path()}
-		result, err := reorder.Execute(int(idA), int(idB), opts)
+		result, err := reorder.Execute(posA, posB, opts)
 
 		// Verify
 		testutil.AssertNoError(t, err)
@@ -77,9 +77,9 @@ func TestReorderCommand(t *testing.T) {
 		testutil.AssertNoError(t, err)
 
 		// After swap: B, A, C (with swapped IDs)
-		assert.Equal(t, idA, collection.Todos[0].ID)
+		assert.Equal(t, posA, collection.Todos[0].Position)
 		assert.Equal(t, "Todo B", collection.Todos[0].Text)
-		assert.Equal(t, idB, collection.Todos[1].ID)
+		assert.Equal(t, posB, collection.Todos[1].Position)
 		assert.Equal(t, "Todo A", collection.Todos[1].Text)
 		assert.Equal(t, "Todo C", collection.Todos[2].Text)
 	})
@@ -94,12 +94,12 @@ func TestReorderCommand(t *testing.T) {
 
 		// Get IDs
 		collection, _ := store.Load()
-		pendingID := collection.Todos[0].ID
-		doneID := collection.Todos[1].ID
+		pendingPosition := collection.Todos[0].Position
+		donePosition := collection.Todos[1].Position
 
 		// Swap pending and done todos
 		opts := reorder.Options{CollectionPath: store.Path()}
-		_, err := reorder.Execute(int(pendingID), int(doneID), opts)
+		_, err := reorder.Execute(pendingPosition, donePosition, opts)
 
 		// Verify status preservation
 		testutil.AssertNoError(t, err)
@@ -122,11 +122,11 @@ func TestReorderCommand(t *testing.T) {
 
 		// Get valid ID
 		collection, _ := store.Load()
-		validID := collection.Todos[0].ID
+		validPosition := collection.Todos[0].Position
 
 		// Try to reorder with non-existent ID
 		opts := reorder.Options{CollectionPath: store.Path()}
-		result, err := reorder.Execute(999, int(validID), opts)
+		result, err := reorder.Execute(999, int(validPosition), opts)
 
 		// Verify error
 		assert.Error(t, err)
@@ -146,11 +146,11 @@ func TestReorderCommand(t *testing.T) {
 
 		// Get valid ID
 		collection, _ := store.Load()
-		validID := collection.Todos[0].ID
+		validPosition := collection.Todos[0].Position
 
 		// Try to reorder with non-existent ID
 		opts := reorder.Options{CollectionPath: store.Path()}
-		result, err := reorder.Execute(int(validID), 999, opts)
+		result, err := reorder.Execute(int(validPosition), 999, opts)
 
 		// Verify error
 		assert.Error(t, err)
@@ -164,11 +164,11 @@ func TestReorderCommand(t *testing.T) {
 
 		// Get ID
 		collection, _ := store.Load()
-		todoID := collection.Todos[1].ID
+		todoPosition := collection.Todos[1].Position
 
 		// Try to swap todo with itself
 		opts := reorder.Options{CollectionPath: store.Path()}
-		result, err := reorder.Execute(int(todoID), int(todoID), opts)
+		result, err := reorder.Execute(int(todoPosition), int(todoPosition), opts)
 
 		// Should succeed (no-op)
 		testutil.AssertNoError(t, err)

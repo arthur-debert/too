@@ -32,7 +32,8 @@ func TestJSONFileStore_Load(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection.Todos, 1)
-		assert.Equal(t, int64(1), collection.Todos[0].ID)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.NotEmpty(t, collection.Todos[0].ID) // Should have UUID
 	})
 
 	t.Run("should return empty collection if file does not exist", func(t *testing.T) {
