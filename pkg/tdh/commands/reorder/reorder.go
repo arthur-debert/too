@@ -19,7 +19,7 @@ type Result struct {
 // Execute reorders todos by sorting them by their current position and reassigning sequential positions
 func Execute(opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
-	var reorderedTodos []*models.Todo
+	var finalCollection *models.Collection
 	var originalPositions map[string]int
 
 	err := s.Update(func(collection *models.Collection) error {
@@ -32,9 +32,8 @@ func Execute(opts Options) (*Result, error) {
 		// Use the collection's Reorder method
 		collection.Reorder()
 
-		// Make a copy of the todos for the result
-		reorderedTodos = make([]*models.Todo, len(collection.Todos))
-		copy(reorderedTodos, collection.Todos)
+		// Store reference to the collection (safe because Update works on a clone)
+		finalCollection = collection
 		return nil
 	})
 
@@ -44,7 +43,7 @@ func Execute(opts Options) (*Result, error) {
 
 	// Calculate how many todos had their position changed
 	count := 0
-	for _, todo := range reorderedTodos {
+	for _, todo := range finalCollection.Todos {
 		if originalPos, exists := originalPositions[todo.ID]; exists && originalPos != todo.Position {
 			count++
 		}
@@ -52,6 +51,6 @@ func Execute(opts Options) (*Result, error) {
 
 	return &Result{
 		ReorderedCount: count,
-		Todos:          reorderedTodos,
+		Todos:          finalCollection.Todos,
 	}, nil
 }
