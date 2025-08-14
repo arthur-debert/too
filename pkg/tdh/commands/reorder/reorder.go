@@ -20,11 +20,18 @@ type Result struct {
 func Execute(opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
 	var reorderedTodos []*models.Todo
-	var count int
+	var originalPositions map[string]int
 
 	err := s.Update(func(collection *models.Collection) error {
+		// Store original positions by ID to calculate changes
+		originalPositions = make(map[string]int)
+		for _, todo := range collection.Todos {
+			originalPositions[todo.ID] = todo.Position
+		}
+
 		// Use the collection's Reorder method
-		count = collection.Reorder()
+		collection.Reorder()
+
 		// Make a copy of the todos for the result
 		reorderedTodos = make([]*models.Todo, len(collection.Todos))
 		copy(reorderedTodos, collection.Todos)
@@ -33,6 +40,14 @@ func Execute(opts Options) (*Result, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Calculate how many todos had their position changed
+	count := 0
+	for _, todo := range reorderedTodos {
+		if originalPos, exists := originalPositions[todo.ID]; exists && originalPos != todo.Position {
+			count++
+		}
 	}
 
 	return &Result{

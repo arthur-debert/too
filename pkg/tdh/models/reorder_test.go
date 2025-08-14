@@ -17,9 +17,8 @@ func TestReorderTodos(t *testing.T) {
 			{ID: "4", Position: 10, Text: "Fourth"},
 		}
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 3, count) // All except the first one should be reordered
 		assert.Equal(t, 1, todos[0].Position)
 		assert.Equal(t, 2, todos[1].Position)
 		assert.Equal(t, 3, todos[2].Position)
@@ -33,9 +32,8 @@ func TestReorderTodos(t *testing.T) {
 			{ID: "3", Position: 3, Text: "Third"},
 		}
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 0, count)
 		assert.Equal(t, 1, todos[0].Position)
 		assert.Equal(t, 2, todos[1].Position)
 		assert.Equal(t, 3, todos[2].Position)
@@ -50,9 +48,8 @@ func TestReorderTodos(t *testing.T) {
 			{ID: "2", Position: 3, Text: "Second"},
 		}
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 3, count) // Positions 3->2, 5->3, 8->4
 		// Verify order and positions
 		assert.Equal(t, "First", todos[0].Text)
 		assert.Equal(t, 1, todos[0].Position)
@@ -67,9 +64,8 @@ func TestReorderTodos(t *testing.T) {
 	t.Run("handles empty slice", func(t *testing.T) {
 		var todos []*models.Todo
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 0, count)
 		assert.Len(t, todos, 0)
 	})
 
@@ -78,9 +74,8 @@ func TestReorderTodos(t *testing.T) {
 			{ID: "1", Position: 5, Text: "Single"},
 		}
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 1, count) // Position changed from 5 to 1
 		assert.Equal(t, 1, todos[0].Position)
 	})
 
@@ -93,9 +88,8 @@ func TestReorderTodos(t *testing.T) {
 			{ID: "D", Position: 2, Text: "Todo D"},
 		}
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 1, count) // Only C needs new position (from 3 to 4)
 		// B(1), D(2), A(3), C(3) -> B(1), D(2), A(3), C(4)
 		assert.Equal(t, "Todo B", todos[0].Text)
 		assert.Equal(t, 1, todos[0].Position)
@@ -119,9 +113,8 @@ func TestReorderTodos(t *testing.T) {
 		}
 		todos := []*models.Todo{todo}
 
-		count := models.ReorderTodos(todos)
+		models.ReorderTodos(todos)
 
-		assert.Equal(t, 1, count)
 		assert.Equal(t, 1, todo.Position) // Only position changed
 		assert.Equal(t, "test-id", todo.ID)
 		assert.Equal(t, "Test todo", todo.Text)
@@ -139,9 +132,8 @@ func TestCollectionReorder(t *testing.T) {
 			},
 		}
 
-		count := collection.Reorder()
+		collection.Reorder()
 
-		assert.Equal(t, 3, count) // All positions change: 2->1, 5->2, 8->3
 		assert.Equal(t, 1, collection.Todos[0].Position)
 		assert.Equal(t, 2, collection.Todos[1].Position)
 		assert.Equal(t, 3, collection.Todos[2].Position)
@@ -150,9 +142,8 @@ func TestCollectionReorder(t *testing.T) {
 	t.Run("handles empty collection", func(t *testing.T) {
 		collection := models.NewCollection()
 
-		count := collection.Reorder()
+		collection.Reorder()
 
-		assert.Equal(t, 0, count)
 		assert.Len(t, collection.Todos, 0)
 	})
 }
