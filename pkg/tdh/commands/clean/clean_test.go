@@ -1,4 +1,4 @@
-package tdh_test
+package clean_test
 
 import (
 	"os"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
-	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,57 +21,6 @@ func setupTestStore(t *testing.T) (string, func()) {
 		err := os.RemoveAll(dir)
 		require.NoError(t, err)
 	}
-}
-
-func TestAddCommand(t *testing.T) {
-	dbPath, cleanup := setupTestStore(t)
-	defer cleanup()
-
-	opts := tdh.AddOptions{CollectionPath: dbPath}
-	result, err := tdh.Add("My first todo", opts)
-
-	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "My first todo", result.Todo.Text)
-	assert.Equal(t, int64(1), result.Todo.ID)
-
-	// Verify it was saved
-	s := store.NewStore(dbPath)
-	collection, err := s.Load()
-	require.NoError(t, err)
-	assert.Len(t, collection.Todos, 1)
-}
-
-func TestToggleCommand(t *testing.T) {
-	dbPath, cleanup := setupTestStore(t)
-	defer cleanup()
-
-	// Add a todo first
-	addOpts := tdh.AddOptions{CollectionPath: dbPath}
-	addResult, err := tdh.Add("Todo to toggle", addOpts)
-	require.NoError(t, err)
-
-	toggleOpts := tdh.ToggleOptions{CollectionPath: dbPath}
-	toggleResult, err := tdh.Toggle(int(addResult.Todo.ID), toggleOpts)
-
-	require.NoError(t, err)
-	assert.Equal(t, string(models.StatusDone), toggleResult.NewStatus)
-
-	// Verify it was saved
-	s := store.NewStore(dbPath)
-	collection, err := s.Load()
-	require.NoError(t, err)
-
-	// Find the todo by ID
-	var found *models.Todo
-	for _, todo := range collection.Todos {
-		if todo.ID == addResult.Todo.ID {
-			found = todo
-			break
-		}
-	}
-	require.NotNil(t, found, "todo not found")
-	assert.Equal(t, models.StatusDone, found.Status)
 }
 
 func TestCleanCommand(t *testing.T) {
