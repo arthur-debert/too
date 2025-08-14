@@ -21,7 +21,7 @@ type Result struct {
 }
 
 // Execute toggles the status of a todo
-func Execute(id int, opts Options) (*Result, error) {
+func Execute(position int, opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
 	var todo *models.Todo
 	var oldStatus string
@@ -29,7 +29,7 @@ func Execute(id int, opts Options) (*Result, error) {
 
 	err := s.Update(func(collection *models.Collection) error {
 		var err error
-		todo, err = helpers.Find(collection, id)
+		todo, err = helpers.FindByPosition(collection, position)
 		if err != nil {
 			return fmt.Errorf("todo not found: %w", err)
 		}

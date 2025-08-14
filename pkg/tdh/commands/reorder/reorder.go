@@ -21,16 +21,16 @@ type Result struct {
 }
 
 // Execute swaps the position of two todos
-func Execute(idA, idB int, opts Options) (*Result, error) {
+func Execute(positionA, positionB int, opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
 	var todoA, todoB *models.Todo
 
 	err := s.Update(func(collection *models.Collection) error {
-		if err := swap(collection, idA, idB); err != nil {
+		if err := swap(collection, positionA, positionB); err != nil {
 			return fmt.Errorf("failed to swap todos: %w", err)
 		}
-		todoA, _ = helpers.Find(collection, idA)
-		todoB, _ = helpers.Find(collection, idB)
+		todoA, _ = helpers.FindByPosition(collection, positionA)
+		todoB, _ = helpers.FindByPosition(collection, positionB)
 		return nil
 	})
 
