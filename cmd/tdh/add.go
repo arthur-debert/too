@@ -41,6 +41,6 @@ var addCmd = &cobra.Command{
 }
 
 func init() {
-	addCmd.Flags().StringVarP(&addParentFlag, "parent", "p", "", "Parent item position (e.g., 1.2)")
+	addCmd.Flags().StringVar(&addParentFlag, "parent", "", "Parent item position (e.g., 1.2)")
 	rootCmd.AddCommand(addCmd)
 }
