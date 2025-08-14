@@ -3,6 +3,7 @@ package testutil
 import (
 	"testing"
 
+	"github.com/arthur-debert/tdh/pkg/tdh/internal/helpers"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
@@ -84,14 +85,14 @@ func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo 
 func AssertTodoByPosition(t *testing.T, todos []*models.Todo, position int) *models.Todo {
 	t.Helper()
 
-	for _, todo := range todos {
-		if todo.Position == position {
-			return todo
-		}
+	// Create a temporary collection to use the centralized helper
+	collection := &models.Collection{Todos: todos}
+	todo, err := helpers.FindByPosition(collection, position)
+	if err != nil {
+		t.Errorf("todo with position %d not found", position)
+		return nil
 	}
-
-	t.Errorf("todo with position %d not found", position)
-	return nil
+	return todo
 }
 
 // AssertError checks that an error occurred and optionally contains a substring.
