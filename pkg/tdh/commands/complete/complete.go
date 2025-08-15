@@ -7,6 +7,7 @@ import (
 	"github.com/arthur-debert/tdh/pkg/logging"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
+	"github.com/rs/zerolog"
 )
 
 // Options contains options for the complete command
@@ -46,8 +47,7 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		// Capture old status
 		oldStatus := string(todo.Status)
 
-		// According to the spec, complete only affects the specified item
-		// No propagation to children
+		// Mark the todo as complete
 		todo.Status = models.StatusDone
 		todo.Modified = time.Now()
 
@@ -56,6 +56,15 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 			Str("oldStatus", oldStatus).
 			Str("newStatus", string(todo.Status)).
 			Msg("marked todo as complete")
+
+		// Bottom-Up Completion: Check if all siblings are complete and propagate up
+		if todo.ParentID != "" {
+			logger.Debug().
+				Str("parentID", todo.ParentID).
+				Msg("checking bottom-up completion for parent")
+
+			checkAndCompleteParent(collection, todo.ParentID, time.Now(), logger)
+		}
 
 		// Auto-reorder after status change
 		collection.Reorder()
@@ -80,4 +89,52 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		Msg("successfully completed todo")
 
 	return result, nil
+}
+
+// checkAndCompleteParent recursively checks if all children of a parent are complete,
+// and if so, marks the parent as complete and continues up the hierarchy
+func checkAndCompleteParent(collection *models.Collection, parentID string, now time.Time, logger zerolog.Logger) {
+	// Find the parent todo
+	parent := collection.FindItemByID(parentID)
+	if parent == nil {
+		logger.Error().
+			Str("parentID", parentID).
+			Msg("parent not found during bottom-up completion")
+		return
+	}
+
+	// Check if all children are complete
+	allChildrenComplete := true
+	for _, child := range parent.Items {
+		if child.Status != models.StatusDone {
+			allChildrenComplete = false
+			break
+		}
+	}
+
+	// If all children are complete, mark parent as complete
+	if allChildrenComplete && len(parent.Items) > 0 {
+		logger.Debug().
+			Str("parentID", parentID).
+			Int("childCount", len(parent.Items)).
+			Msg("all children complete, marking parent as complete")
+
+		parent.Status = models.StatusDone
+		parent.Modified = now
+
+		// Continue up the hierarchy
+		if parent.ParentID != "" {
+			logger.Debug().
+				Str("grandparentID", parent.ParentID).
+				Msg("checking grandparent for bottom-up completion")
+
+			checkAndCompleteParent(collection, parent.ParentID, now, logger)
+		}
+	} else {
+		logger.Debug().
+			Str("parentID", parentID).
+			Bool("allChildrenComplete", allChildrenComplete).
+			Int("childCount", len(parent.Items)).
+			Msg("parent not marked complete")
+	}
 }
