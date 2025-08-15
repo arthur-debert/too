@@ -244,16 +244,6 @@ func (r *LipbamlRenderer) RenderClean(result *tdh.CleanResult) error {
 	return err
 }
 
-// RenderReorder renders the reorder command result using lipbalm
-func (r *LipbamlRenderer) RenderReorder(result *tdh.ReorderResult) error {
-	output, err := r.renderTemplate("reorder_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render reorder result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.writer, output)
-	return err
-}
-
 // RenderSearch renders the search command result using lipbalm
 func (r *LipbamlRenderer) RenderSearch(result *tdh.SearchResult) error {
 	output, err := r.renderTemplate("search_result", result)
@@ -309,6 +299,16 @@ func (r *LipbamlRenderer) RenderMove(result *tdh.MoveResult) error {
 	output, err := r.renderTemplate("move_result", result)
 	if err != nil {
 		return fmt.Errorf("failed to render move result: %w", err)
+	}
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
+}
+
+// RenderSwap renders the swap command result using lipbalm
+func (r *LipbamlRenderer) RenderSwap(result *tdh.SwapResult) error {
+	output, err := r.renderTemplate("swap_result", result)
+	if err != nil {
+		return fmt.Errorf("failed to render swap result: %w", err)
 	}
 	_, err = fmt.Fprintln(r.writer, output)
 	return err

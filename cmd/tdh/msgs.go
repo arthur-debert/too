@@ -36,11 +36,6 @@ const (
 	msgListShort = "List all todos"
 	msgListLong  = "List all todos in the collection."
 
-	// Reorder command
-	msgReorderUse   = "reorder"
-	msgReorderShort = "Reorder todos by sorting and reassigning sequential positions"
-	msgReorderLong  = "Reorder todos by sorting them by their current position and reassigning sequential positions starting from 1."
-
 	// Search command
 	msgSearchUse   = "search <query>"
 	msgSearchShort = "Search for todos"
@@ -87,7 +82,6 @@ var (
 	aliasesEdit     = []string{"modify", "e"}
 	aliasesInit     = []string{"i"}
 	aliasesList     = []string{"ls"}
-	aliasesReorder  = []string{"r"}
 	aliasesSearch   = []string{"s"}
 	aliasesComplete = []string{"c"}
 	aliasesReopen   = []string{"o"}
