@@ -39,20 +39,14 @@ func TestClean_HierarchyAware(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Should have removed 5 items (done parent + 4 descendants)
-		assert.Equal(t, 5, result.RemovedCount)
+		// Should report only the done parent (not pending descendants)
+		assert.Equal(t, 1, result.RemovedCount)
 		assert.Equal(t, 1, result.ActiveCount) // Only "Pending parent" remains
 
-		// Verify removed todos include all descendants
-		removedTexts := make(map[string]bool)
-		for _, todo := range result.RemovedTodos {
-			removedTexts[todo.Text] = true
-		}
-		assert.True(t, removedTexts["Done parent"])
-		assert.True(t, removedTexts["Pending child 1"])
-		assert.True(t, removedTexts["Pending child 2"])
-		assert.True(t, removedTexts["Grandchild 1"])
-		assert.True(t, removedTexts["Grandchild 2"])
+		// Verify only done parent is reported as removed
+		assert.Equal(t, 1, len(result.RemovedTodos))
+		assert.Equal(t, "Done parent", result.RemovedTodos[0].Text)
+		assert.Equal(t, models.StatusDone, result.RemovedTodos[0].Status)
 
 		// Verify only pending parent remains
 		collection, err := s.Load()
@@ -92,8 +86,8 @@ func TestClean_HierarchyAware(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Should remove done children and their descendants
-		assert.Equal(t, 3, result.RemovedCount) // Done child 1 + grandchild + Done child 2
+		// Should report only done children (not their pending descendants)
+		assert.Equal(t, 2, result.RemovedCount) // Done child 1 + Done child 2
 		assert.Equal(t, 2, result.ActiveCount)  // Pending parent + Pending child
 
 		// Verify structure
@@ -134,8 +128,8 @@ func TestClean_HierarchyAware(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Should remove level 2 and all its descendants
-		assert.Equal(t, 4, result.RemovedCount) // Level 2, 3, 4, 5
+		// Should report only level 2 (the done item)
+		assert.Equal(t, 1, result.RemovedCount) // Only Level 2
 		assert.Equal(t, 3, result.ActiveCount)  // Root, Level 1, Level 1 sibling
 
 		// Verify structure
@@ -168,8 +162,8 @@ func TestClean_HierarchyAware(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Should remove everything (both parents and all descendants)
-		assert.Equal(t, 5, result.RemovedCount) // 2 parents + 3 descendants
+		// Should report only the 2 done parents
+		assert.Equal(t, 2, result.RemovedCount) // 2 parents marked as done
 		assert.Equal(t, 0, result.ActiveCount)
 
 		// Verify empty collection

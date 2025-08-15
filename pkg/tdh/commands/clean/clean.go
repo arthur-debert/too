@@ -24,8 +24,8 @@ func Execute(opts Options) (*Result, error) {
 	var activeCount int
 
 	err := s.Update(func(collection *models.Collection) error {
-		// Capture all todos that will be removed (including descendants)
-		removedTodos = findAllDoneTodosRecursive(collection.Todos)
+		// Find all done items (not their pending descendants)
+		removedTodos = findDoneItems(collection.Todos)
 
 		// Remove done todos and their descendants
 		collection.Todos = removeFinishedTodosRecursive(collection.Todos)
@@ -50,43 +50,17 @@ func Execute(opts Options) (*Result, error) {
 	}, nil
 }
 
-// findAllDoneTodosRecursive finds all done todos and their descendants
-func findAllDoneTodosRecursive(todos []*models.Todo) []*models.Todo {
-	var removedTodos []*models.Todo
-
+// findDoneItems finds all done todos (not including their pending descendants)
+func findDoneItems(todos []*models.Todo) []*models.Todo {
+	var doneItems []*models.Todo
 	for _, todo := range todos {
 		if todo.Status == models.StatusDone {
-			// Add this todo and all its descendants
-			removedTodos = append(removedTodos, collectTodoAndDescendants(todo)...)
-		} else {
-			// If not done, still check children for done items
-			removedTodos = append(removedTodos, findAllDoneTodosRecursive(todo.Items)...)
+			doneItems = append(doneItems, todo.Clone())
 		}
+		// Always recurse, as a pending parent can have done children
+		doneItems = append(doneItems, findDoneItems(todo.Items)...)
 	}
-
-	return removedTodos
-}
-
-// collectTodoAndDescendants collects a todo and all its descendants
-func collectTodoAndDescendants(todo *models.Todo) []*models.Todo {
-	// Create a copy to avoid issues when the original is modified
-	todoCopy := *todo
-	todoCopy.Items = make([]*models.Todo, len(todo.Items))
-
-	// Recursively copy all descendants
-	for i, child := range todo.Items {
-		childCopy := *child
-		todoCopy.Items[i] = &childCopy
-	}
-
-	result := []*models.Todo{&todoCopy}
-
-	// Add all descendants
-	for _, child := range todo.Items {
-		result = append(result, collectTodoAndDescendants(child)...)
-	}
-
-	return result
+	return doneItems
 }
 
 // removeFinishedTodosRecursive removes done todos and their descendants
