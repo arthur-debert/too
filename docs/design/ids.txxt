@@ -8,42 +8,82 @@ opaque to end users, and objects are referenced by visually manipulating them
 on a GUI. 
 
 But in the CLI, as one uses text to refer, designing a usable solution is a key
-part of tool's experience. In tdh's domain, this is more salient, as users
-naturally think about lists as numbered , ordered sequences, and have various
-expectations to how these work (i.e. they don't start at zero.)
+part of tool's experience. 
 
-That is the guiding principle here: lists are a continuous sequences of integers,
-starting from 1. For example: 
 
-    1. Groceries
-        1. Milk  
-        2. Bread
-    2. Packing: 
-        1. Winter Coat
-        2. Wine Opener
-        3. Passport
+1. The Mental Model
 
-Whereas the list bellow, while technically correct create a jarring
-experience.
+    In tdh's domain, this is more salient, as users
+    naturally think about lists as numbered , ordered sequences, and have various
+    expectations to how these work (i.e. they don't start at zero.)
 
-    1. Groceries
-        1. Milk  
-        3. Bread
-    7. Packing: 
-        2. Winter Coat
-        4. Wine Opener
-     
-Hence the goal here is how to conciliate the numbered lists mental model and a
-stable internal ID for the application to process items.
+    That is the guiding principle here: lists are a continuous sequences of integers,
+    starting from 1. For example: 
+
+        1. Groceries
+            1. Milk  
+            2. Bread
+        2. Packing: 
+            1. Winter Coat
+            2. Wine Opener
+            3. Passport
+
+    Whereas the list bellow, while technically correct create a jarring
+    experience.
+
+        1. Groceries
+            1. Milk  
+            3. Bread
+        7. Packing: 
+            2. Winter Coat
+            4. Wine Opener
+
+    Hence the goal here is how to conciliate the numbered lists mental model and a
+    stable internal ID for the application to process items.
+
+2. The Breakage , Filtering
+
+    So far, we could just number items as they appear, it couldn't be simpler.
+    The trouble starts once you take filtering / search into account: 
+
+        $ tdh search "Bread"
+        1. Groceries
+            1. Bread
+
+    Above, we are numbering todos as they appear visually. However if we were
+    to $tdh complete 1.1 (that is, complete the first item in the first item),
+    we'd be matching the search results. However, Bread is only the first item
+    in Groceries when searching "bread", without searching that will resolve to
+    Milk. Which item are you completing?
+
+    In short, a naive number as visual position means that what is being
+    filtered is changing that id, and that will not work as many commands
+    require the id to work on.
+
+    Hence, we need a another "stable" id, that won't  change via filtering, but
+    is still sequential and grokkable. Granted, in these cases you do end up win
+    non sequential, 1 based numbers, as in : 
+
+        $ tdh search "Bread"
+            1. Groceries
+                2. Bread
+
+    While not ideal , since the user is actively filtering and searching, it
+    becomes clear that that number is being filtered. Of course, once the
+    number is not a naive increment during render ting, we now need to store
+    this other stable position ID>.
+
+
+            
 
 1. Background
 
     A simple incremental ID system has two main usability problems:
-    
+
         • Non-Sequential Numbers: When items are completed or removed, gaps 
           appear in the list (e.g., 1, 3, 4). This doesn't match the user's 
           mental model of a simple list.
-          
+
         • Ever-Growing Numbers: Over time, IDs become large (e.g., 432), 
           making them cumbersome to type for common commands. This clashes 
           with the goal of being a fast, convenient tool.
@@ -54,13 +94,13 @@ stable internal ID for the application to process items.
     tdh uses a dual identifier system for every todo item:
 
     ID (Internal):
-    
+
         A permanent, stable, unique identifier (UUID). This ID is never 
         shown to the user. It is used internally for any logic that 
         requires an unchanging reference to an item.
 
     Position (External):
-    
+
         A mutable, sequential integer (1, 2, 3...). This is the number 
         the user sees and interacts with in all commands. It represents 
         the item's position in the full, unfiltered list.
@@ -78,13 +118,13 @@ stable internal ID for the application to process items.
     This system affects command behavior as follows:
 
     tdh add "New item":
-    
+
         The new item is assigned a unique internal ID and is appended to 
         the list, receiving the next available Position number (e.g., if 
         there are 3 items, the new one becomes Position 4).
 
     tdh ls and tdh search:
-    
+
         These commands always display the persistent Position number. When 
         a list is filtered or searched, the displayed numbers correspond to 
         their position in the overall list, meaning they may appear 
@@ -93,18 +133,18 @@ stable internal ID for the application to process items.
 
     tdh complete <pos>:
     tdh reopen <pos>:
-    
+
         These commands mark items as complete or pending respectively. The system 
         maintains the current position numbers after the operation.
 
     tdh reorder:
-    
+
         This command explicitly reorders the list to ensure sequential 
         positions starting from 1. This is useful after operations that 
         may create gaps.
 
     tdh clean:
-    
+
         This command removes all completed (done) todos from the list. 
         Positions are maintained for remaining items.
 
@@ -113,3 +153,18 @@ stable internal ID for the application to process items.
     then cleaned up in batch (tdh clean). This prevents accidental 
     deletion of individual items and maintains a history of completed 
     work until explicitly cleaned.
+
+
+4. Interaction With Nested Lists
+
+    Nested lists behave much the same way: 
+
+        - ID (Internal): still a UUID, regardless of nesting.
+
+        - Position (External): the position is relative to the same parent
+
+    The position, in practice becomes like a compound key as in 3.2 : todo
+    position #3, and among st it's  children, position #2.
+G
+    Reordering operations can be trigger only at at one level, and hence are
+    fast to execute.
