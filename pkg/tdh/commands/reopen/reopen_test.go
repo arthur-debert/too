@@ -131,6 +131,20 @@ func TestReopen(t *testing.T) {
 		assert.Contains(t, err.Error(), "todo not found")
 	})
 
+	t.Run("reopen invalid position path format", func(t *testing.T) {
+		// Setup
+		store := testutil.CreateNestedStore(t)
+
+		// Execute - invalid format with non-numeric part
+		opts := reopen.Options{CollectionPath: store.Path()}
+		result, err := reopen.Execute("1.a.2", opts)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "invalid position")
+	})
+
 	t.Run("reopen already pending todo", func(t *testing.T) {
 		// Setup
 		store := testutil.CreatePopulatedStore(t, "Already pending")

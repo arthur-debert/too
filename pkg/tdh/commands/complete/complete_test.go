@@ -117,6 +117,20 @@ func TestComplete(t *testing.T) {
 		assert.Contains(t, err.Error(), "todo not found")
 	})
 
+	t.Run("complete invalid position path format", func(t *testing.T) {
+		// Setup
+		store := testutil.CreateNestedStore(t)
+
+		// Execute - invalid format with non-numeric part
+		opts := complete.Options{CollectionPath: store.Path()}
+		result, err := complete.Execute("1.a.2", opts)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "invalid position")
+	})
+
 	t.Run("complete already done todo", func(t *testing.T) {
 		// Setup
 		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
