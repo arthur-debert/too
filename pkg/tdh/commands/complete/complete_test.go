@@ -94,13 +94,15 @@ func TestComplete(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.Equal(t, models.StatusDone, item.Status)
 
-		// Verify all parents remain pending
-		paths := []string{"1", "1.2"}
-		for _, path := range paths {
-			parent, err := collection.FindItemByPositionPath(path)
-			testutil.AssertNoError(t, err)
-			assert.Equal(t, models.StatusPending, parent.Status, "Parent at %s should remain pending", path)
-		}
+		// Verify bottom-up completion: 1.2 should be done (all children complete)
+		parent12, err := collection.FindItemByPositionPath("1.2")
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, models.StatusDone, parent12.Status, "Parent at 1.2 should be done (bottom-up completion)")
+
+		// But top-level parent should remain pending (not all children complete)
+		parent1, err := collection.FindItemByPositionPath("1")
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, models.StatusPending, parent1.Status, "Parent at 1 should remain pending (1.1 still pending)")
 	})
 
 	t.Run("complete invalid position", func(t *testing.T) {
