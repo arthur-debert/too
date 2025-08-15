@@ -304,6 +304,16 @@ func (r *LipbamlRenderer) RenderReopen(results []*tdh.ReopenResult) error {
 	return nil
 }
 
+// RenderMove renders the move command result using lipbalm
+func (r *LipbamlRenderer) RenderMove(result *tdh.MoveResult) error {
+	output, err := r.renderTemplate("move_result", result)
+	if err != nil {
+		return fmt.Errorf("failed to render move result: %w", err)
+	}
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
+}
+
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
 	output, renderErr := r.renderTemplate("error", err.Error())
