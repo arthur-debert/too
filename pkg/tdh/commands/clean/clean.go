@@ -24,9 +24,14 @@ func Execute(opts Options) (*Result, error) {
 	var activeCount int
 
 	err := s.Update(func(collection *models.Collection) error {
-		// Capture the todos to be removed *before* modifying the slice
-		removedTodos = findDoneTodos(collection.Todos)
-		activeCount = removeFinishedTodos(collection)
+		// Capture all todos that will be removed (including descendants)
+		removedTodos = findAllDoneTodosRecursive(collection.Todos)
+
+		// Remove done todos and their descendants
+		collection.Todos = removeFinishedTodosRecursive(collection.Todos)
+
+		// Count remaining active todos
+		activeCount = countActiveTodos(collection.Todos)
 
 		// Auto-reorder after cleaning
 		collection.Reorder()
@@ -45,29 +50,70 @@ func Execute(opts Options) (*Result, error) {
 	}, nil
 }
 
-// findDoneTodos returns a list of done todos from the given slice.
-// This creates new Todo pointers to avoid issues when the original slice is modified.
-func findDoneTodos(todos []*models.Todo) []*models.Todo {
-	var doneTodos []*models.Todo
+// findAllDoneTodosRecursive finds all done todos and their descendants
+func findAllDoneTodosRecursive(todos []*models.Todo) []*models.Todo {
+	var removedTodos []*models.Todo
+
 	for _, todo := range todos {
 		if todo.Status == models.StatusDone {
-			// Create a copy to avoid issues when the original slice is modified
-			todoCopy := *todo
-			doneTodos = append(doneTodos, &todoCopy)
+			// Add this todo and all its descendants
+			removedTodos = append(removedTodos, collectTodoAndDescendants(todo)...)
+		} else {
+			// If not done, still check children for done items
+			removedTodos = append(removedTodos, findAllDoneTodosRecursive(todo.Items)...)
 		}
 	}
-	return doneTodos
+
+	return removedTodos
 }
 
-// removeFinishedTodos removes all done todos from a collection.
-// Returns the count of remaining active todos.
-func removeFinishedTodos(c *models.Collection) int {
+// collectTodoAndDescendants collects a todo and all its descendants
+func collectTodoAndDescendants(todo *models.Todo) []*models.Todo {
+	// Create a copy to avoid issues when the original is modified
+	todoCopy := *todo
+	todoCopy.Items = make([]*models.Todo, len(todo.Items))
+
+	// Recursively copy all descendants
+	for i, child := range todo.Items {
+		childCopy := *child
+		todoCopy.Items[i] = &childCopy
+	}
+
+	result := []*models.Todo{&todoCopy}
+
+	// Add all descendants
+	for _, child := range todo.Items {
+		result = append(result, collectTodoAndDescendants(child)...)
+	}
+
+	return result
+}
+
+// removeFinishedTodosRecursive removes done todos and their descendants
+func removeFinishedTodosRecursive(todos []*models.Todo) []*models.Todo {
 	var activeTodos []*models.Todo
-	for _, todo := range c.Todos {
+
+	for _, todo := range todos {
 		if todo.Status != models.StatusDone {
-			activeTodos = append(activeTodos, todo)
+			// Keep this todo but recursively clean its children
+			todoCopy := *todo
+			todoCopy.Items = removeFinishedTodosRecursive(todo.Items)
+			activeTodos = append(activeTodos, &todoCopy)
+		}
+		// If done, skip this todo and all its descendants
+	}
+
+	return activeTodos
+}
+
+// countActiveTodos recursively counts all active (non-done) todos
+func countActiveTodos(todos []*models.Todo) int {
+	count := 0
+	for _, todo := range todos {
+		if todo.Status != models.StatusDone {
+			count++
+			count += countActiveTodos(todo.Items)
 		}
 	}
-	c.Todos = activeTodos
-	return len(activeTodos)
+	return count
 }
