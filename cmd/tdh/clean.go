@@ -7,9 +7,10 @@ import (
 )
 
 var cleanCmd = &cobra.Command{
-	Use:   msgCleanUse,
-	Short: msgCleanShort,
-	Long:  msgCleanLong,
+	Use:     msgCleanUse,
+	Short:   msgCleanShort,
+	Long:    msgCleanLong,
+	GroupID: "misc",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		collectionPath, _ := cmd.Flags().GetString("data-path")

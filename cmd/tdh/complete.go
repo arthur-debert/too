@@ -11,6 +11,7 @@ var completeCmd = &cobra.Command{
 	Aliases: aliasesComplete,
 	Short:   msgCompleteShort,
 	Long:    msgCompleteLong,
+	GroupID: "core",
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag

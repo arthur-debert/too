@@ -9,14 +9,10 @@
   tdh reopen 1.1              # My bad, we still need milk
   tdh search bread
 
-{{ bold "CORE:" }}{{range .Commands}}{{if (or (eq .Name "add") (eq .Name "complete") (eq .Name "edit") (eq .Name "reopen"))}}
-  {{rpad (commandAliases .Name .Aliases) 15}} : {{.Short}}{{end}}{{end}}
+{{range $group := .Groups}}{{ bold $group.Title }}{{range $cmd := $.Commands}}{{if eq $cmd.GroupID $group.ID}}
+  {{rpad (commandAliases $cmd.Name $cmd.Aliases) 15}} : {{$cmd.Short}}{{end}}{{end}}
 
-{{ bold "EXTRAS:" }}{{range .Commands}}{{if (or (eq .Name "list") (eq .Name "move") (eq .Name "reorder") (eq .Name "search"))}}
-  {{rpad (commandAliases .Name .Aliases) 15}} : {{.Short}}{{end}}{{end}}
-
-{{ bold "MISC:" }}{{range .Commands}}{{if (or (eq .Name "clean") (eq .Name "init") (eq .Name "help"))}}
-  {{rpad (commandAliases .Name .Aliases) 15}} : {{.Short}}{{end}}{{end}}
+{{end}}
 
 {{ bold "FLAGS:" }}
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}

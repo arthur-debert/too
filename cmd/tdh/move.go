@@ -12,6 +12,7 @@ var moveCmd = &cobra.Command{
 	Aliases: aliasesMove,
 	Short:   msgMoveShort,
 	Long:    msgMoveLong,
+	GroupID: "extras",
 	Args:    cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sourcePath := args[0]

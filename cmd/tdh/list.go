@@ -16,6 +16,7 @@ var listCmd = &cobra.Command{
 	Aliases: aliasesList,
 	Short:   msgListShort,
 	Long:    msgListLong,
+	GroupID: "extras",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		collectionPath, _ := cmd.Flags().GetString("data-path")

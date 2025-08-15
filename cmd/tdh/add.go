@@ -17,6 +17,7 @@ var addCmd = &cobra.Command{
 	Aliases: aliasesAdd,
 	Short:   msgAddShort,
 	Long:    msgAddLong,
+	GroupID: "core",
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Join all arguments as the todo text

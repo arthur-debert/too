@@ -13,6 +13,7 @@ var searchCmd = &cobra.Command{
 	Aliases: aliasesSearch,
 	Short:   msgSearchShort,
 	Long:    msgSearchLong,
+	GroupID: "extras",
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Join all arguments as the search query
