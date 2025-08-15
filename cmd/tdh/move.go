@@ -8,10 +8,11 @@ import (
 )
 
 var moveCmd = &cobra.Command{
-	Use:   msgMoveUse,
-	Short: msgMoveShort,
-	Long:  msgMoveLong,
-	Args:  cobra.ExactArgs(2),
+	Use:     msgMoveUse,
+	Aliases: aliasesMove,
+	Short:   msgMoveShort,
+	Long:    msgMoveLong,
+	Args:    cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sourcePath := args[0]
 		destParentPath := args[1]

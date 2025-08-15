@@ -79,4 +79,7 @@ func init() {
 
 	// Add persistent flags
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
+
+	// Setup custom help
+	setupHelp()
 }

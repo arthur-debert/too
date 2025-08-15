@@ -1,0 +1,24 @@
+{{.Long}}
+
+{{ bold "USAGE:" }}
+  tdh init                    # creates a new todo list here  
+  tdh add "Buy Groceries"
+      Added todo #1: Buy Groceries
+  tdh add --parent 1 "Milk"
+  tdh complete 1.1            # completes todo item 1 (Groceries)'s first item (Milk)
+  tdh reopen 1.1              # My bad, we still need milk
+  tdh search bread
+
+{{ bold "CORE:" }}{{range .Commands}}{{if (or (eq .Name "add") (eq .Name "complete") (eq .Name "edit") (eq .Name "reopen"))}}
+  {{rpad (commandAliases .Name .Aliases) 15}} : {{.Short}}{{end}}{{end}}
+
+{{ bold "EXTRAS:" }}{{range .Commands}}{{if (or (eq .Name "list") (eq .Name "move") (eq .Name "reorder") (eq .Name "search"))}}
+  {{rpad (commandAliases .Name .Aliases) 15}} : {{.Short}}{{end}}{{end}}
+
+{{ bold "MISC:" }}{{range .Commands}}{{if (or (eq .Name "clean") (eq .Name "init") (eq .Name "help"))}}
+  {{rpad (commandAliases .Name .Aliases) 15}} : {{.Short}}{{end}}{{end}}
+
+{{ bold "FLAGS:" }}
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}
+
+Use "tdh help [command]" for more info on a command.

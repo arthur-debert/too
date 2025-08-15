@@ -1,15 +1,19 @@
 package main
 
+import (
+	_ "embed"
+)
+
 // Command descriptions
 const (
 	// Root command
 	msgRootShort   = "A simple command-line todo list manager"
-	msgRootLong    = "tdh is a simple command-line todo list manager that helps you track tasks.\nIt stores todos in a JSON file and provides commands to add, modify, and search todos."
+	msgRootLong    = "Fast project-aware, nested, command-line todo list."
 	msgRootVersion = "tdh version {{.Version}}\n"
 
 	// Add command
 	msgAddUse   = "add <text>"
-	msgAddShort = "Add a new todo (aliases: a, new, create)"
+	msgAddShort = "Add a new todo"
 	msgAddLong  = "Add a new todo with the specified text."
 
 	// Clean command
@@ -19,37 +23,37 @@ const (
 
 	// Edit command
 	msgEditUse   = "edit <position> <text>"
-	msgEditShort = "Edit the text of an existing todo (aliases: modify, m, e)"
+	msgEditShort = "Edit the text of an existing todo"
 	msgEditLong  = "Edit the text of an existing todo by its position."
 
 	// Init command
 	msgInitUse   = "init"
-	msgInitShort = "Initialize a new todo collection (alias: i)"
+	msgInitShort = "Initialize a new todo collection"
 	msgInitLong  = "Initialize a new todo collection in the specified location or the default location (~/.todos.json)."
 
 	// List command
 	msgListUse   = "list"
-	msgListShort = "List all todos (alias: ls)"
+	msgListShort = "List all todos"
 	msgListLong  = "List all todos in the collection."
 
 	// Reorder command
 	msgReorderUse   = "reorder"
-	msgReorderShort = "Reorder todos by sorting and reassigning sequential positions (alias: r)"
+	msgReorderShort = "Reorder todos by sorting and reassigning sequential positions"
 	msgReorderLong  = "Reorder todos by sorting them by their current position and reassigning sequential positions starting from 1."
 
 	// Search command
 	msgSearchUse   = "search <query>"
-	msgSearchShort = "Search for todos (alias: s)"
+	msgSearchShort = "Search for todos"
 	msgSearchLong  = "Search for todos containing the specified text."
 
 	// Complete command
 	msgCompleteUse   = "complete <positions...>"
-	msgCompleteShort = "Mark todos as complete (alias: c)"
+	msgCompleteShort = "Mark todos as complete"
 	msgCompleteLong  = "Mark one or more todos as complete. Use dot notation for nested items (e.g., 1.2)."
 
 	// Reopen command
 	msgReopenUse   = "reopen <positions...>"
-	msgReopenShort = "Mark todos as pending (alias: o)"
+	msgReopenShort = "Mark todos as pending"
 	msgReopenLong  = "Mark one or more todos as pending. Use dot notation for nested items (e.g., 1.2)."
 
 	// Move command
@@ -80,11 +84,15 @@ const (
 // Command aliases
 var (
 	aliasesAdd      = []string{"a", "new", "create"}
-	aliasesEdit     = []string{"modify", "m", "e"}
+	aliasesEdit     = []string{"modify", "e"}
 	aliasesInit     = []string{"i"}
 	aliasesList     = []string{"ls"}
 	aliasesReorder  = []string{"r"}
 	aliasesSearch   = []string{"s"}
 	aliasesComplete = []string{"c"}
 	aliasesReopen   = []string{"o"}
+	aliasesMove     = []string{"m"}
 )
+
+//go:embed templates/help.txt
+var helpTemplate string
