@@ -75,4 +75,27 @@ func TestCleanCommand(t *testing.T) {
 		assert.Equal(t, 3, collection.Todos[2].Position)
 		assert.Equal(t, "Third pending", collection.Todos[2].Text)
 	})
+
+	t.Run("removes pending children of a done parent", func(t *testing.T) {
+		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
+			{Text: "Done Parent", Status: models.StatusDone, Children: []testutil.TodoSpec{
+				{Text: "Pending Child", Status: models.StatusPending},
+			}},
+			{Text: "Pending Sibling", Status: models.StatusPending},
+		})
+
+		// Run clean command
+		cleanOpts := tdh.CleanOptions{CollectionPath: store.Path()}
+		cleanResult, err := tdh.Clean(cleanOpts)
+
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, cleanResult.RemovedCount, "Should report the Done Parent as removed")
+		assert.Equal(t, 1, cleanResult.ActiveCount, "Only the pending sibling should remain")
+
+		// Verify the collection state
+		collection, err := store.Load()
+		testutil.AssertNoError(t, err)
+		testutil.AssertCollectionSize(t, collection, 1)
+		assert.Equal(t, "Pending Sibling", collection.Todos[0].Text)
+	})
 }

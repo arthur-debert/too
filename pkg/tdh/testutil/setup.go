@@ -10,8 +10,9 @@ import (
 
 // TodoSpec describes a todo to be created in tests
 type TodoSpec struct {
-	Text   string
-	Status models.TodoStatus
+	Text     string
+	Status   models.TodoStatus
+	Children []TodoSpec
 }
 
 // CreatePopulatedStore creates a file-based store in a temp directory populated with todos.
@@ -59,6 +60,42 @@ func CreateStoreWithSpecs(t *testing.T, specs []TodoSpec) store.Store {
 	}
 
 	return s
+}
+
+// CreateStoreWithNestedSpecs creates a file-based store with a nested structure from specs.
+func CreateStoreWithNestedSpecs(t *testing.T, specs []TodoSpec) store.Store {
+	t.Helper()
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.json")
+	s := store.NewStore(dbPath)
+
+	collection := models.NewCollection()
+
+	for _, spec := range specs {
+		addTodoFromSpec(t, collection, spec, "")
+	}
+
+	if err := s.Save(collection); err != nil {
+		t.Fatalf("failed to save collection: %v", err)
+	}
+
+	return s
+}
+
+// addTodoFromSpec is a helper to recursively add todos from a spec
+func addTodoFromSpec(t *testing.T, collection *models.Collection, spec TodoSpec, parentID string) {
+	t.Helper()
+
+	todo, err := collection.CreateTodo(spec.Text, parentID)
+	if err != nil {
+		t.Fatalf("failed to create todo from spec: %v", err)
+	}
+	todo.Status = spec.Status
+
+	for _, childSpec := range spec.Children {
+		addTodoFromSpec(t, collection, childSpec, todo.ID)
+	}
 }
 
 // NewTestCollection creates a new collection with the given todos for testing.

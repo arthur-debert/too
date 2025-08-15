@@ -120,6 +120,38 @@ func TestReorderTodos(t *testing.T) {
 		assert.Equal(t, "Test todo", todo.Text)
 		assert.Equal(t, models.StatusPending, todo.Status)
 	})
+	t.Run("recursively reorders nested todos", func(t *testing.T) {
+		// Create a nested structure with position gaps at each level
+		todos := []*models.Todo{
+			{ID: "1", Position: 5, Text: "Parent 1", Items: []*models.Todo{
+				{ID: "1.1", Position: 3, Text: "Child 1.1"},
+				{ID: "1.2", Position: 1, Text: "Child 1.2"},
+			}},
+			{ID: "2", Position: 2, Text: "Parent 2", Items: []*models.Todo{
+				{ID: "2.1", Position: 10, Text: "Child 2.1"},
+			}},
+		}
+
+		models.ReorderTodos(todos)
+
+		// Verify parent reordering
+		assert.Equal(t, "Parent 2", todos[0].Text)
+		assert.Equal(t, 1, todos[0].Position)
+		assert.Equal(t, "Parent 1", todos[1].Text)
+		assert.Equal(t, 2, todos[1].Position)
+
+		// Verify children of Parent 1 were reordered
+		parent1Children := todos[1].Items
+		assert.Equal(t, "Child 1.2", parent1Children[0].Text)
+		assert.Equal(t, 1, parent1Children[0].Position)
+		assert.Equal(t, "Child 1.1", parent1Children[1].Text)
+		assert.Equal(t, 2, parent1Children[1].Position)
+
+		// Verify children of Parent 2 were reordered
+		parent2Children := todos[0].Items
+		assert.Equal(t, "Child 2.1", parent2Children[0].Text)
+		assert.Equal(t, 1, parent2Children[0].Position)
+	})
 }
 
 func TestCollectionReorder(t *testing.T) {
