@@ -160,4 +160,160 @@ func TestList_BehavioralPropagation(t *testing.T) {
 		assert.Equal(t, "Level 1", level1.Text)
 		assert.Equal(t, 0, len(level1.Items)) // Level 2 is done, so not shown with children
 	})
+
+	t.Run("should correctly handle mixed done/pending siblings", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			parent, _ := collection.CreateTodo("Parent", "")
+
+			// Create mixed siblings
+			done1, _ := collection.CreateTodo("Done sibling 1", parent.ID)
+			done1.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Done child 1", done1.ID) // Should be hidden
+
+			_, _ = collection.CreateTodo("Pending sibling", parent.ID)
+
+			done2, _ := collection.CreateTodo("Done sibling 2", parent.ID)
+			done2.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Done child 2", done2.ID) // Should be hidden
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute default list (pending only)
+		result, err := list.Execute(list.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Should show parent with only pending sibling
+		assert.Equal(t, 1, len(result.Todos))
+		parent := result.Todos[0]
+		assert.Equal(t, "Parent", parent.Text)
+		assert.Equal(t, 1, len(parent.Items))
+		assert.Equal(t, "Pending sibling", parent.Items[0].Text)
+	})
+
+	t.Run("should handle done items at multiple levels correctly", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			// Top level done
+			topDone, _ := collection.CreateTodo("Top done", "")
+			topDone.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Hidden child", topDone.ID)
+
+			// Top level pending with done children
+			topPending, _ := collection.CreateTodo("Top pending", "")
+			childDone, _ := collection.CreateTodo("Child done", topPending.ID)
+			childDone.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Hidden grandchild", childDone.ID)
+			_, _ = collection.CreateTodo("Child pending", topPending.ID)
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Test with ShowDone
+		result, err := list.Execute(list.Options{
+			CollectionPath: s.Path(),
+			ShowDone:       true,
+		})
+		testutil.AssertNoError(t, err)
+
+		// Should show only top-level done item
+		// The done child under pending parent won't be shown when ShowDone is true
+		assert.Equal(t, 1, len(result.Todos))
+
+		// Only top done should be shown without children
+		assert.Equal(t, "Top done", result.Todos[0].Text)
+		assert.Equal(t, 0, len(result.Todos[0].Items))
+	})
+
+	t.Run("should count all todos correctly regardless of visibility", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			// Create structure with hidden branches
+			done1, _ := collection.CreateTodo("Done parent 1", "")
+			done1.Status = models.StatusDone
+			child1, _ := collection.CreateTodo("Hidden child 1", done1.ID)
+			_, _ = collection.CreateTodo("Hidden grandchild 1", child1.ID)
+
+			pending, _ := collection.CreateTodo("Pending parent", "")
+			done2, _ := collection.CreateTodo("Done child", pending.ID)
+			done2.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Hidden grandchild 2", done2.ID)
+			_, _ = collection.CreateTodo("Visible child", pending.ID)
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute default list
+		result, err := list.Execute(list.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Verify counts include hidden items
+		assert.Equal(t, 7, result.TotalCount) // All 7 items
+		assert.Equal(t, 2, result.DoneCount)  // 2 done items
+
+		// But only pending parent with visible child shown
+		assert.Equal(t, 1, len(result.Todos))
+		assert.Equal(t, "Pending parent", result.Todos[0].Text)
+		assert.Equal(t, 1, len(result.Todos[0].Items))
+		assert.Equal(t, "Visible child", result.Todos[0].Items[0].Text)
+	})
+
+	t.Run("edge case: all todos are done", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			done1, _ := collection.CreateTodo("Done 1", "")
+			done1.Status = models.StatusDone
+
+			done2, _ := collection.CreateTodo("Done 2", "")
+			done2.Status = models.StatusDone
+			child, _ := collection.CreateTodo("Child of done", done2.ID)
+			child.Status = models.StatusDone
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Default list should show nothing
+		result, err := list.Execute(list.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		assert.Equal(t, 0, len(result.Todos))
+		assert.Equal(t, 3, result.TotalCount)
+		assert.Equal(t, 3, result.DoneCount)
+
+		// ShowDone should show done parents without children
+		result, err = list.Execute(list.Options{
+			CollectionPath: s.Path(),
+			ShowDone:       true,
+		})
+		testutil.AssertNoError(t, err)
+
+		assert.Equal(t, 2, len(result.Todos))
+		assert.Equal(t, "Done 1", result.Todos[0].Text)
+		assert.Equal(t, 0, len(result.Todos[0].Items))
+		assert.Equal(t, "Done 2", result.Todos[1].Text)
+		assert.Equal(t, 0, len(result.Todos[1].Items)) // Child hidden
+	})
 }

@@ -1,6 +1,7 @@
 package clean_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/commands/clean"
@@ -209,5 +210,194 @@ func TestClean_HierarchyAware(t *testing.T) {
 		assert.Equal(t, 1, len(removedParent.Items[0].Items))
 		assert.Equal(t, "Grandchild", removedParent.Items[0].Items[0].Text)
 		assert.Equal(t, "Child 2", removedParent.Items[1].Text)
+	})
+
+	t.Run("should only report done items not pending descendants", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			// Done parent with mix of done and pending children
+			parent, _ := collection.CreateTodo("Done parent", "")
+			parent.Status = models.StatusDone
+
+			pending1, _ := collection.CreateTodo("Pending child 1", parent.ID)
+			_, _ = collection.CreateTodo("Pending grandchild", pending1.ID)
+
+			done1, _ := collection.CreateTodo("Done child", parent.ID)
+			done1.Status = models.StatusDone
+
+			_, _ = collection.CreateTodo("Pending child 2", parent.ID)
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute clean
+		result, err := clean.Execute(clean.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Should report only the 2 done items, not the 3 pending descendants
+		assert.Equal(t, 2, result.RemovedCount)
+
+		// Verify reported items are only done ones
+		for _, todo := range result.RemovedTodos {
+			assert.Equal(t, models.StatusDone, todo.Status)
+		}
+
+		// Verify all items were actually removed
+		collection, err := s.Load()
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 0, len(collection.Todos))
+	})
+
+	t.Run("should handle complex mixed hierarchy", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			// Pending root with done children
+			root1, _ := collection.CreateTodo("Pending root 1", "")
+			done1, _ := collection.CreateTodo("Done child 1", root1.ID)
+			done1.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Pending grandchild 1", done1.ID)
+
+			pending1, _ := collection.CreateTodo("Pending child 2", root1.ID)
+			done2, _ := collection.CreateTodo("Done grandchild", pending1.ID)
+			done2.Status = models.StatusDone
+
+			// Done root with pending children
+			root2, _ := collection.CreateTodo("Done root", "")
+			root2.Status = models.StatusDone
+			_, _ = collection.CreateTodo("Pending child under done", root2.ID)
+
+			// Another pending root
+			_, _ = collection.CreateTodo("Pending root 2", "")
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute clean
+		result, err := clean.Execute(clean.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Should report 3 done items
+		assert.Equal(t, 3, result.RemovedCount)
+
+		// Should have 3 active items left
+		assert.Equal(t, 3, result.ActiveCount)
+
+		// Verify structure
+		collection, err := s.Load()
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 2, len(collection.Todos))
+
+		// First root should have one pending child left
+		assert.Equal(t, "Pending root 1", collection.Todos[0].Text)
+		assert.Equal(t, 1, len(collection.Todos[0].Items))
+		assert.Equal(t, "Pending child 2", collection.Todos[0].Items[0].Text)
+		assert.Equal(t, 0, len(collection.Todos[0].Items[0].Items)) // Grandchild removed
+
+		// Second root unchanged
+		assert.Equal(t, "Pending root 2", collection.Todos[1].Text)
+	})
+
+	t.Run("should handle all done children under pending parent", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			parent, _ := collection.CreateTodo("Pending parent", "")
+
+			// All children are done
+			for i := 1; i <= 3; i++ {
+				child, _ := collection.CreateTodo(fmt.Sprintf("Done child %d", i), parent.ID)
+				child.Status = models.StatusDone
+
+				// Add some grandchildren
+				for j := 1; j <= 2; j++ {
+					_, _ = collection.CreateTodo(fmt.Sprintf("Grandchild %d.%d", i, j), child.ID)
+				}
+			}
+
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute clean
+		result, err := clean.Execute(clean.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Should report only the 3 done children
+		assert.Equal(t, 3, result.RemovedCount)
+		assert.Equal(t, 1, result.ActiveCount) // Only parent remains
+
+		// Verify only parent remains with no children
+		collection, err := s.Load()
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, len(collection.Todos))
+		assert.Equal(t, "Pending parent", collection.Todos[0].Text)
+		assert.Equal(t, 0, len(collection.Todos[0].Items))
+	})
+
+	t.Run("edge case: empty collection", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		// Initialize empty collection
+		err := s.Update(func(collection *models.Collection) error {
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute clean on empty collection
+		result, err := clean.Execute(clean.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		assert.Equal(t, 0, result.RemovedCount)
+		assert.Equal(t, 0, result.ActiveCount)
+		assert.Equal(t, 0, len(result.RemovedTodos))
+	})
+
+	t.Run("edge case: no done items", func(t *testing.T) {
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			parent, _ := collection.CreateTodo("Pending parent", "")
+			_, _ = collection.CreateTodo("Pending child 1", parent.ID)
+			_, _ = collection.CreateTodo("Pending child 2", parent.ID)
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Execute clean
+		result, err := clean.Execute(clean.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		assert.Equal(t, 0, result.RemovedCount)
+		assert.Equal(t, 3, result.ActiveCount)
+
+		// Verify nothing changed
+		collection, err := s.Load()
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, len(collection.Todos))
+		assert.Equal(t, 2, len(collection.Todos[0].Items))
 	})
 }
