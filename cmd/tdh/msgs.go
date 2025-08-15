@@ -4,7 +4,7 @@ package main
 const (
 	// Root command
 	msgRootShort   = "A simple command-line todo list manager"
-	msgRootLong    = "tdh is a simple command-line todo list manager that helps you track tasks.\nIt stores todos in a JSON file and provides commands to add, modify, toggle, and search todos."
+	msgRootLong    = "tdh is a simple command-line todo list manager that helps you track tasks.\nIt stores todos in a JSON file and provides commands to add, modify, and search todos."
 	msgRootVersion = "tdh version {{.Version}}\n"
 
 	// Add command
@@ -41,11 +41,6 @@ const (
 	msgSearchUse   = "search <query>"
 	msgSearchShort = "Search for todos (alias: s)"
 	msgSearchLong  = "Search for todos containing the specified text."
-
-	// Toggle command
-	msgToggleUse   = "toggle <position>"
-	msgToggleShort = "Toggle the status of a todo (alias: t)"
-	msgToggleLong  = "Toggle the status of a todo between pending and done."
 
 	// Complete command
 	msgCompleteUse   = "complete <positions...>"
@@ -85,7 +80,6 @@ var (
 	aliasesList     = []string{"ls"}
 	aliasesReorder  = []string{"r"}
 	aliasesSearch   = []string{"s"}
-	aliasesToggle   = []string{"t"}
 	aliasesComplete = []string{"c"}
 	aliasesReopen   = []string{"o"}
 )

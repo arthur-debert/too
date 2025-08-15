@@ -168,7 +168,7 @@ covering quick start, conventions, and architecture.
     Command Aliases:
     
         • init (i), add (a), edit (e, m, modify)
-        • toggle (t), reorder (r), search (s), list (ls)
+        • complete (c), reopen (o), reorder (r), search (s), list (ls)
         • Global flags: --done (-d), --all (-a)
 
     Build System:

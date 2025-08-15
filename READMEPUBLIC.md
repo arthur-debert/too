@@ -37,7 +37,8 @@ COMMANDS:
    init, i  Initialize a collection of todos
    add, a   Add a new todo
    modify, m   Modify the text of an existing todo
-   toggle, t   Toggle the status of a todo by giving his id
+   complete, c   Mark todos as complete
+   reopen, o     Mark todos as pending
    clean Remove finished todos from the list
    reorder, r  Reset ids of todo or swap the position of two todo
    search, s   Search a string in all todos

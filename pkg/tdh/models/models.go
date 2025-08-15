@@ -82,16 +82,6 @@ func (c *Collection) findHighestPosition(todos []*Todo) int {
 	return highest
 }
 
-// Toggle changes the status of a todo between pending and done.
-func (t *Todo) Toggle() {
-	if t.Status == StatusDone {
-		t.Status = StatusPending
-	} else {
-		t.Status = StatusDone
-	}
-	t.Modified = time.Now()
-}
-
 // Clone creates a deep copy of the todo.
 func (t *Todo) Clone() *Todo {
 	clone := &Todo{

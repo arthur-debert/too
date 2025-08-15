@@ -214,16 +214,6 @@ func (r *LipbamlRenderer) RenderAdd(result *tdh.AddResult) error {
 	return err
 }
 
-// RenderToggle renders the toggle command result using lipbalm
-func (r *LipbamlRenderer) RenderToggle(result *tdh.ToggleResult) error {
-	output, err := r.renderTemplate("toggle_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render toggle result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.writer, output)
-	return err
-}
-
 // RenderModify renders the modify command result using lipbalm
 func (r *LipbamlRenderer) RenderModify(result *tdh.ModifyResult) error {
 	output, err := r.renderTemplate("modify_result", result)

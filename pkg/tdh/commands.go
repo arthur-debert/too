@@ -13,7 +13,6 @@ import (
 	cmdReopen "github.com/arthur-debert/tdh/pkg/tdh/commands/reopen"
 	cmdReorder "github.com/arthur-debert/tdh/pkg/tdh/commands/reorder"
 	cmdSearch "github.com/arthur-debert/tdh/pkg/tdh/commands/search"
-	cmdToggle "github.com/arthur-debert/tdh/pkg/tdh/commands/toggle"
 )
 
 // Re-export command option types for backward compatibility
@@ -21,7 +20,6 @@ type (
 	InitOptions     = cmdInit.Options
 	AddOptions      = cmdAdd.Options
 	ModifyOptions   = cmdModify.Options
-	ToggleOptions   = cmdToggle.Options
 	CompleteOptions = cmdComplete.Options
 	ReopenOptions   = cmdReopen.Options
 	CleanOptions    = cmdClean.Options
@@ -35,7 +33,6 @@ type (
 	InitResult     = cmdInit.Result
 	AddResult      = cmdAdd.Result
 	ModifyResult   = cmdModify.Result
-	ToggleResult   = cmdToggle.Result
 	CompleteResult = cmdComplete.Result
 	ReopenResult   = cmdReopen.Result
 	CleanResult    = cmdClean.Result
@@ -57,11 +54,6 @@ func Add(text string, opts AddOptions) (*AddResult, error) {
 // Modify modifies the text of an existing todo by position
 func Modify(position int, newText string, opts ModifyOptions) (*ModifyResult, error) {
 	return cmdModify.Execute(position, newText, opts)
-}
-
-// Toggle toggles the status of a todo by position path
-func Toggle(positionPath string, opts ToggleOptions) (*ToggleResult, error) {
-	return cmdToggle.Execute(positionPath, opts)
 }
 
 // Complete marks a todo as complete by position path

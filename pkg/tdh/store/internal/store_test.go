@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
@@ -411,7 +412,8 @@ func TestStore_Find(t *testing.T) {
 			collection := models.NewCollection()
 			_, _ = collection.CreateTodo("Buy milk", "")
 			doneTodo, _ := collection.CreateTodo("Buy eggs", "")
-			doneTodo.Toggle()
+			doneTodo.Status = models.StatusDone
+			doneTodo.Modified = time.Now()
 			_, _ = collection.CreateTodo("Buy bread and milk", "")
 			err := s.Save(collection)
 			require.NoError(t, err)

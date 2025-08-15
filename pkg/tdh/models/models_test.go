@@ -157,61 +157,6 @@ func TestCollection_CreateTodo(t *testing.T) {
 	})
 }
 
-func TestTodo_Toggle(t *testing.T) {
-	t.Run("toggles from pending to done", func(t *testing.T) {
-		todo := &models.Todo{
-			ID:       "test-id-1",
-			Position: 1,
-			Text:     "Test",
-			Status:   models.StatusPending,
-			Modified: time.Now().Add(-time.Hour),
-		}
-		oldModified := todo.Modified
-
-		time.Sleep(2 * time.Millisecond)
-		todo.Toggle()
-
-		assert.Equal(t, models.StatusDone, todo.Status)
-		assert.True(t, todo.Modified.After(oldModified))
-	})
-
-	t.Run("toggles from done to pending", func(t *testing.T) {
-		todo := &models.Todo{
-			ID:       "test-id-1",
-			Position: 1,
-			Text:     "Test",
-			Status:   models.StatusDone,
-			Modified: time.Now().Add(-time.Hour),
-		}
-		oldModified := todo.Modified
-
-		time.Sleep(2 * time.Millisecond)
-		todo.Toggle()
-
-		assert.Equal(t, models.StatusPending, todo.Status)
-		assert.True(t, todo.Modified.After(oldModified))
-	})
-
-	t.Run("updates modified time on toggle", func(t *testing.T) {
-		todo := &models.Todo{
-			ID:       "test-id-1",
-			Position: 1,
-			Text:     "Test",
-			Status:   models.StatusPending,
-			Modified: time.Now().Add(-24 * time.Hour), // Yesterday
-		}
-		oldModified := todo.Modified
-		beforeToggle := time.Now()
-
-		todo.Toggle()
-		afterToggle := time.Now()
-
-		assert.True(t, todo.Modified.After(oldModified))
-		assert.True(t, todo.Modified.After(beforeToggle) || todo.Modified.Equal(beforeToggle))
-		assert.True(t, todo.Modified.Before(afterToggle) || todo.Modified.Equal(afterToggle))
-	})
-}
-
 func TestTodo_Clone(t *testing.T) {
 	t.Run("creates exact copy of todo", func(t *testing.T) {
 		original := &models.Todo{
@@ -370,7 +315,8 @@ func TestCollection_Clone(t *testing.T) {
 		// Modify clone
 		_, _ = clone.CreateTodo("Third", "")
 		clone.Todos[0].Text = "Modified"
-		clone.Todos[1].Toggle()
+		clone.Todos[1].Status = models.StatusDone
+		clone.Todos[1].Modified = time.Now()
 
 		// Original should be unchanged
 		assert.Len(t, original.Todos, 2)
