@@ -2,7 +2,6 @@ package reopen
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/arthur-debert/tdh/pkg/logging"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
@@ -48,17 +47,14 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 		// According to the spec, reopen only affects the specified item
 		// No propagation in any direction
-		todo.Status = models.StatusPending
-		todo.Modified = time.Now()
+		// Use the new method which handles status change and position reset
+		todo.MarkPending(collection)
 
 		logger.Debug().
 			Str("todoID", todo.ID).
 			Str("oldStatus", oldStatus).
 			Str("newStatus", string(todo.Status)).
 			Msg("marked todo as pending")
-
-		// Auto-reorder after status change
-		collection.Reorder()
 
 		// Capture result
 		result = &Result{
