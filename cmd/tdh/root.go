@@ -74,9 +74,19 @@ func init() {
 	// Set version template
 	rootCmd.SetVersionTemplate(msgRootVersion)
 
+	// Define command groups
+	rootCmd.AddGroup(
+		&cobra.Group{ID: "core", Title: "CORE:"},
+		&cobra.Group{ID: "extras", Title: "EXTRAS:"},
+		&cobra.Group{ID: "misc", Title: "MISC:"},
+	)
+
 	// Verbosity flag for logging
 	rootCmd.PersistentFlags().CountVarP(&verbosity, "verbose", "v", msgFlagVerbose)
 
 	// Add persistent flags
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
+
+	// Setup custom help
+	setupHelp()
 }

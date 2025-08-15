@@ -111,6 +111,13 @@ func createTestRootCommand() *cobra.Command {
 		Short: "Test root",
 	}
 
+	// Define command groups to match the main root command
+	testRoot.AddGroup(
+		&cobra.Group{ID: "core", Title: "CORE:"},
+		&cobra.Group{ID: "extras", Title: "EXTRAS:"},
+		&cobra.Group{ID: "misc", Title: "MISC:"},
+	)
+
 	// Add the persistent flag
 	testRoot.PersistentFlags().StringP("data-path", "p", "", "path to todo collection")
 	var testVerbosity int

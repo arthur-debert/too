@@ -11,6 +11,7 @@ var reorderCmd = &cobra.Command{
 	Aliases: aliasesReorder,
 	Short:   msgReorderShort,
 	Long:    msgReorderLong,
+	GroupID: "extras",
 	Args:    cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag

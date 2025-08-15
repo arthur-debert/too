@@ -14,6 +14,7 @@ var editCmd = &cobra.Command{
 	Aliases: aliasesEdit,
 	Short:   msgEditShort,
 	Long:    msgEditLong,
+	GroupID: "core",
 	Args:    cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Parse position
