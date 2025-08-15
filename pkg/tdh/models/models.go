@@ -292,3 +292,70 @@ func findItemByPositions(todos []*Todo, positions []int) (*Todo, error) {
 	// Otherwise, recursively search in the found item's children
 	return findItemByPositions(found.Items, positions[1:])
 }
+
+// ListActive returns only active (pending) todos from the collection.
+// This implements behavioral propagation: when a parent is done, all its
+// descendants are hidden regardless of their status.
+func (c *Collection) ListActive() []*Todo {
+	return filterTodos(c.Todos, func(t *Todo) bool {
+		return t.Status == StatusPending
+	}, false) // Don't recurse into done items
+}
+
+// ListArchived returns only archived (done) todos from the collection.
+// When showing archived items, behavioral propagation stops - we don't
+// show the children of done items.
+func (c *Collection) ListArchived() []*Todo {
+	return filterTodos(c.Todos, func(t *Todo) bool {
+		return t.Status == StatusDone
+	}, false) // Don't recurse into done items
+}
+
+// ListAll returns all todos from the collection regardless of status.
+// This shows the complete tree structure including any inconsistent states
+// (e.g., pending children under done parents).
+func (c *Collection) ListAll() []*Todo {
+	return cloneTodos(c.Todos)
+}
+
+// filterTodos recursively filters todos based on a predicate function.
+// If recurseIntoDone is false, it stops recursion at done items (behavioral propagation).
+func filterTodos(todos []*Todo, predicate func(*Todo) bool, recurseIntoDone bool) []*Todo {
+	var filtered []*Todo
+
+	for _, todo := range todos {
+		if predicate(todo) {
+			// Clone the todo to avoid modifying the original
+			filteredTodo := &Todo{
+				ID:       todo.ID,
+				ParentID: todo.ParentID,
+				Position: todo.Position,
+				Text:     todo.Text,
+				Status:   todo.Status,
+				Modified: todo.Modified,
+				Items:    []*Todo{},
+			}
+
+			// If this todo is done and we're not recursing into done items,
+			// stop here (behavioral propagation)
+			if todo.Status == StatusDone && !recurseIntoDone {
+				filtered = append(filtered, filteredTodo)
+			} else {
+				// Recursively filter children
+				filteredTodo.Items = filterTodos(todo.Items, predicate, recurseIntoDone)
+				filtered = append(filtered, filteredTodo)
+			}
+		}
+	}
+
+	return filtered
+}
+
+// cloneTodos creates a deep copy of a slice of todos
+func cloneTodos(todos []*Todo) []*Todo {
+	cloned := make([]*Todo, len(todos))
+	for i, todo := range todos {
+		cloned[i] = todo.Clone()
+	}
+	return cloned
+}
