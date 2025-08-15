@@ -2,6 +2,39 @@
 
 This document describes the dual identifier system used in tdh for todo items.
 
+As users need to reference todos in the command line, its usability and
+characteristics have great impact on the overall tdh usability. IDs are usually
+opaque to end users, and objects are referenced by visually manipulating them
+on a GUI. 
+
+But in the CLI, as one uses text to refer, designing a usable solution is a key
+part of tool's experience. In tdh's domain, this is more salient, as users
+naturally think about lists as numbered , ordered sequences, and have various
+expectations to how these work (i.e. they don't start at zero.)
+
+That is the guiding principle here: lists are a continuous sequences of integers,
+starting from 1. For example: 
+
+    1. Groceries
+        1. Milk  
+        2. Bread
+    2. Packing: 
+        1. Winter Coat
+        2. Wine Opener
+        3. Passport
+
+Whereas the list bellow, while technically correct create a jarring
+experience.
+
+    1. Groceries
+        1. Milk  
+        3. Bread
+    7. Packing: 
+        2. Winter Coat
+        4. Wine Opener
+     
+Hence the goal here is how to conciliate the numbered lists mental model and a
+stable internal ID for the application to process items.
 
 1. Background
 
@@ -34,6 +67,10 @@ This document describes the dual identifier system used in tdh for todo items.
 
     The guiding philosophy is that the user's list should always look 
     clean and sequential, like a paper to-do list.
+
+    The position is recalculated on operations that removes todo items (either
+    hard removes or by marking them done). On each of these, the system will
+    reorder all following todos with the same  parent.
 
 
 3. Command Behavior

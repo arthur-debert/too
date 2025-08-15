@@ -102,14 +102,3 @@ Integration tests verify JSONFileStore behavior:
     • File format compatibility
     • Error handling
 
-
-Future Enhancements
--------------------
-
-The store interface enables future backends:
-    • SQLiteStore for better performance with large datasets
-    • CloudStore for synchronization capabilities
-    • EncryptedStore for security-sensitive data
-
-All backends implement the same interface, allowing seamless
-switching without changing business logic.
