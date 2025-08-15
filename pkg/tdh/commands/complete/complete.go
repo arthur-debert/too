@@ -113,6 +113,8 @@ func checkAndCompleteParent(collection *models.Collection, parentID string, now 
 	}
 
 	// If all children are complete, mark parent as complete
+	// Only mark parent as complete if it actually has children to check
+	// This prevents childless parents from being auto-completed
 	if allChildrenComplete && len(parent.Items) > 0 {
 		logger.Debug().
 			Str("parentID", parentID).

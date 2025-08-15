@@ -206,4 +206,109 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		assert.Equal(t, models.StatusDone, project.Items[0].Status) // Phase 1
 		assert.Equal(t, models.StatusDone, project.Items[1].Status) // Phase 2
 	})
+
+	t.Run("should not auto-complete childless parent when sibling completes", func(t *testing.T) {
+		// This test verifies the business rule that childless parents are not auto-completed
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		err := s.Update(func(collection *models.Collection) error {
+			// Create a parent with two children
+			parent, _ := collection.CreateTodo("Parent", "")
+			_, _ = collection.CreateTodo("Child with grandchildren", parent.ID)
+			childless, _ := collection.CreateTodo("Childless child", parent.ID)
+
+			// Give the first child some grandchildren
+			firstChild := parent.Items[0]
+			_, _ = collection.CreateTodo("Grandchild 1", firstChild.ID)
+			_, _ = collection.CreateTodo("Grandchild 2", firstChild.ID)
+
+			// Verify childless has no children
+			assert.Equal(t, 0, len(childless.Items))
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Complete the childless child
+		_, err = complete.Execute("1.2", complete.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Parent should still be pending (other child not complete)
+		collection, err := s.Load()
+		testutil.AssertNoError(t, err)
+		parent := collection.Todos[0]
+		assert.Equal(t, models.StatusPending, parent.Status)
+
+		// Complete grandchildren
+		_, err = complete.Execute("1.1.1", complete.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		_, err = complete.Execute("1.1.2", complete.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Now parent should be complete (all children complete)
+		collection, err = s.Load()
+		testutil.AssertNoError(t, err)
+		parent = collection.Todos[0]
+		assert.Equal(t, models.StatusDone, parent.Status)
+
+		// Verify the childless child is still childless and complete
+		childless := parent.Items[1]
+		assert.Equal(t, "Childless child", childless.Text)
+		assert.Equal(t, 0, len(childless.Items))
+		assert.Equal(t, models.StatusDone, childless.Status)
+	})
+
+	t.Run("should handle root level items without panic", func(t *testing.T) {
+		// This test ensures completing root items (with no parent) doesn't cause issues
+		dir := testutil.TempDir(t)
+		dbPath := dir + "/test.json"
+		s := store.NewStore(dbPath)
+
+		// Create a mix of root level items and nested items
+		err := s.Update(func(collection *models.Collection) error {
+			// Root level todos
+			_, _ = collection.CreateTodo("Root todo 1", "")
+			rootWithChildren, _ := collection.CreateTodo("Root with children", "")
+			_, _ = collection.CreateTodo("Child 1", rootWithChildren.ID)
+			_, _ = collection.CreateTodo("Child 2", rootWithChildren.ID)
+			_, _ = collection.CreateTodo("Root todo 3", "")
+			return nil
+		})
+		testutil.AssertNoError(t, err)
+
+		// Complete a root level item without children - should work fine
+		result, err := complete.Execute("1", complete.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, "Root todo 1", result.Todo.Text)
+		assert.Equal(t, "", result.Todo.ParentID) // Verify it has no parent
+
+		// Complete children to trigger bottom-up on a root item
+		_, err = complete.Execute("2.1", complete.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		_, err = complete.Execute("2.2", complete.Options{
+			CollectionPath: s.Path(),
+		})
+		testutil.AssertNoError(t, err)
+
+		// Verify root item with children was auto-completed
+		collection, err := s.Load()
+		testutil.AssertNoError(t, err)
+		rootWithChildren := collection.Todos[1]
+		assert.Equal(t, "Root with children", rootWithChildren.Text)
+		assert.Equal(t, models.StatusDone, rootWithChildren.Status)
+		assert.Equal(t, "", rootWithChildren.ParentID) // Verify it's still at root
+	})
 }
