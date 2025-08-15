@@ -10,8 +10,9 @@ import (
 
 // TodoSpec describes a todo to be created in tests
 type TodoSpec struct {
-	Text   string
-	Status models.TodoStatus
+	Text     string
+	Status   models.TodoStatus
+	Children []TodoSpec
 }
 
 // CreatePopulatedStore creates a file-based store in a temp directory populated with todos.
@@ -27,7 +28,7 @@ func CreatePopulatedStore(t *testing.T, texts ...string) store.Store {
 	collection := models.NewCollection()
 
 	for _, text := range texts {
-		collection.CreateTodo(text)
+		_, _ = collection.CreateTodo(text, "")
 	}
 
 	if err := s.Save(collection); err != nil {
@@ -50,7 +51,7 @@ func CreateStoreWithSpecs(t *testing.T, specs []TodoSpec) store.Store {
 	collection := models.NewCollection()
 
 	for _, spec := range specs {
-		todo := collection.CreateTodo(spec.Text)
+		todo, _ := collection.CreateTodo(spec.Text, "")
 		todo.Status = spec.Status
 	}
 
@@ -59,6 +60,42 @@ func CreateStoreWithSpecs(t *testing.T, specs []TodoSpec) store.Store {
 	}
 
 	return s
+}
+
+// CreateStoreWithNestedSpecs creates a file-based store with a nested structure from specs.
+func CreateStoreWithNestedSpecs(t *testing.T, specs []TodoSpec) store.Store {
+	t.Helper()
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.json")
+	s := store.NewStore(dbPath)
+
+	collection := models.NewCollection()
+
+	for _, spec := range specs {
+		addTodoFromSpec(t, collection, spec, "")
+	}
+
+	if err := s.Save(collection); err != nil {
+		t.Fatalf("failed to save collection: %v", err)
+	}
+
+	return s
+}
+
+// addTodoFromSpec is a helper to recursively add todos from a spec
+func addTodoFromSpec(t *testing.T, collection *models.Collection, spec TodoSpec, parentID string) {
+	t.Helper()
+
+	todo, err := collection.CreateTodo(spec.Text, parentID)
+	if err != nil {
+		t.Fatalf("failed to create todo from spec: %v", err)
+	}
+	todo.Status = spec.Status
+
+	for _, childSpec := range spec.Children {
+		addTodoFromSpec(t, collection, childSpec, todo.ID)
+	}
 }
 
 // NewTestCollection creates a new collection with the given todos for testing.
@@ -73,4 +110,40 @@ func NewTestCollection(todos ...*models.Todo) *models.Collection {
 func TempDir(t *testing.T) string {
 	t.Helper()
 	return t.TempDir()
+}
+
+// CreateNestedStore creates a file-based store with a nested todo structure for testing.
+// The created structure looks like:
+//  1. Parent todo
+//     1.1 Sub-task 1.1
+//     1.2 Sub-task 1.2
+//     1.2.1 Grandchild 1.2.1
+//  2. Another top-level todo
+func CreateNestedStore(t *testing.T) store.Store {
+	t.Helper()
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.json")
+	s := store.NewStore(dbPath)
+
+	collection := models.NewCollection()
+
+	// Create parent todo
+	parent, _ := collection.CreateTodo("Parent todo", "")
+
+	// Create sub-tasks
+	_, _ = collection.CreateTodo("Sub-task 1.1", parent.ID)
+	subTask2, _ := collection.CreateTodo("Sub-task 1.2", parent.ID)
+
+	// Create grandchild
+	_, _ = collection.CreateTodo("Grandchild 1.2.1", subTask2.ID)
+
+	// Create another top-level todo
+	_, _ = collection.CreateTodo("Another top-level todo", "")
+
+	if err := s.Save(collection); err != nil {
+		t.Fatalf("failed to save collection: %v", err)
+	}
+
+	return s
 }

@@ -6,36 +6,39 @@ package tdh
 import (
 	cmdAdd "github.com/arthur-debert/tdh/pkg/tdh/commands/add"
 	cmdClean "github.com/arthur-debert/tdh/pkg/tdh/commands/clean"
+	cmdComplete "github.com/arthur-debert/tdh/pkg/tdh/commands/complete"
 	cmdInit "github.com/arthur-debert/tdh/pkg/tdh/commands/init"
 	cmdList "github.com/arthur-debert/tdh/pkg/tdh/commands/list"
 	cmdModify "github.com/arthur-debert/tdh/pkg/tdh/commands/modify"
+	cmdReopen "github.com/arthur-debert/tdh/pkg/tdh/commands/reopen"
 	cmdReorder "github.com/arthur-debert/tdh/pkg/tdh/commands/reorder"
 	cmdSearch "github.com/arthur-debert/tdh/pkg/tdh/commands/search"
-	cmdToggle "github.com/arthur-debert/tdh/pkg/tdh/commands/toggle"
 )
 
 // Re-export command option types for backward compatibility
 type (
-	InitOptions    = cmdInit.Options
-	AddOptions     = cmdAdd.Options
-	ModifyOptions  = cmdModify.Options
-	ToggleOptions  = cmdToggle.Options
-	CleanOptions   = cmdClean.Options
-	ReorderOptions = cmdReorder.Options
-	SearchOptions  = cmdSearch.Options
-	ListOptions    = cmdList.Options
+	InitOptions     = cmdInit.Options
+	AddOptions      = cmdAdd.Options
+	ModifyOptions   = cmdModify.Options
+	CompleteOptions = cmdComplete.Options
+	ReopenOptions   = cmdReopen.Options
+	CleanOptions    = cmdClean.Options
+	ReorderOptions  = cmdReorder.Options
+	SearchOptions   = cmdSearch.Options
+	ListOptions     = cmdList.Options
 )
 
 // Re-export command result types for backward compatibility
 type (
-	InitResult    = cmdInit.Result
-	AddResult     = cmdAdd.Result
-	ModifyResult  = cmdModify.Result
-	ToggleResult  = cmdToggle.Result
-	CleanResult   = cmdClean.Result
-	ReorderResult = cmdReorder.Result
-	SearchResult  = cmdSearch.Result
-	ListResult    = cmdList.Result
+	InitResult     = cmdInit.Result
+	AddResult      = cmdAdd.Result
+	ModifyResult   = cmdModify.Result
+	CompleteResult = cmdComplete.Result
+	ReopenResult   = cmdReopen.Result
+	CleanResult    = cmdClean.Result
+	ReorderResult  = cmdReorder.Result
+	SearchResult   = cmdSearch.Result
+	ListResult     = cmdList.Result
 )
 
 // Init initializes a new todo collection
@@ -53,9 +56,14 @@ func Modify(position int, newText string, opts ModifyOptions) (*ModifyResult, er
 	return cmdModify.Execute(position, newText, opts)
 }
 
-// Toggle toggles the status of a todo by position
-func Toggle(position int, opts ToggleOptions) (*ToggleResult, error) {
-	return cmdToggle.Execute(position, opts)
+// Complete marks a todo as complete by position path
+func Complete(positionPath string, opts CompleteOptions) (*CompleteResult, error) {
+	return cmdComplete.Execute(positionPath, opts)
+}
+
+// Reopen marks a todo as pending by position path
+func Reopen(positionPath string, opts ReopenOptions) (*ReopenResult, error) {
+	return cmdReopen.Execute(positionPath, opts)
 }
 
 // Clean removes finished todos from the collection

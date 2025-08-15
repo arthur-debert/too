@@ -143,4 +143,41 @@ func TestListCommand(t *testing.T) {
 		assert.Equal(t, 5, result.TotalCount) // But total count includes all
 		assert.Equal(t, 2, result.DoneCount)  // And done count is accurate
 	})
+
+	t.Run("hides pending children under a done parent", func(t *testing.T) {
+		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
+			{Text: "Done Parent", Status: models.StatusDone, Children: []testutil.TodoSpec{
+				{Text: "Pending Child", Status: models.StatusPending},
+			}},
+			{Text: "Pending Sibling", Status: models.StatusPending},
+		})
+
+		// Default list should hide the done parent and its pending child
+		opts := list.Options{CollectionPath: store.Path()}
+		result, err := list.Execute(opts)
+
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, len(result.Todos), "Only the pending sibling should be visible")
+		assert.Equal(t, "Pending Sibling", result.Todos[0].Text)
+		assert.Equal(t, 3, result.TotalCount, "Total count should include all items")
+		assert.Equal(t, 1, result.DoneCount, "Done count should include the parent")
+	})
+
+	t.Run("ShowAll reveals pending children under a done parent", func(t *testing.T) {
+		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
+			{Text: "Done Parent", Status: models.StatusDone, Children: []testutil.TodoSpec{
+				{Text: "Pending Child", Status: models.StatusPending},
+			}},
+		})
+
+		// --all should show the inconsistent state
+		opts := list.Options{CollectionPath: store.Path(), ShowAll: true}
+		result, err := list.Execute(opts)
+
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, 1, len(result.Todos), "Should show the top-level parent")
+		assert.Equal(t, "Done Parent", result.Todos[0].Text)
+		assert.Equal(t, 1, len(result.Todos[0].Items), "Should reveal the child")
+		assert.Equal(t, "Pending Child", result.Todos[0].Items[0].Text)
+	})
 }

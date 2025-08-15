@@ -54,10 +54,11 @@ This document describes the dual identifier system used in tdh for todo items.
         non-sequential (e.g., a search result might show items 1 and 3). 
         This is a crucial safety feature to ensure user actions are unambiguous.
 
-    tdh toggle <pos>:
+    tdh complete <pos>:
+    tdh reopen <pos>:
     
-        This command toggles the item at the specified Position. The system 
-        maintains the current position numbers after toggling.
+        These commands mark items as complete or pending respectively. The system 
+        maintains the current position numbers after the operation.
 
     tdh reorder:
     
@@ -71,7 +72,7 @@ This document describes the dual identifier system used in tdh for todo items.
         Positions are maintained for remaining items.
 
     Note: tdh does not have a command to delete individual todos. The 
-    philosophy is that todos should be marked as done (tdh toggle) and 
+    philosophy is that todos should be marked as done (tdh complete) and 
     then cleaned up in batch (tdh clean). This prevents accidental 
     deletion of individual items and maintains a history of completed 
     work until explicitly cleaned.

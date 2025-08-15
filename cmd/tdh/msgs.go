@@ -4,7 +4,7 @@ package main
 const (
 	// Root command
 	msgRootShort   = "A simple command-line todo list manager"
-	msgRootLong    = "tdh is a simple command-line todo list manager that helps you track tasks.\nIt stores todos in a JSON file and provides commands to add, modify, toggle, and search todos."
+	msgRootLong    = "tdh is a simple command-line todo list manager that helps you track tasks.\nIt stores todos in a JSON file and provides commands to add, modify, and search todos."
 	msgRootVersion = "tdh version {{.Version}}\n"
 
 	// Add command
@@ -42,10 +42,15 @@ const (
 	msgSearchShort = "Search for todos (alias: s)"
 	msgSearchLong  = "Search for todos containing the specified text."
 
-	// Toggle command
-	msgToggleUse   = "toggle <position>"
-	msgToggleShort = "Toggle the status of a todo (alias: t)"
-	msgToggleLong  = "Toggle the status of a todo between pending and done."
+	// Complete command
+	msgCompleteUse   = "complete <positions...>"
+	msgCompleteShort = "Mark todos as complete (alias: c)"
+	msgCompleteLong  = "Mark one or more todos as complete. Use dot notation for nested items (e.g., 1.2)."
+
+	// Reopen command
+	msgReopenUse   = "reopen <positions...>"
+	msgReopenShort = "Mark todos as pending (alias: o)"
+	msgReopenLong  = "Mark one or more todos as pending. Use dot notation for nested items (e.g., 1.2)."
 )
 
 // Flag descriptions
@@ -69,11 +74,12 @@ const (
 
 // Command aliases
 var (
-	aliasesAdd     = []string{"a", "new", "create"}
-	aliasesEdit    = []string{"modify", "m", "e"}
-	aliasesInit    = []string{"i"}
-	aliasesList    = []string{"ls"}
-	aliasesReorder = []string{"r"}
-	aliasesSearch  = []string{"s"}
-	aliasesToggle  = []string{"t"}
+	aliasesAdd      = []string{"a", "new", "create"}
+	aliasesEdit     = []string{"modify", "m", "e"}
+	aliasesInit     = []string{"i"}
+	aliasesList     = []string{"ls"}
+	aliasesReorder  = []string{"r"}
+	aliasesSearch   = []string{"s"}
+	aliasesComplete = []string{"c"}
+	aliasesReopen   = []string{"o"}
 )

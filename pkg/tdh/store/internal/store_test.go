@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
@@ -78,7 +79,8 @@ func TestJSONFileStore_Save(t *testing.T) {
 		dbPath := filepath.Join(dir, "test.json")
 		store := internal.NewJSONFileStore(dbPath)
 		collection := models.NewCollection()
-		collection.CreateTodo("My new todo")
+		_, err = collection.CreateTodo("My new todo", "")
+		require.NoError(t, err)
 
 		err = store.Save(collection)
 		require.NoError(t, err)
@@ -107,7 +109,7 @@ func TestJSONFileStore_Update(t *testing.T) {
 
 		var todo *models.Todo
 		err = store.Update(func(collection *models.Collection) error {
-			todo = collection.CreateTodo("Updated from transaction")
+			todo, _ = collection.CreateTodo("Updated from transaction", "")
 			return nil
 		})
 
@@ -130,7 +132,8 @@ func TestMemoryStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, collection.Todos)
 
-		collection.CreateTodo("In-memory todo")
+		_, err = collection.CreateTodo("In-memory todo", "")
+		require.NoError(t, err)
 		err = store.Save(collection)
 		require.NoError(t, err)
 
@@ -144,7 +147,7 @@ func TestMemoryStore(t *testing.T) {
 		store := internal.NewMemoryStore()
 		var todo *models.Todo
 		err := store.Update(func(collection *models.Collection) error {
-			todo = collection.CreateTodo("Updated in-memory")
+			todo, _ = collection.CreateTodo("Updated in-memory", "")
 			return nil
 		})
 
@@ -234,13 +237,13 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 		// Create initial collection with one todo
 		collection := models.NewCollection()
-		todo1 := collection.CreateTodo("Original todo")
+		todo1, _ := collection.CreateTodo("Original todo", "")
 		err = store.Save(collection)
 		require.NoError(t, err)
 
 		// Attempt an update that fails
 		err = store.Update(func(c *models.Collection) error {
-			c.CreateTodo("This should be rolled back")
+			_, _ = c.CreateTodo("This should be rolled back", "")
 			c.Todos[0].Text = "Modified text"
 			return errors.New("simulated error")
 		})
@@ -261,13 +264,13 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 		// Create initial collection with one todo
 		collection := models.NewCollection()
-		todo1 := collection.CreateTodo("Original todo")
+		todo1, _ := collection.CreateTodo("Original todo", "")
 		err := store.Save(collection)
 		require.NoError(t, err)
 
 		// Attempt an update that fails
 		err = store.Update(func(c *models.Collection) error {
-			c.CreateTodo("This should be rolled back")
+			_, _ = c.CreateTodo("This should be rolled back", "")
 			c.Todos[0].Text = "Modified text"
 			return errors.New("simulated error")
 		})
@@ -288,14 +291,14 @@ func TestStore_TransactionRollback(t *testing.T) {
 
 		// Create initial collection with one todo
 		collection := models.NewCollection()
-		collection.CreateTodo("Original todo")
+		_, _ = collection.CreateTodo("Original todo", "")
 		err := store.Save(collection)
 		require.NoError(t, err)
 
 		// Perform a successful update
 		var newTodo *models.Todo
 		err = store.Update(func(c *models.Collection) error {
-			newTodo = c.CreateTodo("New todo")
+			newTodo, _ = c.CreateTodo("New todo", "")
 			c.Todos[0].Text = "Modified text"
 			return nil
 		})
@@ -388,7 +391,7 @@ func TestJSONFileStore_SaveEdgeCases(t *testing.T) {
 
 		store := internal.NewJSONFileStore(dbPath)
 		collection := models.NewCollection()
-		collection.CreateTodo("Test")
+		_, _ = collection.CreateTodo("Test", "")
 
 		// This should fail during temp file creation
 		err = store.Save(collection)
@@ -407,10 +410,11 @@ func TestStore_Find(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Setup initial data
 			collection := models.NewCollection()
-			collection.CreateTodo("Buy milk")
-			doneTodo := collection.CreateTodo("Buy eggs")
-			doneTodo.Toggle()
-			collection.CreateTodo("Buy bread and milk")
+			_, _ = collection.CreateTodo("Buy milk", "")
+			doneTodo, _ := collection.CreateTodo("Buy eggs", "")
+			doneTodo.Status = models.StatusDone
+			doneTodo.Modified = time.Now()
+			_, _ = collection.CreateTodo("Buy bread and milk", "")
 			err := s.Save(collection)
 			require.NoError(t, err)
 
@@ -467,4 +471,276 @@ func newTestJSONFileStore(t *testing.T) store.Store {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	return internal.NewJSONFileStore(filepath.Join(dir, "test.json"))
+}
+
+func TestJSONFileStore_NestedTodos(t *testing.T) {
+	t.Run("should save and load nested todos", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-nested-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+		store := internal.NewJSONFileStore(dbPath)
+
+		// Create a collection with nested todos
+		collection := models.NewCollection()
+		parent, _ := collection.CreateTodo("Parent task", "")
+
+		child1 := &models.Todo{
+			ID:       "child-1",
+			ParentID: parent.ID,
+			Position: 1,
+			Text:     "Child task 1",
+			Status:   models.StatusPending,
+			Modified: parent.Modified,
+			Items:    []*models.Todo{},
+		}
+
+		child2 := &models.Todo{
+			ID:       "child-2",
+			ParentID: parent.ID,
+			Position: 2,
+			Text:     "Child task 2",
+			Status:   models.StatusDone,
+			Modified: parent.Modified,
+			Items:    []*models.Todo{},
+		}
+
+		grandchild := &models.Todo{
+			ID:       "grandchild-1",
+			ParentID: child1.ID,
+			Position: 1,
+			Text:     "Grandchild task",
+			Status:   models.StatusPending,
+			Modified: parent.Modified,
+			Items:    []*models.Todo{},
+		}
+
+		child1.Items = []*models.Todo{grandchild}
+		parent.Items = []*models.Todo{child1, child2}
+
+		// Save the collection
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		// Load it back
+		loaded, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify structure is preserved
+		assert.Len(t, loaded.Todos, 1)
+		assert.Equal(t, "Parent task", loaded.Todos[0].Text)
+		assert.Len(t, loaded.Todos[0].Items, 2)
+
+		// Verify children
+		assert.Equal(t, "Child task 1", loaded.Todos[0].Items[0].Text)
+		assert.Equal(t, "Child task 2", loaded.Todos[0].Items[1].Text)
+		assert.Equal(t, models.StatusDone, loaded.Todos[0].Items[1].Status)
+
+		// Verify grandchild
+		assert.Len(t, loaded.Todos[0].Items[0].Items, 1)
+		assert.Equal(t, "Grandchild task", loaded.Todos[0].Items[0].Items[0].Text)
+
+		// Verify ParentIDs are preserved
+		assert.Equal(t, parent.ID, loaded.Todos[0].Items[0].ParentID)
+		assert.Equal(t, parent.ID, loaded.Todos[0].Items[1].ParentID)
+		assert.Equal(t, child1.ID, loaded.Todos[0].Items[0].Items[0].ParentID)
+	})
+
+	t.Run("should migrate flat todos to nested structure", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-migrate-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+
+		// Write old format data without nested structure
+		oldData := `[
+			{"id": "existing-id-1", "position": 1, "text": "First todo", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
+			{"id": "existing-id-2", "position": 2, "text": "Second todo", "status": "done", "modified": "2024-01-01T00:00:00Z"}
+		]`
+		err = os.WriteFile(dbPath, []byte(oldData), 0600)
+		require.NoError(t, err)
+
+		store := internal.NewJSONFileStore(dbPath)
+		collection, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify migration happened
+		assert.Len(t, collection.Todos, 2)
+
+		// All todos should have Items initialized
+		for _, todo := range collection.Todos {
+			assert.NotNil(t, todo.Items)
+			assert.Empty(t, todo.ParentID) // Top-level todos have empty ParentID
+		}
+
+		// Save and reload to ensure persistence
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		reloaded, err := store.Load()
+		require.NoError(t, err)
+		assert.Len(t, reloaded.Todos, 2)
+		for _, todo := range reloaded.Todos {
+			assert.NotNil(t, todo.Items)
+		}
+	})
+
+	t.Run("should handle deeply nested structures", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-deep-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+		store := internal.NewJSONFileStore(dbPath)
+
+		// Create a 5-level deep structure
+		collection := models.NewCollection()
+		level1, _ := collection.CreateTodo("Level 1", "")
+
+		level2 := &models.Todo{
+			ID: "level-2", ParentID: level1.ID, Position: 1,
+			Text: "Level 2", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level3 := &models.Todo{
+			ID: "level-3", ParentID: level2.ID, Position: 1,
+			Text: "Level 3", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level4 := &models.Todo{
+			ID: "level-4", ParentID: level3.ID, Position: 1,
+			Text: "Level 4", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level5 := &models.Todo{
+			ID: "level-5", ParentID: level4.ID, Position: 1,
+			Text: "Level 5", Status: models.StatusPending,
+			Modified: level1.Modified, Items: []*models.Todo{},
+		}
+
+		level4.Items = []*models.Todo{level5}
+		level3.Items = []*models.Todo{level4}
+		level2.Items = []*models.Todo{level3}
+		level1.Items = []*models.Todo{level2}
+
+		// Save and reload
+		err = store.Save(collection)
+		require.NoError(t, err)
+
+		loaded, err := store.Load()
+		require.NoError(t, err)
+
+		// Navigate to the deepest level
+		current := loaded.Todos[0]
+		assert.Equal(t, "Level 1", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 2", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 3", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 4", current.Text)
+
+		current = current.Items[0]
+		assert.Equal(t, "Level 5", current.Text)
+		assert.Empty(t, current.Items)
+	})
+
+	t.Run("should automatically save migrated data", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-auto-migrate-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+
+		// Write old format data without Items field
+		oldData := `[
+			{"id": "test-id-1", "position": 1, "text": "First todo", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
+			{"id": "test-id-2", "position": 2, "text": "Second todo", "status": "done", "modified": "2024-01-01T00:00:00Z"}
+		]`
+		err = os.WriteFile(dbPath, []byte(oldData), 0600)
+		require.NoError(t, err)
+
+		// Load the store - this should trigger migration and save
+		store := internal.NewJSONFileStore(dbPath)
+		collection, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify migration happened
+		assert.Len(t, collection.Todos, 2)
+		for _, todo := range collection.Todos {
+			assert.NotNil(t, todo.Items)
+		}
+
+		// Read the file directly to verify it was saved with new format
+		savedData, err := os.ReadFile(dbPath)
+		require.NoError(t, err)
+
+		// The saved data should include the items field
+		assert.Contains(t, string(savedData), `"items"`)
+		assert.Contains(t, string(savedData), `"parentId"`)
+
+		// Load again to ensure the migrated format loads correctly
+		store2 := internal.NewJSONFileStore(dbPath)
+		collection2, err := store2.Load()
+		require.NoError(t, err)
+
+		assert.Len(t, collection2.Todos, 2)
+		assert.Equal(t, collection.Todos[0].ID, collection2.Todos[0].ID)
+		assert.Equal(t, collection.Todos[1].ID, collection2.Todos[1].ID)
+	})
+
+	t.Run("should migrate legacy integer ID format", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "tdh-legacy-migrate-test")
+		require.NoError(t, err)
+		defer func() { _ = os.RemoveAll(dir) }()
+
+		dbPath := filepath.Join(dir, "test.json")
+
+		// Write truly old format with integer IDs
+		oldData := `[
+			{"id": 1, "text": "Legacy todo 1", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
+			{"id": 2, "text": "Legacy todo 2", "status": "done", "modified": "2024-01-01T00:00:00Z"},
+			{"id": 3, "text": "Legacy todo 3", "status": "pending", "modified": "2024-01-01T00:00:00Z"}
+		]`
+		err = os.WriteFile(dbPath, []byte(oldData), 0600)
+		require.NoError(t, err)
+
+		// Load the store - this should trigger migration
+		store := internal.NewJSONFileStore(dbPath)
+		collection, err := store.Load()
+		require.NoError(t, err)
+
+		// Verify todos were loaded and migrated
+		assert.Len(t, collection.Todos, 3)
+
+		// Check that all todos have:
+		// - UUID strings as IDs (not the original integers)
+		// - Positions matching the original integer IDs
+		// - Items field initialized
+		// - Empty ParentID
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, 3, collection.Todos[2].Position)
+
+		for i, todo := range collection.Todos {
+			assert.NotEmpty(t, todo.ID, "Todo %d should have UUID", i)
+			assert.Len(t, todo.ID, 36, "Todo %d ID should be UUID length", i) // UUID with hyphens
+			assert.NotNil(t, todo.Items, "Todo %d should have Items initialized", i)
+			assert.Empty(t, todo.ParentID, "Todo %d should have empty ParentID", i)
+		}
+
+		// Verify the file was updated
+		savedData, err := os.ReadFile(dbPath)
+		require.NoError(t, err)
+		assert.Contains(t, string(savedData), `"items"`)
+		assert.NotContains(t, string(savedData), `"id": 1`) // Should not have integer IDs
+	})
 }
