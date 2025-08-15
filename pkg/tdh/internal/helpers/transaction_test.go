@@ -94,8 +94,9 @@ func TestTransactOnTodo(t *testing.T) {
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
 		assert.Equal(t, models.StatusDone, collection.Todos[1].Status)
-		assert.Equal(t, 1, collection.Todos[0].Position)
-		assert.Equal(t, 2, collection.Todos[1].Position)
-		assert.Equal(t, 3, collection.Todos[2].Position)
+		// With new behavior: done todo gets position 0, active todos get 1, 2
+		assert.Equal(t, 1, collection.Todos[0].Position) // Active
+		assert.Equal(t, 0, collection.Todos[1].Position) // Done (was position 5)
+		assert.Equal(t, 2, collection.Todos[2].Position) // Active
 	})
 }

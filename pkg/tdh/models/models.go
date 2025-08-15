@@ -156,9 +156,10 @@ func (c *Collection) Clone() *Collection {
 	return clone
 }
 
-// Reorder sorts todos by their current position and reassigns sequential positions.
+// Reorder resets positions for active (pending) todos, giving them sequential positions starting from 1.
+// Done todos are left with position 0.
 func (c *Collection) Reorder() {
-	ReorderTodos(c.Todos)
+	ResetActivePositions(c.Todos)
 }
 
 // ResetSiblingPositions resets positions for all siblings of the todo with the given parent ID.
