@@ -11,7 +11,6 @@ import (
 
 func TestComplete(t *testing.T) {
 	t.Run("complete simple todo", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects completed todo at position 1, but new behavior sets position to 0.")
 		// Setup
 		store := testutil.CreatePopulatedStore(t, "Test todo 1", "Test todo 2")
 
@@ -30,16 +29,21 @@ func TestComplete(t *testing.T) {
 		// Verify it was saved
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByPosition(t, collection.Todos, 1)
-		testutil.AssertTodoHasStatus(t, todo, models.StatusDone)
 
-		// Verify other todo is still pending
-		todo2 := testutil.AssertTodoByPosition(t, collection.Todos, 2)
-		testutil.AssertTodoHasStatus(t, todo2, models.StatusPending)
+		// With new behavior: completed todo has position 0
+		completedTodo := collection.Todos[0] // First in slice
+		assert.Equal(t, "Test todo 1", completedTodo.Text)
+		assert.Equal(t, 0, completedTodo.Position)
+		testutil.AssertTodoHasStatus(t, completedTodo, models.StatusDone)
+
+		// Other todo gets position 1 after reordering
+		activeTodo := collection.Todos[1]
+		assert.Equal(t, "Test todo 2", activeTodo.Text)
+		assert.Equal(t, 1, activeTodo.Position)
+		testutil.AssertTodoHasStatus(t, activeTodo, models.StatusPending)
 	})
 
 	t.Run("complete nested todo", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects sibling at position 1.2 after completing 1.1, but new behavior renumbers to 1.1.")
 		// Setup - create nested structure
 		store := testutil.CreateNestedStore(t)
 
@@ -62,19 +66,26 @@ func TestComplete(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.Equal(t, models.StatusPending, parent.Status)
 
-		// Verify only the specific child was marked done
-		child, err := collection.FindItemByPositionPath("1.1")
-		testutil.AssertNoError(t, err)
-		assert.Equal(t, models.StatusDone, child.Status)
+		// With new behavior: completed child has position 0
+		assert.Equal(t, 2, len(parent.Items))
+		completedChild := parent.Items[0] // First in slice
+		assert.Equal(t, "Sub-task 1.1", completedChild.Text)
+		assert.Equal(t, 0, completedChild.Position)
+		assert.Equal(t, models.StatusDone, completedChild.Status)
 
-		// Verify sibling is still pending
-		sibling, err := collection.FindItemByPositionPath("1.2")
-		testutil.AssertNoError(t, err)
+		// Sibling now has position 1 after reordering
+		sibling := parent.Items[1]
+		assert.Equal(t, "Sub-task 1.2", sibling.Text)
+		assert.Equal(t, 1, sibling.Position)
 		assert.Equal(t, models.StatusPending, sibling.Status)
+
+		// Can still find sibling by new position path
+		sibling2, err := collection.FindItemByPositionPath("1.1")
+		testutil.AssertNoError(t, err)
+		assert.Equal(t, "Sub-task 1.2", sibling2.Text)
 	})
 
 	t.Run("complete grandchild todo", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects positions to remain unchanged after complete operations.")
 		// Setup - create nested structure
 		store := testutil.CreateNestedStore(t)
 
@@ -89,23 +100,35 @@ func TestComplete(t *testing.T) {
 		assert.Equal(t, "pending", result.OldStatus)
 		assert.Equal(t, "done", result.NewStatus)
 
-		// Verify only the specific item was affected
+		// Verify the changes
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
 
-		item, err := collection.FindItemByPositionPath("1.2.1")
-		testutil.AssertNoError(t, err)
-		assert.Equal(t, models.StatusDone, item.Status)
-
 		// Verify bottom-up completion: 1.2 should be done (all children complete)
-		parent12, err := collection.FindItemByPositionPath("1.2")
+		// After reordering, 1.2 becomes 1.1 (since 1.1 was pending and 1.2 had higher position)
+		parent, err := collection.FindItemByPositionPath("1")
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, models.StatusDone, parent12.Status, "Parent at 1.2 should be done (bottom-up completion)")
+		assert.Equal(t, 2, len(parent.Items))
+
+		// Find the completed subtask (with grandchild) - it should have position 0
+		var completedSubtask *models.Todo
+		for _, item := range parent.Items {
+			if item.Text == "Sub-task 1.2" {
+				completedSubtask = item
+				break
+			}
+		}
+		assert.NotNil(t, completedSubtask)
+		assert.Equal(t, 0, completedSubtask.Position)
+		assert.Equal(t, models.StatusDone, completedSubtask.Status, "Parent at 1.2 should be done (bottom-up completion)")
+
+		// The grandchild should also have position 0
+		assert.Equal(t, 1, len(completedSubtask.Items))
+		assert.Equal(t, 0, completedSubtask.Items[0].Position)
+		assert.Equal(t, models.StatusDone, completedSubtask.Items[0].Status)
 
 		// But top-level parent should remain pending (not all children complete)
-		parent1, err := collection.FindItemByPositionPath("1")
-		testutil.AssertNoError(t, err)
-		assert.Equal(t, models.StatusPending, parent1.Status, "Parent at 1 should remain pending (1.1 still pending)")
+		assert.Equal(t, models.StatusPending, parent.Status, "Parent at 1 should remain pending (1.1 still pending)")
 	})
 
 	t.Run("complete invalid position", func(t *testing.T) {
