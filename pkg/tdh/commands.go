@@ -12,8 +12,8 @@ import (
 	cmdModify "github.com/arthur-debert/tdh/pkg/tdh/commands/modify"
 	cmdMove "github.com/arthur-debert/tdh/pkg/tdh/commands/move"
 	cmdReopen "github.com/arthur-debert/tdh/pkg/tdh/commands/reopen"
-	cmdReorder "github.com/arthur-debert/tdh/pkg/tdh/commands/reorder"
 	cmdSearch "github.com/arthur-debert/tdh/pkg/tdh/commands/search"
+	cmdSwap "github.com/arthur-debert/tdh/pkg/tdh/commands/swap"
 )
 
 // Re-export command option types for backward compatibility
@@ -24,10 +24,10 @@ type (
 	CompleteOptions = cmdComplete.Options
 	ReopenOptions   = cmdReopen.Options
 	CleanOptions    = cmdClean.Options
-	ReorderOptions  = cmdReorder.Options
 	SearchOptions   = cmdSearch.Options
 	ListOptions     = cmdList.Options
 	MoveOptions     = cmdMove.Options
+	SwapOptions     = cmdSwap.Options
 )
 
 // Re-export command result types for backward compatibility
@@ -38,10 +38,10 @@ type (
 	CompleteResult = cmdComplete.Result
 	ReopenResult   = cmdReopen.Result
 	CleanResult    = cmdClean.Result
-	ReorderResult  = cmdReorder.Result
 	SearchResult   = cmdSearch.Result
 	ListResult     = cmdList.Result
 	MoveResult     = cmdMove.Result
+	SwapResult     = cmdSwap.Result
 )
 
 // Init initializes a new todo collection
@@ -74,11 +74,6 @@ func Clean(opts CleanOptions) (*CleanResult, error) {
 	return cmdClean.Execute(opts)
 }
 
-// Reorder reorders todos by sorting them by position and reassigning sequential positions
-func Reorder(opts ReorderOptions) (*ReorderResult, error) {
-	return cmdReorder.Execute(opts)
-}
-
 // Search searches for todos containing the query string
 func Search(query string, opts SearchOptions) (*SearchResult, error) {
 	return cmdSearch.Execute(query, opts)
@@ -92,4 +87,9 @@ func List(opts ListOptions) (*ListResult, error) {
 // Move moves a todo from one parent to another
 func Move(sourcePath string, destParentPath string, opts MoveOptions) (*MoveResult, error) {
 	return cmdMove.Execute(sourcePath, destParentPath, opts)
+}
+
+// Swap swaps a todo from one parent to another
+func Swap(sourcePath string, destParentPath string, opts SwapOptions) (*SwapResult, error) {
+	return cmdSwap.Execute(sourcePath, destParentPath, opts)
 }
