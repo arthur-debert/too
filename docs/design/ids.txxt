@@ -1,170 +1,166 @@
-                ID and Reference System
+                ID AND REFERENCING SYSTEM
 
-This document describes the dual identifier system used in tdh for todo items.
-
-As users need to reference todos in the command line, its usability and
-characteristics have great impact on the overall tdh usability. IDs are usually
-opaque to end users, and objects are referenced by visually manipulating them
-on a GUI. 
-
-But in the CLI, as one uses text to refer, designing a usable solution is a key
-part of tool's experience. 
+    This document describes the identifier system used in tdh and the core
+    philosophy behind how users interact with todo items.
 
 
-1. The Mental Model
+1. The Core Problem: A Clean List vs. Stable References
 
-    In tdh's domain, this is more salient, as users
-    naturally think about lists as numbered , ordered sequences, and have various
-    expectations to how these work (i.e. they don't start at zero.)
+    The primary goal of tdh is to be a fast, convenient CLI tool. A key part
+    of this experience is how users refer to items. Users naturally think of
+    lists as clean, sequential numbers starting from 1. An item's position
+    should be easy to see and type.
 
-    That is the guiding principle here: lists are a continuous sequences of integers,
-    starting from 1. For example: 
+    This creates a conflict:
 
-        1. Groceries
-            1. Milk  
-            2. Bread
-        2. Packing: 
-            1. Winter Coat
-            2. Wine Opener
-            3. Passport
+        - User's Mental Model: A clean list (1, 2, 3...) of active tasks.
+        - Application's Need: A stable, unchanging reference to an item,
+          regardless of its status (done, pending) or any filtering (search).
 
-    Whereas the list bellow, while technically correct create a jarring
-    experience.
+    If the number 2 sometimes refers to "Buy milk" and sometimes to "Pack
+    passport" depending on the view, the tool becomes unreliable and dangerous.
 
-        1. Groceries
-            1. Milk  
-            3. Bread
-        7. Packing: 
-            2. Winter Coat
-            4. Wine Opener
 
-    Hence the goal here is how to conciliate the numbered lists mental model and a
-    stable internal ID for the application to process items.
+2. The tdh Solution: A Dual ID System and the "Active List"
 
-2. The Breakage , Filtering
+    tdh solves this problem by using two different identifiers and a strong
+    philosophy about what the user sees by default.
 
-    So far, we could just number items as they appear, it couldn't be simpler.
-    The trouble starts once you take filtering / search into account: 
+        - ID (Internal): A permanent, stable, unique identifier (UUID). This
+          is never shown to the user and is used internally to ensure logic
+          always targets the correct item.
 
-        $ tdh search "Bread"
-        1. Groceries
-            1. Bread
+        - Position (External): A mutable, sequential integer (1, 2, 3...).
+          This is the number the user sees and interacts with. With nested
+          lists, it is always relative to its direct siblings (e.g., 1.1, 1.2).
 
-    Above, we are numbering todos as they appear visually. However if we were
-    to $tdh complete 1.1 (that is, complete the first item in the first item),
-    we'd be matching the search results. However, Bread is only the first item
-    in Groceries when searching "bread", without searching that will resolve to
-    Milk. Which item are you completing?
+    The core philosophy is this: the user-facing Position is for the "active
+    list" only.
 
-    In short, a naive number as visual position means that what is being
-    filtered is changing that id, and that will not work as many commands
-    require the id to work on.
+        - Active Todos: An "active" todo is any todo with the status pending.
 
-    Hence, we need a another "stable" id, that won't  change via filtering, but
-    is still sequential and grokkable. Granted, in these cases you do end up win
-    non sequential, 1 based numbers, as in : 
+        - Archived Todos: A done todo is considered "archived." It is hidden
+          from the default view and does not affect the numbering of the
+          active list.
 
-        $ tdh search "Bread"
+        - Automatic Reordering: To keep the active list clean, tdh
+          automatically re-numbers the Position of items after any command
+          that changes the list's structure (complete, reopen, cleanup, move).
+
+    This means the default tdh ls view is a curated, always-sequential list
+    of what is currently relevant to the user.
+
+
+3. Walkthrough: A Practical Example
+
+    Here is a step-by-step example of how the system works in practice.
+
+
+    3.1 Add initial items
+
+        We start with an empty list.
+
+            $ tdh add "Groceries"
+            $ tdh add "Packing"
+
+        Commentary: The active list is simple and sequential.
+
+            $ tdh ls
             1. Groceries
-                2. Bread
-
-    While not ideal , since the user is actively filtering and searching, it
-    becomes clear that that number is being filtered. Of course, once the
-    number is not a naive increment during render ting, we now need to store
-    this other stable position ID>.
+            2. Packing
 
 
-            
+    3.2 Add nested items
 
-1. Background
+        We add items under "Groceries".
 
-    A simple incremental ID system has two main usability problems:
+            $ tdh add --parent 1 "Milk"
+            $ tdh add --parent 1 "Bread"
 
-        • Non-Sequential Numbers: When items are completed or removed, gaps 
-          appear in the list (e.g., 1, 3, 4). This doesn't match the user's 
-          mental model of a simple list.
+        Commentary: Nested items are added. Their positions are relative to
+        their parent.
 
-        • Ever-Growing Numbers: Over time, IDs become large (e.g., 432), 
-          making them cumbersome to type for common commands. This clashes 
-          with the goal of being a fast, convenient tool.
-
-
-2. Implementation: Dual Identifier System
-
-    tdh uses a dual identifier system for every todo item:
-
-    ID (Internal):
-
-        A permanent, stable, unique identifier (UUID). This ID is never 
-        shown to the user. It is used internally for any logic that 
-        requires an unchanging reference to an item.
-
-    Position (External):
-
-        A mutable, sequential integer (1, 2, 3...). This is the number 
-        the user sees and interacts with in all commands. It represents 
-        the item's position in the full, unfiltered list.
-
-    The guiding philosophy is that the user's list should always look 
-    clean and sequential, like a paper to-do list.
-
-    The position is recalculated on operations that removes todo items (either
-    hard removes or by marking them done). On each of these, the system will
-    reorder all following todos with the same  parent.
+            $ tdh ls
+            1. Groceries
+               1. Milk
+               2. Bread
+            2. Packing
 
 
-3. Command Behavior
+    3.3 Complete an item
 
-    This system affects command behavior as follows:
+        We complete "Milk".
 
-    tdh add "New item":
+            $ tdh complete 1.1
 
-        The new item is assigned a unique internal ID and is appended to 
-        the list, receiving the next available Position number (e.g., if 
-        there are 3 items, the new one becomes Position 4).
+        Commentary: "Milk" is marked as done and disappears from the active
+        list. The system automatically reorders the remaining siblings, so
+        "Bread" is instantly re-numbered from 1.2 to 1.1.
 
-    tdh ls and tdh search:
-
-        These commands always display the persistent Position number. When 
-        a list is filtered or searched, the displayed numbers correspond to 
-        their position in the overall list, meaning they may appear 
-        non-sequential (e.g., a search result might show items 1 and 3). 
-        This is a crucial safety feature to ensure user actions are unambiguous.
-
-    tdh complete <pos>:
-    tdh reopen <pos>:
-
-        These commands mark items as complete or pending respectively. The system 
-        maintains the current position numbers after the operation.
-
-    tdh reorder:
-
-        This command explicitly reorders the list to ensure sequential 
-        positions starting from 1. This is useful after operations that 
-        may create gaps.
-
-    tdh clean:
-
-        This command removes all completed (done) todos from the list. 
-        Positions are maintained for remaining items.
-
-    Note: tdh does not have a command to delete individual todos. The 
-    philosophy is that todos should be marked as done (tdh complete) and 
-    then cleaned up in batch (tdh clean). This prevents accidental 
-    deletion of individual items and maintains a history of completed 
-    work until explicitly cleaned.
+            $ tdh ls
+            1. Groceries
+               1. Bread
+            2. Packing
 
 
-4. Interaction With Nested Lists
+    3.4 View all items (including archived)
 
-    Nested lists behave much the same way: 
+        The --all flag reveals the underlying state of the data file.
 
-        - ID (Internal): still a UUID, regardless of nesting.
+            $ tdh ls --all
+            1. Groceries (pending)
+               1. Bread (pending)
+               2. Milk (done)
+            2. Packing (pending)
 
-        - Position (External): the position is relative to the same parent
+        Commentary: This view shows the "true" state. Note that "Milk" was
+        re-numbered to 1.2 by the automatic reorder. Commands that need to
+        reference archived items must use this view.
 
-    The position, in practice becomes like a compound key as in 3.2 : todo
-    position #3, and among st it's  children, position #2.
-G
-    Reordering operations can be trigger only at at one level, and hence are
-    fast to execute.
+
+    3.5 Reopen an archived item
+
+        Using the position from the --all view, we reopen "Milk".
+
+            $ tdh reopen 1.2
+
+        Commentary: It reappears in the active list, and another automatic
+        reorder gives it the next available position, 1.2.
+
+            $ tdh ls
+            1. Groceries
+               1. Bread
+               2. Milk
+            2. Packing
+
+
+    3.6 Complete a parent item
+
+        We complete the parent, "Groceries".
+
+            $ tdh complete 1
+
+        Commentary: Due to "Behavioral Propagation", the entire branch
+        disappears from the active list. "Packing" is automatically
+        re-numbered from 2 to 1.
+
+            $ tdh ls
+            1. Packing
+
+
+    3.7 Clean up archived items
+
+        The cleanup command permanently removes the "Groceries" item and all
+        its descendants ("Bread", "Milk") because the parent was done.
+
+            $ tdh cleanup
+
+        Commentary: The remaining items are reordered, but "Packing" is
+        already at position 1.
+
+            $ tdh ls
+            1. Packing
+
+        This walkthrough demonstrates how the dual ID system and "active list"
+        philosophy provide a user experience that is both intuitive for simple
+        lists and powerful enough to handle complex, unambiguous operations.
