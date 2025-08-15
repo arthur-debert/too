@@ -4,7 +4,7 @@
   tdh init                    # creates a new todo list here  
   tdh add "Buy Groceries"
       Added todo #1: Buy Groceries
-  tdh add --parent 1 "Milk"
+  tdh add --to 1 "Milk"
   tdh complete 1.1            # completes todo item 1 (Groceries)'s first item (Milk)
   tdh reopen 1.1              # My bad, we still need milk
   tdh search bread
