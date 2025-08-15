@@ -74,7 +74,6 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 	})
 
 	t.Run("should handle multi-level bottom-up completion", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects positions to remain unchanged after complete.")
 		// Create a nested store with grandchildren
 		s := testutil.CreateNestedStore(t)
 
@@ -90,8 +89,9 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Complete grandchild 1.2.1
-		_, err = complete.Execute("1.2.1", complete.Options{
+		// After completing 1.1, Sub-task 1.2 moves to position 1
+		// So its grandchild is now at path 1.1.1
+		_, err = complete.Execute("1.1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -109,7 +109,6 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 	})
 
 	t.Run("should not complete parent if some children are still pending", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects positions to remain unchanged after complete.")
 		// Create a store with custom nested structure
 		dir := testutil.TempDir(t)
 		dbPath := dir + "/test.json"
@@ -125,13 +124,16 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Complete first two children
+		// Complete first child
 		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("1.2", complete.Options{
+		// After completing 1.1, positions are renumbered:
+		// Child 2 is now at position 1 (path 1.1)
+		// Child 3 is now at position 2 (path 1.2)
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -142,8 +144,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent := collection.Todos[0]
 		assert.Equal(t, models.StatusPending, parent.Status)
 
-		// Complete the third child
-		_, err = complete.Execute("1.3", complete.Options{
+		// Complete the last child (now at position 1)
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -156,7 +158,6 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 	})
 
 	t.Run("should handle complex nested hierarchy", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects positions to remain unchanged after complete.")
 		// Create a complex hierarchy
 		dir := testutil.TempDir(t)
 		dbPath := dir + "/test.json"
@@ -184,7 +185,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		_, err = complete.Execute("1.1.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("1.1.2", complete.Options{CollectionPath: s.Path()})
+		// After reordering, Task B is now at 1.1.1
+		_, err = complete.Execute("1.1.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
 		// Phase 1 should be auto-completed
@@ -197,7 +199,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		// But project should still be pending (Phase 2 not complete)
 		assert.Equal(t, models.StatusPending, project.Status)
 
-		// Complete Task C
+		// After Phase 1 is done (position 0), Phase 2 is still at position 2
+		// So Task C is at path 1.2.1
 		_, err = complete.Execute("1.2.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
@@ -211,7 +214,6 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 	})
 
 	t.Run("should not auto-complete childless parent when sibling completes", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects positions to remain unchanged after complete.")
 		// This test verifies the business rule that childless parents are not auto-completed
 		dir := testutil.TempDir(t)
 		dbPath := dir + "/test.json"
@@ -246,13 +248,15 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent := collection.Todos[0]
 		assert.Equal(t, models.StatusPending, parent.Status)
 
+		// After completing childless child, the child with grandchildren is now at position 1
 		// Complete grandchildren
 		_, err = complete.Execute("1.1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("1.1.2", complete.Options{
+		// After first grandchild is done, second grandchild is at position 1
+		_, err = complete.Execute("1.1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -263,15 +267,17 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent = collection.Todos[0]
 		assert.Equal(t, models.StatusDone, parent.Status)
 
-		// Verify the childless child is still childless and complete
-		childless := parent.Items[1]
-		assert.Equal(t, "Childless child", childless.Text)
-		assert.Equal(t, 0, len(childless.Items))
-		assert.Equal(t, models.StatusDone, childless.Status)
+		// Verify both children are done with position 0
+		for _, child := range parent.Items {
+			assert.Equal(t, 0, child.Position)
+			assert.Equal(t, models.StatusDone, child.Status)
+			if child.Text == "Childless child" {
+				assert.Equal(t, 0, len(child.Items))
+			}
+		}
 	})
 
 	t.Run("should handle root level items without panic", func(t *testing.T) {
-		t.Skip("Skipped: Must be fixed in issue #85 - Milestone 4: Fix Complete Command. Test expects positions to remain unchanged after complete.")
 		// This test ensures completing root items (with no parent) doesn't cause issues
 		dir := testutil.TempDir(t)
 		dbPath := dir + "/test.json"
@@ -297,13 +303,15 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		assert.Equal(t, "Root todo 1", result.Todo.Text)
 		assert.Equal(t, "", result.Todo.ParentID) // Verify it has no parent
 
+		// After reordering, "Root with children" is now at position 1
 		// Complete children to trigger bottom-up on a root item
-		_, err = complete.Execute("2.1", complete.Options{
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("2.2", complete.Options{
+		// After reordering, second child is now at 1.1
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
