@@ -69,8 +69,9 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 
 		// Find the old parent
 		var oldParent *models.Todo
-		if sourceTodo.ParentID != "" {
-			oldParent = collection.FindItemByID(sourceTodo.ParentID)
+		oldParentID := sourceTodo.ParentID
+		if oldParentID != "" {
+			oldParent = collection.FindItemByID(oldParentID)
 		}
 
 		// Store old path for result
@@ -112,12 +113,20 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 			collection.Todos = append(collection.Todos, sourceTodo)
 		}
 
-		// Reorder both old and new parent's children
-		if oldParent != nil {
-			models.ReorderTodos(oldParent.Items)
+		// Reset positions at both source and destination
+		// Source location (where item was removed from)
+		if oldParentID != "" {
+			collection.ResetSiblingPositions(oldParentID)
 		} else {
-			// Reorder the root list if the item was moved from the root
-			models.ReorderTodos(collection.Todos)
+			collection.ResetRootPositions()
+		}
+
+		// Destination location (where item was added to)
+		if destParent != nil {
+			collection.ResetSiblingPositions(destParent.ID)
+		} else if oldParentID != "" {
+			// Only reset root if we actually moved to root from elsewhere
+			collection.ResetRootPositions()
 		}
 
 		// Get new path after reordering
