@@ -1,48 +1,35 @@
-                Nested Lists Design Specification
+                # Nested Lists Design Specification
 
-NOTE: This is a proposed feature that has not been implemented yet.
+This document outlines the design and behavior of the nested todo lists feature in `tdh`.
 
-This document outlines the design for implementing arbitrarily nested
-todo lists in tdh.
+## 1. Problem Analysis
 
-1. Problem Analysis
+A simple, flat list is insufficient for organizing related tasks. Users need the ability to break down larger items into smaller sub-tasks, creating a natural hierarchy. This feature adds this capability while maintaining the speed and convenience of the existing interface.
 
-    A simple, flat list is insufficient for organizing related tasks. Users 
-    need the ability to break down larger items into smaller sub-tasks, 
-    creating a natural hierarchy. The current system lacks the data model 
-    and command structure to support this. The goal is to add this capability 
-    while maintaining the speed and convenience of the existing interface.
+## 2. Core Design: Data Model and Business Rules
 
+The implementation is built on the following principles:
 
-2. Core Design: Data Model and Business Rules
+### Data Model
 
-    The implementation will be built on the following principles:
+The `Todo` struct is extended to support a recursive, parent-child relationship. Each todo item contains:
 
-    Data Model:
-    
-        The Todo struct will be extended to support a recursive, parent-child 
-        relationship. Each todo item will contain:
-        
-        • ID: A permanent, internal UUID.
-        • ParentID: A UUID referencing the parent's ID. This is the key to 
-          enabling efficient move operations. For top-level items, this will 
-          be nil or a zero-value.
-        • Position: A mutable, user-facing integer that is always relative 
-          to its direct siblings.
-        • Items: An array of child Todo structs, allowing for arbitrary nesting.
+-   **ID**: A permanent, internal UUID.
+-   **ParentID**: A UUID referencing the parent's ID. For top-level items, this is an empty string.
+-   **Position**: A mutable, user-facing integer that is always relative to its direct siblings.
+-   **Items**: An array of child `Todo` structs, allowing for arbitrary nesting.
 
-    Business Rules: A Course Correction
+### Business Rules: A User-Centric Model
 
-        Initial planning assumed a top-down, rigid propagation of status (e.g., completing a parent completes all children). Through analysis, we've identified a more robust, user-centric model that preserves information and better aligns with the tool's philosophy. The core principle is **preserving user intent**. The state of any given item is explicitly set by the user and is not altered by actions on its parent. Instead, the *behavior* of other commands is what changes.
+The core principle of the system is **preserving user intent**. The status of any given item is explicitly set by the user and is not implicitly altered by actions on its parent. Instead, the *behavior* of other commands changes based on the hierarchy.
 
-        1.  **No Direct `delete` or `toggle`:** The `tdh` workflow for removing items is a two-step process: an item is first marked as `done`, and then a separate `cleanup` command removes all `done` items. This is a deliberate design choice that makes completion a non-destructive, reversible action. Consequently, there is no direct `delete` command. Similarly, the `toggle` command is being removed in favor of explicit `complete` and `reopen` commands, which are unambiguous and map directly to user intent.
+1.  **No Direct `delete` or `toggle`**: The workflow for removing items is a two-step process: an item is first marked as `done`, and then a separate `cleanup` command removes all `done` items. This makes completion a non-destructive, reversible action. The ambiguous `toggle` command has been replaced with explicit `complete` and `reopen` commands.
 
-        2.  **Behavioral Propagation (Top-Down Effect):** When a parent item is marked as `done`, the status of its children is **not** changed. Instead, commands that operate on the list treat the `done` parent as a "gate," stopping traversal down that branch.
-            •   `tdh ls` (default view): Will not display `done` items or any of their descendants, regardless of the children's status. This matches the user's expectation: "If I'm done with a category, don't show me its contents."
-            •   `tdh cleanup`: Will remove `done` items and all of their descendants. This also matches user expectation, cleaning up the entire branch at once.
-            This approach is non-destructive. If the user reopens the parent, the children's original states are perfectly preserved.
+2.  **Behavioral Propagation (Top-Down Effect)**: When a parent item is marked as `done`, the status of its children is **not** changed. Instead, commands that operate on the list treat the `done` parent as a "gate," stopping traversal down that branch.
+    -   `tdh ls` (default view): Does not display `done` items or any of their descendants, regardless of the children's status. This matches the user's expectation: "If I'm done with a category, don't show me its contents."
+    -   `tdh cleanup`: Removes `done` items and all of their descendants. This also matches user expectation, cleaning up the entire branch at once.
 
-        3.  **Bottom-Up Completion (Roll-Up Effect):** To provide a convenient quality-of-life improvement, a "bottom-up" rule will be implemented. When a user marks an item as `complete`, `tdh` will check the status of its siblings. If all siblings are now `complete`, the parent item will be automatically marked as `complete` as well. This recursively applies up the tree.
+3.  **Bottom-Up Completion (Roll-Up Effect)**: As a quality-of-life improvement, when a user marks an item as `complete`, `tdh` checks the status of its siblings. If all siblings are now `complete`, the parent item is automatically marked as `complete` as well. This recursively applies up the tree.
 
 3. Internal API
 
@@ -70,7 +57,34 @@ todo lists in tdh.
         The `add` command will be enhanced with a `--parent` flag to create sub-items:
         
         • `tdh a "New top-level task"`: Adds an item to the root of the list.
-        • `tdh a --parent 1.2 "New sub-task"`: Adds a new item as a child of the item at position 1.2.
+        ## 4. User-Facing API (CLI)
+
+The command-line interface is extended to manage the hierarchy, using dot-notation for addressing items.
+
+-   **Addressing Items**: Users interact with items using a dot-separated path of `Position` numbers (e.g., `1`, `1.2`, `2.1.1`).
+
+-   **`tdh add`**: The `add` command is enhanced with a `--parent` flag to create sub-items.
+    -   `tdh a "New top-level task"`: Adds an item to the root of the list.
+    -   `tdh a --parent 1.2 "New sub-task"`: Adds a new item as a child of the item at position 1.2.
+
+-   **`tdh complete <positions...>`**: Marks one or more items as `done`.
+    -   `tdh complete 1.2`: Marks the item at 1.2 as `done`.
+    -   This command triggers the "Bottom-Up Completion" logic.
+
+-   **`tdh reopen <positions...>`**: Marks one or more items as `pending`.
+    -   `tdh reopen 1.2`: Marks the item at 1.2 as `pending`. This action only affects the specified item.
+
+-   **`tdh move <source> <destination>`**: Restructures the list by moving an item.
+    -   `tdh move <source_path> <destination_parent_path>`: Moves an item from its current location to become a child of the destination parent.
+    -   `tdh move 2.1.1 1`: Moves the item at 2.1.1 to be the last child of the item at 1.
+    -   `tdh move 1.2 ""`: Moves the item at 1.2 to the root of the list.
+
+-   **`tdh ls`**: The list command handles the new hierarchy and respects the "Behavioral Propagation" rule.
+    -   `tdh ls`: Renders the indented list of all `pending` items. Traversal stops at any `done` item.
+    -   `tdh ls --depth 1`: (Future) Displays only the top-level items.
+
+-   **`tdh cleanup`**: The cleanup command respects "Behavioral Propagation," deleting `done` items and all their descendants.
+
 
     `tdh complete <positions...>`:
     
