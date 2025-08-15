@@ -2,7 +2,6 @@ package complete
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/arthur-debert/tdh/pkg/logging"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
@@ -47,9 +46,9 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		// Capture old status
 		oldStatus := string(todo.Status)
 
-		// Mark the todo as complete
-		todo.Status = models.StatusDone
-		todo.Modified = time.Now()
+		// Mark the todo as complete using the new method
+		// Skip reorder for now since we may need to handle bottom-up completion
+		todo.MarkComplete(collection, true)
 
 		logger.Debug().
 			Str("todoID", todo.ID).
@@ -63,11 +62,15 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 				Str("parentID", todo.ParentID).
 				Msg("checking bottom-up completion for parent")
 
-			checkAndCompleteParent(collection, todo.ParentID, time.Now(), logger)
+			checkAndCompleteParent(collection, todo.ParentID, logger)
 		}
 
-		// Auto-reorder after status change
-		collection.Reorder()
+		// Now trigger position reset at the appropriate level
+		if todo.ParentID != "" {
+			collection.ResetSiblingPositions(todo.ParentID)
+		} else {
+			collection.ResetRootPositions()
+		}
 
 		// Capture result
 		result = &Result{
@@ -93,7 +96,7 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 // checkAndCompleteParent recursively checks if all children of a parent are complete,
 // and if so, marks the parent as complete and continues up the hierarchy
-func checkAndCompleteParent(collection *models.Collection, parentID string, now time.Time, logger zerolog.Logger) {
+func checkAndCompleteParent(collection *models.Collection, parentID string, logger zerolog.Logger) {
 	// Find the parent todo
 	parent := collection.FindItemByID(parentID)
 	if parent == nil {
@@ -121,8 +124,8 @@ func checkAndCompleteParent(collection *models.Collection, parentID string, now 
 			Int("childCount", len(parent.Items)).
 			Msg("all children complete, marking parent as complete")
 
-		parent.Status = models.StatusDone
-		parent.Modified = now
+		// Use the new method which handles status, position, and timestamp
+		parent.MarkComplete(collection, true) // Skip reorder during recursion
 
 		// Continue up the hierarchy
 		if parent.ParentID != "" {
@@ -130,7 +133,7 @@ func checkAndCompleteParent(collection *models.Collection, parentID string, now 
 				Str("grandparentID", parent.ParentID).
 				Msg("checking grandparent for bottom-up completion")
 
-			checkAndCompleteParent(collection, parent.ParentID, now, logger)
+			checkAndCompleteParent(collection, parent.ParentID, logger)
 		}
 	} else {
 		logger.Debug().
