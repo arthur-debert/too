@@ -102,6 +102,49 @@ func (t *Todo) Clone() *Todo {
 	return clone
 }
 
+// SetStatus changes the todo's status while maintaining invariants.
+// If skipReorder is false (default), it triggers position reset at the appropriate level.
+func (t *Todo) SetStatus(status TodoStatus, collection *Collection, skipReorder ...bool) {
+	// Handle optional parameter
+	skip := false
+	if len(skipReorder) > 0 {
+		skip = skipReorder[0]
+	}
+
+	// Track if status actually changed
+	oldStatus := t.Status
+	statusChanged := oldStatus != status
+
+	// Update status and timestamp
+	t.Status = status
+	t.Modified = time.Now()
+
+	// Maintain invariant: done items have position 0
+	if status == StatusDone {
+		t.Position = 0
+	}
+	// Note: If changing to pending and position is 0, it will be set by reorder
+
+	// Trigger reorder unless skipped or status unchanged
+	if !skip && statusChanged {
+		if t.ParentID != "" {
+			collection.ResetSiblingPositions(t.ParentID)
+		} else {
+			collection.ResetRootPositions()
+		}
+	}
+}
+
+// MarkComplete marks the todo as done and maintains invariants.
+func (t *Todo) MarkComplete(collection *Collection, skipReorder ...bool) {
+	t.SetStatus(StatusDone, collection, skipReorder...)
+}
+
+// MarkPending marks the todo as pending and maintains invariants.
+func (t *Todo) MarkPending(collection *Collection, skipReorder ...bool) {
+	t.SetStatus(StatusPending, collection, skipReorder...)
+}
+
 // Clone creates a deep copy of the collection.
 func (c *Collection) Clone() *Collection {
 	clone := &Collection{
@@ -116,6 +159,24 @@ func (c *Collection) Clone() *Collection {
 // Reorder sorts todos by their current position and reassigns sequential positions.
 func (c *Collection) Reorder() {
 	ReorderTodos(c.Todos)
+}
+
+// ResetSiblingPositions resets positions for all siblings of the todo with the given parent ID.
+// This only affects todos at one level (children of the same parent).
+func (c *Collection) ResetSiblingPositions(parentID string) {
+	parent := c.FindItemByID(parentID)
+	if parent != nil && len(parent.Items) > 0 {
+		// Reset positions only for active (pending) items
+		ResetActivePositions(parent.Items)
+	}
+}
+
+// ResetRootPositions resets positions for all root-level todos.
+func (c *Collection) ResetRootPositions() {
+	if len(c.Todos) > 0 {
+		// Reset positions only for active (pending) items
+		ResetActivePositions(c.Todos)
+	}
 }
 
 // MigrateCollection ensures all todos have proper IDs and structure for nested lists
