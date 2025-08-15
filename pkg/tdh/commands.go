@@ -10,6 +10,7 @@ import (
 	cmdInit "github.com/arthur-debert/tdh/pkg/tdh/commands/init"
 	cmdList "github.com/arthur-debert/tdh/pkg/tdh/commands/list"
 	cmdModify "github.com/arthur-debert/tdh/pkg/tdh/commands/modify"
+	cmdMove "github.com/arthur-debert/tdh/pkg/tdh/commands/move"
 	cmdReopen "github.com/arthur-debert/tdh/pkg/tdh/commands/reopen"
 	cmdReorder "github.com/arthur-debert/tdh/pkg/tdh/commands/reorder"
 	cmdSearch "github.com/arthur-debert/tdh/pkg/tdh/commands/search"
@@ -26,6 +27,7 @@ type (
 	ReorderOptions  = cmdReorder.Options
 	SearchOptions   = cmdSearch.Options
 	ListOptions     = cmdList.Options
+	MoveOptions     = cmdMove.Options
 )
 
 // Re-export command result types for backward compatibility
@@ -39,6 +41,7 @@ type (
 	ReorderResult  = cmdReorder.Result
 	SearchResult   = cmdSearch.Result
 	ListResult     = cmdList.Result
+	MoveResult     = cmdMove.Result
 )
 
 // Init initializes a new todo collection
@@ -84,4 +87,9 @@ func Search(query string, opts SearchOptions) (*SearchResult, error) {
 // List returns todos from the collection with optional filtering
 func List(opts ListOptions) (*ListResult, error) {
 	return cmdList.Execute(opts)
+}
+
+// Move moves a todo from one parent to another
+func Move(sourcePath string, destParentPath string, opts MoveOptions) (*MoveResult, error) {
+	return cmdMove.Execute(sourcePath, destParentPath, opts)
 }

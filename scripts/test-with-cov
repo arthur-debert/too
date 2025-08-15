@@ -15,21 +15,21 @@ TEST_DIRS="./..."
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --full)
-            FULL_REPORT=true
-            shift
-            ;;
-        pkg|cmd)
-            TEST_DIRS="./$1/..."
-            shift
-            ;;
-        *)
-            echo "Usage: $0 [--full] [pkg|cmd]"
-            echo "  --full: Show detailed function-level coverage"
-            echo "  pkg: Test only pkg directory"
-            echo "  cmd: Test only cmd directory"
-            exit 1
-            ;;
+    --full)
+        FULL_REPORT=true
+        shift
+        ;;
+    pkg | cmd)
+        TEST_DIRS="./$1/..."
+        shift
+        ;;
+    *)
+        echo "Usage: $0 [--full] [pkg|cmd]"
+        echo "  --full: Show detailed function-level coverage"
+        echo "  pkg: Test only pkg directory"
+        echo "  cmd: Test only cmd directory"
+        exit 1
+        ;;
     esac
 done
 
@@ -68,50 +68,50 @@ if [ "$FULL_REPORT" = true ]; then
 else
     echo -e "${BLUE}Coverage Summary:${NC}"
     echo
-    
+
     # Parse coverage data and display with colors
     go tool cover -func="$TEMP_DIR/coverage.out" | grep -E "^[^[:space:]]" | while IFS=$'\t' read -r file _ coverage; do
         # Skip the total line for now
         if [[ "$file" == "total:" ]]; then
             continue
         fi
-        
+
         # Extract percentage value
         percent=$(echo "$coverage" | grep -o '[0-9.]*' | head -1)
-        
+
         # Determine color based on coverage
-        if (( $(echo "$percent >= 80" | bc -l) )); then
+        if (($(echo "$percent >= 80" | bc -l))); then
             color=$GREEN
             emoji="🟢"
-        elif (( $(echo "$percent >= 50" | bc -l) )); then
+        elif (($(echo "$percent >= 50" | bc -l))); then
             color=$YELLOW
             emoji="🟡"
         else
             color=$RED
             emoji="🔴"
         fi
-        
+
         # Format and print
         printf "${emoji} ${color}%-50s %6s%%${NC}\n" "$file" "$percent"
     done | sort -k3 -nr
-    
+
     echo
-    
+
     # Get and display total coverage
     total=$(go tool cover -func="$TEMP_DIR/coverage.out" | grep "total:" | awk '{print $3}')
     percent=$(echo "$total" | grep -o '[0-9.]*')
-    
-    if (( $(echo "$percent >= 80" | bc -l) )); then
+
+    if (($(echo "$percent >= 80" | bc -l))); then
         color=$GREEN
         emoji="🟢"
-    elif (( $(echo "$percent >= 50" | bc -l) )); then
+    elif (($(echo "$percent >= 50" | bc -l))); then
         color=$YELLOW
         emoji="🟡"
     else
         color=$RED
         emoji="🔴"
     fi
-    
+
     echo -e "${BOLD}Total Coverage: ${emoji} ${color}${total}${NC}"
     echo
     echo -e "${BLUE}Coverage Guidelines:${NC}"
@@ -125,3 +125,4 @@ echo
 echo -e "${BLUE}Generating HTML coverage report...${NC}"
 go tool cover -html="$TEMP_DIR/coverage.out" -o coverage.html
 echo -e "${GREEN}✅ HTML report saved to coverage.html${NC}"
+

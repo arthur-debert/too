@@ -51,6 +51,11 @@ const (
 	msgReopenUse   = "reopen <positions...>"
 	msgReopenShort = "Mark todos as pending (alias: o)"
 	msgReopenLong  = "Mark one or more todos as pending. Use dot notation for nested items (e.g., 1.2)."
+
+	// Move command
+	msgMoveUse   = "move <source_path> <destination_parent_path>"
+	msgMoveShort = "Move a todo to a different parent"
+	msgMoveLong  = "Move a todo from one location to another in the hierarchy. Use dot notation for paths (e.g., 1.2). Use empty string \"\" for root level."
 )
 
 // Flag descriptions
