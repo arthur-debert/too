@@ -104,8 +104,11 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 
 		// Add to new location
 		if destParent != nil {
+			// Set a high position to ensure it's placed at the end before reordering
+			sourceTodo.Position = len(destParent.Items) + 1
 			destParent.Items = append(destParent.Items, sourceTodo)
 		} else {
+			sourceTodo.Position = len(collection.Todos) + 1
 			collection.Todos = append(collection.Todos, sourceTodo)
 		}
 
@@ -113,12 +116,7 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 		if oldParent != nil {
 			models.ReorderTodos(oldParent.Items)
 		} else {
-			models.ReorderTodos(collection.Todos)
-		}
-
-		if destParent != nil {
-			models.ReorderTodos(destParent.Items)
-		} else {
+			// Reorder the root list if the item was moved from the root
 			models.ReorderTodos(collection.Todos)
 		}
 
