@@ -23,14 +23,21 @@ type Result struct {
 func Execute(opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
 
-	// Load the full collection to apply behavioral propagation
+	// Load the full collection
 	collection, err := s.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	// Apply behavioral propagation: filter out done branches
-	filteredTodos := filterWithBehavioralPropagation(collection.Todos, opts)
+	// Use the new collection APIs for filtering
+	var filteredTodos []*models.Todo
+	if opts.ShowAll {
+		filteredTodos = collection.ListAll()
+	} else if opts.ShowDone {
+		filteredTodos = collection.ListArchived()
+	} else {
+		filteredTodos = collection.ListActive()
+	}
 
 	// Count totals from the original collection
 	totalCount, doneCount := countTodos(collection.Todos)
@@ -40,48 +47,6 @@ func Execute(opts Options) (*Result, error) {
 		TotalCount: totalCount,
 		DoneCount:  doneCount,
 	}, nil
-}
-
-// filterWithBehavioralPropagation filters todos respecting behavioral propagation rules
-// When a parent is done, all its descendants are hidden regardless of their status
-func filterWithBehavioralPropagation(todos []*models.Todo, opts Options) []*models.Todo {
-	var filtered []*models.Todo
-
-	for _, todo := range todos {
-		// Skip done items when not showing all (unless explicitly showing done)
-		if !opts.ShowAll && !opts.ShowDone && todo.Status == models.StatusDone {
-			continue
-		}
-
-		// Skip pending items when only showing done
-		if !opts.ShowAll && opts.ShowDone && todo.Status != models.StatusDone {
-			continue
-		}
-
-		// Clone the todo to avoid modifying the original
-		filteredTodo := &models.Todo{
-			ID:       todo.ID,
-			ParentID: todo.ParentID,
-			Position: todo.Position,
-			Text:     todo.Text,
-			Status:   todo.Status,
-			Modified: todo.Modified,
-			Items:    []*models.Todo{},
-		}
-
-		// If this todo is done, behavioral propagation stops here - don't process children
-		// Exception: when ShowAll is true, we show everything
-		if todo.Status == models.StatusDone && !opts.ShowAll {
-			// Add the done item but with no children
-			filtered = append(filtered, filteredTodo)
-		} else {
-			// Recursively filter children
-			filteredTodo.Items = filterWithBehavioralPropagation(todo.Items, opts)
-			filtered = append(filtered, filteredTodo)
-		}
-	}
-
-	return filtered
 }
 
 // countTodos recursively counts total and done todos
