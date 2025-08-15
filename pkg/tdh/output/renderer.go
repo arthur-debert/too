@@ -284,6 +284,36 @@ func (r *LipbamlRenderer) RenderList(result *tdh.ListResult) error {
 	return err
 }
 
+// RenderComplete renders the complete command results using lipbalm
+func (r *LipbamlRenderer) RenderComplete(results []*tdh.CompleteResult) error {
+	for _, result := range results {
+		output, err := r.renderTemplate("complete_result", result)
+		if err != nil {
+			return fmt.Errorf("failed to render complete result: %w", err)
+		}
+		_, err = fmt.Fprintln(r.writer, output)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RenderReopen renders the reopen command results using lipbalm
+func (r *LipbamlRenderer) RenderReopen(results []*tdh.ReopenResult) error {
+	for _, result := range results {
+		output, err := r.renderTemplate("reopen_result", result)
+		if err != nil {
+			return fmt.Errorf("failed to render reopen result: %w", err)
+		}
+		_, err = fmt.Fprintln(r.writer, output)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
 	output, renderErr := r.renderTemplate("error", err.Error())
