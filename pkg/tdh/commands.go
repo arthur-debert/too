@@ -8,6 +8,7 @@ import (
 	cmdClean "github.com/arthur-debert/tdh/pkg/tdh/commands/clean"
 	cmdComplete "github.com/arthur-debert/tdh/pkg/tdh/commands/complete"
 	cmdDataPath "github.com/arthur-debert/tdh/pkg/tdh/commands/datapath"
+	cmdFormats "github.com/arthur-debert/tdh/pkg/tdh/commands/formats"
 	cmdInit "github.com/arthur-debert/tdh/pkg/tdh/commands/init"
 	cmdList "github.com/arthur-debert/tdh/pkg/tdh/commands/list"
 	cmdModify "github.com/arthur-debert/tdh/pkg/tdh/commands/modify"
@@ -30,6 +31,7 @@ type (
 	MoveOptions         = cmdMove.Options
 	SwapOptions         = cmdSwap.Options
 	ShowDataPathOptions = cmdDataPath.Options
+	ListFormatsOptions  = cmdFormats.Options
 )
 
 // Re-export command result types for backward compatibility
@@ -45,6 +47,7 @@ type (
 	MoveResult         = cmdMove.Result
 	SwapResult         = cmdSwap.Result
 	ShowDataPathResult = cmdDataPath.Result
+	ListFormatsResult  = cmdFormats.Result
 )
 
 // Init initializes a new todo collection
@@ -100,4 +103,9 @@ func Swap(sourcePath string, destParentPath string, opts SwapOptions) (*SwapResu
 // ShowDataPath shows the path to the data file
 func ShowDataPath(opts ShowDataPathOptions) (*ShowDataPathResult, error) {
 	return cmdDataPath.Execute(opts)
+}
+
+// ListFormats returns the list of available output formats
+func ListFormats(opts ListFormatsOptions) (*ListFormatsResult, error) {
+	return cmdFormats.Execute(opts)
 }
