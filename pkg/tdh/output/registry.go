@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/arthur-debert/tdh/pkg/tdh/formatter"
 )
 
-// FormatterInfo contains metadata about a formatter
+// FormatterInfo contains metadata about a formatter with its factory
 type FormatterInfo struct {
-	Name        string
-	Description string
-	Factory     func() (Formatter, error)
+	formatter.Info
+	Factory func() (Formatter, error)
 }
 
 // Registry manages available formatters
@@ -84,18 +85,18 @@ func (r *Registry) List() []string {
 }
 
 // GetInfo returns information about all registered formatters
-func GetInfo() []*FormatterInfo {
+func GetInfo() []*formatter.Info {
 	return globalRegistry.GetInfo()
 }
 
 // GetInfo returns information about all registered formatters from the registry
-func (r *Registry) GetInfo() []*FormatterInfo {
+func (r *Registry) GetInfo() []*formatter.Info {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	infos := make([]*FormatterInfo, 0, len(r.formatters))
+	infos := make([]*formatter.Info, 0, len(r.formatters))
 	for _, info := range r.formatters {
-		infos = append(infos, info)
+		infos = append(infos, &info.Info)
 	}
 
 	// Sort by name for consistent output

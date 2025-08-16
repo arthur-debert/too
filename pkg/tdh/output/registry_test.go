@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
+	"github.com/arthur-debert/tdh/pkg/tdh/formatter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,8 +43,10 @@ func TestRegistry(t *testing.T) {
 
 		// Test successful registration
 		info := &FormatterInfo{
-			Name:        "test",
-			Description: "Test formatter",
+			Info: formatter.Info{
+				Name:        "test",
+				Description: "Test formatter",
+			},
 			Factory: func() (Formatter, error) {
 				return &mockFormatter{name: "test", desc: "Test formatter"}, nil
 			},
@@ -59,9 +62,11 @@ func TestRegistry(t *testing.T) {
 
 		// Test empty name
 		emptyInfo := &FormatterInfo{
-			Name:        "",
-			Description: "Empty name",
-			Factory:     info.Factory,
+			Info: formatter.Info{
+				Name:        "",
+				Description: "Empty name",
+			},
+			Factory: info.Factory,
 		}
 		err = reg.Register(emptyInfo)
 		require.Error(t, err)
@@ -74,8 +79,10 @@ func TestRegistry(t *testing.T) {
 		}
 
 		info := &FormatterInfo{
-			Name:        "test",
-			Description: "Test formatter",
+			Info: formatter.Info{
+				Name:        "test",
+				Description: "Test formatter",
+			},
 			Factory: func() (Formatter, error) {
 				return &mockFormatter{name: "test", desc: "Test formatter"}, nil
 			},
@@ -105,8 +112,10 @@ func TestRegistry(t *testing.T) {
 		formatters := []string{"alpha", "charlie", "bravo"}
 		for _, name := range formatters {
 			info := &FormatterInfo{
-				Name:        name,
-				Description: name + " formatter",
+				Info: formatter.Info{
+					Name:        name,
+					Description: name + " formatter",
+				},
 				Factory: func() (Formatter, error) {
 					return &mockFormatter{name: name, desc: name + " formatter"}, nil
 				},
@@ -128,15 +137,19 @@ func TestRegistry(t *testing.T) {
 		// Register multiple formatters
 		infos := []*FormatterInfo{
 			{
-				Name:        "beta",
-				Description: "Beta formatter",
+				Info: formatter.Info{
+					Name:        "beta",
+					Description: "Beta formatter",
+				},
 				Factory: func() (Formatter, error) {
 					return &mockFormatter{}, nil
 				},
 			},
 			{
-				Name:        "alpha",
-				Description: "Alpha formatter",
+				Info: formatter.Info{
+					Name:        "alpha",
+					Description: "Alpha formatter",
+				},
 				Factory: func() (Formatter, error) {
 					return &mockFormatter{}, nil
 				},
@@ -163,8 +176,10 @@ func TestRegistry(t *testing.T) {
 		}
 
 		info := &FormatterInfo{
-			Name:        "test",
-			Description: "Test formatter",
+			Info: formatter.Info{
+				Name:        "test",
+				Description: "Test formatter",
+			},
 			Factory: func() (Formatter, error) {
 				return &mockFormatter{}, nil
 			},
@@ -186,8 +201,10 @@ func TestRegistry(t *testing.T) {
 		}
 
 		info := &FormatterInfo{
-			Name:        "error",
-			Description: "Error formatter",
+			Info: formatter.Info{
+				Name:        "error",
+				Description: "Error formatter",
+			},
 			Factory: func() (Formatter, error) {
 				return nil, errors.New("factory error")
 			},

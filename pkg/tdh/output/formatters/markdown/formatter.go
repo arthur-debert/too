@@ -13,16 +13,6 @@ import (
 // formatter implements the Formatter interface for Markdown output
 type formatter struct{}
 
-// init registers the Markdown formatter
-func init() {
-	output.Register(&output.FormatterInfo{
-		Name:        "markdown",
-		Description: "Markdown output for documentation and notes",
-		Factory: func() (output.Formatter, error) {
-			return New(), nil
-		},
-	})
-}
 
 // New creates a new Markdown formatter
 func New() output.Formatter {
@@ -84,7 +74,7 @@ func (f *formatter) RenderModify(w io.Writer, result *tdh.ModifyResult) error {
 
 // RenderInit renders the init command result as Markdown
 func (f *formatter) RenderInit(w io.Writer, result *tdh.InitResult) error {
-	_, err := fmt.Fprintf(w, "Initialized todo collection at: `%s`\n", result.Path)
+	_, err := fmt.Fprintf(w, "Initialized todo collection at: `%s`\n", result.DBPath)
 	return err
 }
 
@@ -96,17 +86,17 @@ func (f *formatter) RenderClean(w io.Writer, result *tdh.CleanResult) error {
 
 // RenderSearch renders the search command result as Markdown
 func (f *formatter) RenderSearch(w io.Writer, result *tdh.SearchResult) error {
-	if len(result.Todos) == 0 {
+	if len(result.MatchedTodos) == 0 {
 		_, err := fmt.Fprintln(w, "No matching todos found")
 		return err
 	}
 
-	_, err := fmt.Fprintf(w, "Found %d matching todo(s):\n\n", len(result.Todos))
+	_, err := fmt.Fprintf(w, "Found %d matching todo(s):\n\n", len(result.MatchedTodos))
 	if err != nil {
 		return err
 	}
 
-	_, err = fmt.Fprint(w, f.renderTodos(result.Todos, 0))
+	_, err = fmt.Fprint(w, f.renderTodos(result.MatchedTodos, 0))
 	return err
 }
 
@@ -155,14 +145,13 @@ func (f *formatter) RenderReopen(w io.Writer, results []*tdh.ReopenResult) error
 
 // RenderMove renders the move command result as Markdown
 func (f *formatter) RenderMove(w io.Writer, result *tdh.MoveResult) error {
-	_, err := fmt.Fprintf(w, "Moved todo from position %d to %d\n", result.OldPosition, result.NewPosition)
+	_, err := fmt.Fprintf(w, "Moved todo from %s to %s\n", result.OldPath, result.NewPath)
 	return err
 }
 
 // RenderSwap renders the swap command result as Markdown
 func (f *formatter) RenderSwap(w io.Writer, result *tdh.SwapResult) error {
-	_, err := fmt.Fprintf(w, "Swapped todos at positions %d and %d\n",
-		result.FirstTodo.Position, result.SecondTodo.Position)
+	_, err := fmt.Fprintf(w, "Swapped todo from %s to %s\n", result.OldPath, result.NewPath)
 	return err
 }
 

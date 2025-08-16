@@ -8,7 +8,6 @@ import (
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/commands/formats"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
-	"github.com/arthur-debert/tdh/pkg/tdh/output"
 	markdownformatter "github.com/arthur-debert/tdh/pkg/tdh/output/formatters/markdown"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -127,7 +126,7 @@ func TestMarkdownFormatter(t *testing.T) {
 	t.Run("RenderSearch", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &tdh.SearchResult{
-			Todos: []*models.Todo{
+			MatchedTodos: []*models.Todo{
 				{
 					Position: 3,
 					Text:     "Matching todo",
@@ -180,7 +179,7 @@ func TestMarkdownFormatter(t *testing.T) {
 	t.Run("RenderInit", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &tdh.InitResult{
-			Path: "/home/user/.todos.json",
+			DBPath: "/home/user/.todos.json",
 		}
 
 		err := formatter.RenderInit(&buf, result)
@@ -200,23 +199,16 @@ func TestMarkdownFormatter(t *testing.T) {
 	})
 }
 
-func TestMarkdownFormatterRegistration(t *testing.T) {
-	t.Run("Markdown formatter is registered", func(t *testing.T) {
-		// Check that markdown formatter is in the list
-		names := output.List()
-		assert.Contains(t, names, "markdown")
-
-		// Get the formatter
-		formatter, err := output.Get("markdown")
-		require.NoError(t, err)
+func TestMarkdownFormatterBehavior(t *testing.T) {
+	t.Run("Markdown formatter has correct metadata", func(t *testing.T) {
+		formatter := markdownformatter.New()
 		assert.Equal(t, "markdown", formatter.Name())
+		assert.Equal(t, "Markdown output for documentation and notes", formatter.Description())
 	})
 
-	t.Run("Can create renderer with markdown format", func(t *testing.T) {
+	t.Run("Markdown formatter renders list correctly", func(t *testing.T) {
 		buf := &bytes.Buffer{}
-		renderer, err := output.NewRendererWithFormat("markdown", buf)
-		require.NoError(t, err)
-		require.NotNil(t, renderer)
+		formatter := markdownformatter.New()
 
 		// Test rendering
 		result := &tdh.ListResult{
@@ -231,7 +223,7 @@ func TestMarkdownFormatterRegistration(t *testing.T) {
 			DoneCount:  0,
 		}
 
-		err = renderer.RenderList(result)
+		err := formatter.RenderList(buf, result)
 		require.NoError(t, err)
 		assert.Contains(t, buf.String(), "1. [ ] Test todo")
 	})

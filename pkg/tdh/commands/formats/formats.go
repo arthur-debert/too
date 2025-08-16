@@ -1,7 +1,7 @@
 package formats
 
 import (
-	"github.com/arthur-debert/tdh/pkg/tdh/output"
+	"github.com/arthur-debert/tdh/pkg/tdh/formatter"
 )
 
 // Options contains options for the formats command
@@ -20,10 +20,21 @@ type Result struct {
 	Formats []Format
 }
 
-// Execute returns the list of available output formats from the registry
+// GetFormatterInfoFunc is a function that returns formatter information.
+// This is set by the output package to avoid import cycles.
+var GetFormatterInfoFunc func() []*formatter.Info
+
+// Execute returns the list of available output formats
 func Execute(opts Options) (*Result, error) {
-	// Get formatter information from the registry
-	infos := output.GetInfo()
+	if GetFormatterInfoFunc == nil {
+		// Return empty result if the function is not set
+		return &Result{
+			Formats: []Format{},
+		}, nil
+	}
+
+	// Get formatter information
+	infos := GetFormatterInfoFunc()
 
 	// Convert to our result format
 	formats := make([]Format, len(infos))

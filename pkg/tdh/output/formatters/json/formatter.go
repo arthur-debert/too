@@ -11,16 +11,6 @@ import (
 // formatter implements the Formatter interface for JSON output
 type formatter struct{}
 
-// init registers the JSON formatter
-func init() {
-	output.Register(&output.FormatterInfo{
-		Name:        "json",
-		Description: "JSON output for programmatic consumption",
-		Factory: func() (output.Formatter, error) {
-			return New(), nil
-		},
-	})
-}
 
 // New creates a new JSON formatter
 func New() output.Formatter {

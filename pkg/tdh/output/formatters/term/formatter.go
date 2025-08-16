@@ -14,16 +14,6 @@ type formatter struct {
 	renderer *output.LipbamlRenderer
 }
 
-// init registers the terminal formatter
-func init() {
-	output.Register(&output.FormatterInfo{
-		Name:        "term",
-		Description: "Rich terminal output with colors and formatting (default)",
-		Factory: func() (output.Formatter, error) {
-			return New()
-		},
-	})
-}
 
 // New creates a new terminal formatter
 func New() (output.Formatter, error) {

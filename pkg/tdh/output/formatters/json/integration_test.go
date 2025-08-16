@@ -7,30 +7,18 @@ import (
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
-	"github.com/arthur-debert/tdh/pkg/tdh/output"
+	. "github.com/arthur-debert/tdh/pkg/tdh/output/formatters/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestJSONFormatterRegistration(t *testing.T) {
-	t.Run("JSON formatter is registered", func(t *testing.T) {
-		// Check that JSON formatter is in the list
-		names := output.List()
-		assert.Contains(t, names, "json")
-
-		// Get the formatter
-		formatter, err := output.Get("json")
-		require.NoError(t, err)
-		assert.Equal(t, "json", formatter.Name())
-	})
-
-	t.Run("Can create renderer with JSON format", func(t *testing.T) {
+// TestJSONFormatterBehavior tests the JSON formatter behavior directly
+func TestJSONFormatterBehavior(t *testing.T) {
+	t.Run("JSON formatter renders correctly", func(t *testing.T) {
 		buf := &bytes.Buffer{}
-		renderer, err := output.NewRendererWithFormat("json", buf)
-		require.NoError(t, err)
-		require.NotNil(t, renderer)
-
-		// Test rendering
+		formatter := New()
+		
+		// Test rendering an add result
 		result := &tdh.AddResult{
 			Todo: &models.Todo{
 				Position: 1,
@@ -39,7 +27,7 @@ func TestJSONFormatterRegistration(t *testing.T) {
 			},
 		}
 
-		err = renderer.RenderAdd(result)
+		err := formatter.RenderAdd(buf, result)
 		require.NoError(t, err)
 
 		// Verify JSON output
@@ -47,5 +35,11 @@ func TestJSONFormatterRegistration(t *testing.T) {
 		err = json.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
 		assert.Equal(t, "Test todo", decoded.Todo.Text)
+	})
+	
+	t.Run("JSON formatter has correct metadata", func(t *testing.T) {
+		formatter := New()
+		assert.Equal(t, "json", formatter.Name())
+		assert.Equal(t, "JSON output for programmatic consumption", formatter.Description())
 	})
 }
