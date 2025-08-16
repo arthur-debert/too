@@ -314,6 +314,16 @@ func (r *LipbamlRenderer) RenderSwap(result *tdh.SwapResult) error {
 	return err
 }
 
+// RenderDataPath renders the datapath command result using lipbalm
+func (r *LipbamlRenderer) RenderDataPath(result *tdh.ShowDataPathResult) error {
+	output, err := r.renderTemplate("datapath_result", result)
+	if err != nil {
+		return fmt.Errorf("failed to render datapath result: %w", err)
+	}
+	_, err = fmt.Fprintln(r.writer, output)
+	return err
+}
+
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
 	output, renderErr := r.renderTemplate("error", err.Error())

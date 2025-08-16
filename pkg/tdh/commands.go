@@ -7,6 +7,7 @@ import (
 	cmdAdd "github.com/arthur-debert/tdh/pkg/tdh/commands/add"
 	cmdClean "github.com/arthur-debert/tdh/pkg/tdh/commands/clean"
 	cmdComplete "github.com/arthur-debert/tdh/pkg/tdh/commands/complete"
+	cmdDataPath "github.com/arthur-debert/tdh/pkg/tdh/commands/datapath"
 	cmdInit "github.com/arthur-debert/tdh/pkg/tdh/commands/init"
 	cmdList "github.com/arthur-debert/tdh/pkg/tdh/commands/list"
 	cmdModify "github.com/arthur-debert/tdh/pkg/tdh/commands/modify"
@@ -18,30 +19,32 @@ import (
 
 // Re-export command option types for backward compatibility
 type (
-	InitOptions     = cmdInit.Options
-	AddOptions      = cmdAdd.Options
-	ModifyOptions   = cmdModify.Options
-	CompleteOptions = cmdComplete.Options
-	ReopenOptions   = cmdReopen.Options
-	CleanOptions    = cmdClean.Options
-	SearchOptions   = cmdSearch.Options
-	ListOptions     = cmdList.Options
-	MoveOptions     = cmdMove.Options
-	SwapOptions     = cmdSwap.Options
+	InitOptions         = cmdInit.Options
+	AddOptions          = cmdAdd.Options
+	ModifyOptions       = cmdModify.Options
+	CompleteOptions     = cmdComplete.Options
+	ReopenOptions       = cmdReopen.Options
+	CleanOptions        = cmdClean.Options
+	SearchOptions       = cmdSearch.Options
+	ListOptions         = cmdList.Options
+	MoveOptions         = cmdMove.Options
+	SwapOptions         = cmdSwap.Options
+	ShowDataPathOptions = cmdDataPath.Options
 )
 
 // Re-export command result types for backward compatibility
 type (
-	InitResult     = cmdInit.Result
-	AddResult      = cmdAdd.Result
-	ModifyResult   = cmdModify.Result
-	CompleteResult = cmdComplete.Result
-	ReopenResult   = cmdReopen.Result
-	CleanResult    = cmdClean.Result
-	SearchResult   = cmdSearch.Result
-	ListResult     = cmdList.Result
-	MoveResult     = cmdMove.Result
-	SwapResult     = cmdSwap.Result
+	InitResult         = cmdInit.Result
+	AddResult          = cmdAdd.Result
+	ModifyResult       = cmdModify.Result
+	CompleteResult     = cmdComplete.Result
+	ReopenResult       = cmdReopen.Result
+	CleanResult        = cmdClean.Result
+	SearchResult       = cmdSearch.Result
+	ListResult         = cmdList.Result
+	MoveResult         = cmdMove.Result
+	SwapResult         = cmdSwap.Result
+	ShowDataPathResult = cmdDataPath.Result
 )
 
 // Init initializes a new todo collection
@@ -92,4 +95,9 @@ func Move(sourcePath string, destParentPath string, opts MoveOptions) (*MoveResu
 // Swap swaps a todo from one parent to another
 func Swap(sourcePath string, destParentPath string, opts SwapOptions) (*SwapResult, error) {
 	return cmdSwap.Execute(sourcePath, destParentPath, opts)
+}
+
+// ShowDataPath shows the path to the data file
+func ShowDataPath(opts ShowDataPathOptions) (*ShowDataPathResult, error) {
+	return cmdDataPath.Execute(opts)
 }
