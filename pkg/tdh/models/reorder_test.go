@@ -155,19 +155,50 @@ func TestReorderTodos(t *testing.T) {
 }
 
 func TestCollectionReorder(t *testing.T) {
-	t.Run("reorders collection todos", func(t *testing.T) {
+	t.Run("reorders only active todos", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 5, Text: "First"},
-				{ID: "2", Position: 2, Text: "Second"},
-				{ID: "3", Position: 8, Text: "Third"},
+				{ID: "1", Position: 5, Text: "First", Status: models.StatusDone},
+				{ID: "2", Position: 2, Text: "Second", Status: models.StatusPending},
+				{ID: "3", Position: 8, Text: "Third", Status: models.StatusPending},
+				{ID: "4", Position: 4, Text: "Fourth", Status: models.StatusDone},
 			},
 		}
 
 		collection.Reorder()
 
+		// After reordering, slice should have active items first, then done items
+		// Active: Second (pos 1), Third (pos 2)
+		// Done: First (pos 0), Fourth (pos 0)
+		assert.Equal(t, "Second", collection.Todos[0].Text)
 		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, "Third", collection.Todos[1].Text)
 		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "First", collection.Todos[2].Text)
+		assert.Equal(t, 0, collection.Todos[2].Position)
+		assert.Equal(t, "Fourth", collection.Todos[3].Text)
+		assert.Equal(t, 0, collection.Todos[3].Position)
+	})
+
+	t.Run("reorders all pending todos", func(t *testing.T) {
+		collection := &models.Collection{
+			Todos: []*models.Todo{
+				{ID: "1", Position: 5, Text: "First", Status: models.StatusPending},
+				{ID: "2", Position: 2, Text: "Second", Status: models.StatusPending},
+				{ID: "3", Position: 8, Text: "Third", Status: models.StatusPending},
+			},
+		}
+
+		collection.Reorder()
+
+		// The todos should be reordered by their original position values
+		// Second (was pos 2) -> pos 1, First (was pos 5) -> pos 2, Third (was pos 8) -> pos 3
+		// And slice order should match: Second, First, Third
+		assert.Equal(t, "Second", collection.Todos[0].Text)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, "First", collection.Todos[1].Text)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "Third", collection.Todos[2].Text)
 		assert.Equal(t, 3, collection.Todos[2].Position)
 	})
 
@@ -177,5 +208,20 @@ func TestCollectionReorder(t *testing.T) {
 		collection.Reorder()
 
 		assert.Len(t, collection.Todos, 0)
+	})
+
+	t.Run("handles all done todos", func(t *testing.T) {
+		collection := &models.Collection{
+			Todos: []*models.Todo{
+				{ID: "1", Position: 1, Text: "First", Status: models.StatusDone},
+				{ID: "2", Position: 2, Text: "Second", Status: models.StatusDone},
+			},
+		}
+
+		collection.Reorder()
+
+		// All should have position 0
+		assert.Equal(t, 0, collection.Todos[0].Position)
+		assert.Equal(t, 0, collection.Todos[1].Position)
 	})
 }

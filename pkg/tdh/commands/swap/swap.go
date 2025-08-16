@@ -1,4 +1,4 @@
-package move
+package swap
 
 import (
 	"fmt"
@@ -8,12 +8,12 @@ import (
 	"github.com/arthur-debert/tdh/pkg/tdh/store"
 )
 
-// Options holds the options for the move command
+// Options holds the options for the swap command
 type Options struct {
 	CollectionPath string
 }
 
-// Result represents the result of a move operation
+// Result represents the result of a swap operation
 type Result struct {
 	Todo      *models.Todo
 	OldPath   string
@@ -22,9 +22,9 @@ type Result struct {
 	NewParent *models.Todo
 }
 
-// Execute moves a todo from one parent to another
+// Execute swaps a todo from one parent to another
 func Execute(sourcePath string, destParentPath string, opts Options) (*Result, error) {
-	logger := logging.GetLogger("tdh.commands.move")
+	logger := logging.GetLogger("tdh.commands.swap")
 	logger.Debug().
 		Str("sourcePath", sourcePath).
 		Str("destParentPath", destParentPath).
@@ -69,9 +69,8 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 
 		// Find the old parent
 		var oldParent *models.Todo
-		oldParentID := sourceTodo.ParentID
-		if oldParentID != "" {
-			oldParent = collection.FindItemByID(oldParentID)
+		if sourceTodo.ParentID != "" {
+			oldParent = collection.FindItemByID(sourceTodo.ParentID)
 		}
 
 		// Store old path for result
@@ -113,20 +112,12 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 			collection.Todos = append(collection.Todos, sourceTodo)
 		}
 
-		// Reset positions at both source and destination
-		// Source location (where item was removed from)
-		if oldParentID != "" {
-			collection.ResetSiblingPositions(oldParentID)
+		// Reorder both old and new parent's children
+		if oldParent != nil {
+			models.ReorderTodos(oldParent.Items)
 		} else {
-			collection.ResetRootPositions()
-		}
-
-		// Destination location (where item was added to)
-		if destParent != nil {
-			collection.ResetSiblingPositions(destParent.ID)
-		} else if oldParentID != "" {
-			// Only reset root if we actually moved to root from elsewhere
-			collection.ResetRootPositions()
+			// Reorder the root list if the item was moved from the root
+			models.ReorderTodos(collection.Todos)
 		}
 
 		// Get new path after reordering
@@ -185,11 +176,6 @@ func getPositionPath(collection *models.Collection, todo *models.Todo) string {
 // buildPath recursively builds the position path
 func buildPath(todos []*models.Todo, target *models.Todo, currentPath string) string {
 	for _, t := range todos {
-		// Skip done items (position 0) when building paths
-		if t.Position == 0 {
-			continue
-		}
-
 		newPath := currentPath
 		if newPath == "" {
 			newPath = fmt.Sprintf("%d", t.Position)

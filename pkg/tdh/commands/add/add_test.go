@@ -222,6 +222,78 @@ func TestAddCommand(t *testing.T) {
 		_, err = os.Stat(nonExistentPath)
 		assert.NoError(t, err)
 	})
+
+	t.Run("assigns correct position when done items exist", func(t *testing.T) {
+		// Create store with mixed todo states
+		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "Active 1", Status: models.StatusPending},
+			{Text: "Done 1", Status: models.StatusDone},
+			{Text: "Active 2", Status: models.StatusPending},
+			{Text: "Done 2", Status: models.StatusDone},
+		})
+
+		// After our status management changes, done items should have position 0
+		// and active items should be renumbered to 1, 2
+		collection, _ := store.Load()
+		// Manually set positions to simulate the state after reordering
+		collection.Todos[0].Position = 1 // Active 1
+		collection.Todos[1].Position = 0 // Done 1
+		collection.Todos[2].Position = 2 // Active 2
+		collection.Todos[3].Position = 0 // Done 2
+		err := store.Save(collection)
+		testutil.AssertNoError(t, err)
+
+		// Add a new todo
+		opts := add.Options{CollectionPath: store.Path()}
+		result, err := add.Execute("New active todo", opts)
+
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result)
+		// Should get position 3 (after active items at positions 1 and 2)
+		assert.Equal(t, 3, result.Todo.Position)
+
+		// Verify it was saved correctly
+		collection, err = store.Load()
+		testutil.AssertNoError(t, err)
+
+		// Count active todos and verify positions
+		activeCount := 0
+		for _, todo := range collection.Todos {
+			if todo.Status == models.StatusPending {
+				activeCount++
+				assert.Greater(t, todo.Position, 0, "Active todo should have position > 0")
+			} else {
+				assert.Equal(t, 0, todo.Position, "Done todo should have position 0")
+			}
+		}
+		assert.Equal(t, 3, activeCount, "Should have 3 active todos")
+	})
+
+	t.Run("assigns position 1 when all existing todos are done", func(t *testing.T) {
+		// Create store with only done todos
+		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "Done 1", Status: models.StatusDone},
+			{Text: "Done 2", Status: models.StatusDone},
+			{Text: "Done 3", Status: models.StatusDone},
+		})
+
+		// Set all positions to 0 (as they should be for done items)
+		collection, _ := store.Load()
+		for _, todo := range collection.Todos {
+			todo.Position = 0
+		}
+		err := store.Save(collection)
+		testutil.AssertNoError(t, err)
+
+		// Add a new todo
+		opts := add.Options{CollectionPath: store.Path()}
+		result, err := add.Execute("First active todo", opts)
+
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result)
+		// Should get position 1 as the first active item
+		assert.Equal(t, 1, result.Todo.Position)
+	})
 }
 
 func TestAddCommandWithParent(t *testing.T) {
@@ -415,5 +487,48 @@ func TestAddCommandWithParent(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "no item found at position 99")
+	})
+
+	t.Run("adds sub-todo correctly when parent has done children", func(t *testing.T) {
+		// Create parent with mixed children
+		store := testutil.CreatePopulatedStore(t)
+		collection := models.NewCollection()
+		parent, _ := collection.CreateTodo("Parent", "")
+		_, _ = collection.CreateTodo("Active child", parent.ID)
+		child2, _ := collection.CreateTodo("Done child", parent.ID)
+		child2.Status = models.StatusDone
+		child2.Position = 0 // Done items have position 0
+		child3, _ := collection.CreateTodo("Another active", parent.ID)
+		child3.Position = 2 // Should be renumbered after done child
+
+		err := store.Save(collection)
+		testutil.AssertNoError(t, err)
+
+		// Add new child
+		opts := add.Options{
+			CollectionPath: store.Path(),
+			ParentPath:     "1",
+		}
+		result, err := add.Execute("New child", opts)
+
+		testutil.AssertNoError(t, err)
+		assert.NotNil(t, result)
+		// Should get position 3 (after positions 1 and 2)
+		assert.Equal(t, 3, result.Todo.Position)
+
+		// Verify structure
+		collection, err = store.Load()
+		testutil.AssertNoError(t, err)
+		parent = collection.Todos[0]
+		assert.Len(t, parent.Items, 4)
+
+		// Check positions
+		for _, child := range parent.Items {
+			if child.Status == models.StatusDone {
+				assert.Equal(t, 0, child.Position, "Done child should have position 0")
+			} else {
+				assert.Greater(t, child.Position, 0, "Active child should have position > 0")
+			}
+		}
 	})
 }

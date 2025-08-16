@@ -2,7 +2,6 @@ package reopen
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/arthur-debert/tdh/pkg/logging"
 	"github.com/arthur-debert/tdh/pkg/tdh/models"
@@ -21,11 +20,12 @@ type Result struct {
 	NewStatus string
 }
 
-// Execute marks a todo as pending
-func Execute(positionPath string, opts Options) (*Result, error) {
+// Execute marks a todo as pending by finding it via a user-provided reference,
+// which can be either a position path (e.g., "1.2") or a short ID.
+func Execute(ref string, opts Options) (*Result, error) {
 	logger := logging.GetLogger("tdh.commands.reopen")
 	logger.Debug().
-		Str("positionPath", positionPath).
+		Str("ref", ref).
 		Str("collectionPath", opts.CollectionPath).
 		Msg("executing reopen command")
 
@@ -33,32 +33,27 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 	s := store.NewStore(opts.CollectionPath)
 	err := s.Update(func(collection *models.Collection) error {
-		// Find the todo by position path
-		todo, err := collection.FindItemByPositionPath(positionPath)
+		// Find the todo by ref (position or short ID)
+		todo, err := collection.FindItemByRef(ref)
 		if err != nil {
 			logger.Error().
 				Err(err).
-				Str("positionPath", positionPath).
+				Str("ref", ref).
 				Msg("failed to find todo")
-			return fmt.Errorf("todo not found: %w", err)
+			return fmt.Errorf("todo not found with reference: %s", ref)
 		}
 
 		// Capture old status
 		oldStatus := string(todo.Status)
 
-		// According to the spec, reopen only affects the specified item
-		// No propagation in any direction
-		todo.Status = models.StatusPending
-		todo.Modified = time.Now()
+		// Use the new method which handles status change and position reset
+		todo.MarkPending(collection)
 
 		logger.Debug().
 			Str("todoID", todo.ID).
 			Str("oldStatus", oldStatus).
 			Str("newStatus", string(todo.Status)).
 			Msg("marked todo as pending")
-
-		// Auto-reorder after status change
-		collection.Reorder()
 
 		// Capture result
 		result = &Result{
@@ -75,7 +70,7 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	}
 
 	logger.Info().
-		Str("positionPath", positionPath).
+		Str("ref", ref).
 		Str("todoText", result.Todo.Text).
 		Msg("successfully reopened todo")
 

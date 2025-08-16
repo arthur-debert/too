@@ -142,7 +142,7 @@ func TestReopen(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "invalid position")
+		assert.Contains(t, err.Error(), "todo not found with reference")
 	})
 
 	t.Run("reopen already pending todo", func(t *testing.T) {

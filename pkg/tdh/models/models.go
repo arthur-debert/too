@@ -102,6 +102,49 @@ func (t *Todo) Clone() *Todo {
 	return clone
 }
 
+// SetStatus changes the todo's status while maintaining invariants.
+// If skipReorder is false (default), it triggers position reset at the appropriate level.
+func (t *Todo) SetStatus(status TodoStatus, collection *Collection, skipReorder ...bool) {
+	// Handle optional parameter
+	skip := false
+	if len(skipReorder) > 0 {
+		skip = skipReorder[0]
+	}
+
+	// Track if status actually changed
+	oldStatus := t.Status
+	statusChanged := oldStatus != status
+
+	// Update status and timestamp
+	t.Status = status
+	t.Modified = time.Now()
+
+	// Maintain invariant: done items have position 0
+	if status == StatusDone {
+		t.Position = 0
+	}
+	// Note: If changing to pending and position is 0, it will be set by reorder
+
+	// Trigger reorder unless skipped or status unchanged
+	if !skip && statusChanged {
+		if t.ParentID != "" {
+			collection.ResetSiblingPositions(t.ParentID)
+		} else {
+			collection.ResetRootPositions()
+		}
+	}
+}
+
+// MarkComplete marks the todo as done and maintains invariants.
+func (t *Todo) MarkComplete(collection *Collection, skipReorder ...bool) {
+	t.SetStatus(StatusDone, collection, skipReorder...)
+}
+
+// MarkPending marks the todo as pending and maintains invariants.
+func (t *Todo) MarkPending(collection *Collection, skipReorder ...bool) {
+	t.SetStatus(StatusPending, collection, skipReorder...)
+}
+
 // Clone creates a deep copy of the collection.
 func (c *Collection) Clone() *Collection {
 	clone := &Collection{
@@ -113,9 +156,28 @@ func (c *Collection) Clone() *Collection {
 	return clone
 }
 
-// Reorder sorts todos by their current position and reassigns sequential positions.
+// Reorder resets positions for active (pending) todos, giving them sequential positions starting from 1.
+// Done todos are left with position 0.
 func (c *Collection) Reorder() {
-	ReorderTodos(c.Todos)
+	ResetActivePositions(&c.Todos)
+}
+
+// ResetSiblingPositions resets positions for all siblings of the todo with the given parent ID.
+// This only affects todos at one level (children of the same parent).
+func (c *Collection) ResetSiblingPositions(parentID string) {
+	parent := c.FindItemByID(parentID)
+	if parent != nil && len(parent.Items) > 0 {
+		// Reset positions only for active (pending) items
+		ResetActivePositions(&parent.Items)
+	}
+}
+
+// ResetRootPositions resets positions for all root-level todos.
+func (c *Collection) ResetRootPositions() {
+	if len(c.Todos) > 0 {
+		// Reset positions only for active (pending) items
+		ResetActivePositions(&c.Todos)
+	}
 }
 
 // MigrateCollection ensures all todos have proper IDs and structure for nested lists
@@ -166,6 +228,53 @@ func findItemByIDInSlice(todos []*Todo, id string) *Todo {
 		}
 	}
 	return nil
+}
+
+// FindItemByRef finds a todo by a user-provided reference, which can be either
+// a position path (e.g., "1.2") or a short ID (e.g., "a1b2c3d").
+func (c *Collection) FindItemByRef(ref string) (*Todo, error) {
+	// First, try to parse as a position path.
+	todo, err := c.FindItemByPositionPath(ref)
+	if err == nil && todo != nil {
+		return todo, nil
+	}
+
+	// If it's not a valid position path, assume it's a short ID.
+	return c.FindItemByShortID(ref)
+}
+
+// FindItemByShortID finds a todo item by its short ID, searching recursively.
+func (c *Collection) FindItemByShortID(shortID string) (*Todo, error) {
+	var found *Todo
+	var count int
+	c.Walk(func(t *Todo) {
+		if strings.HasPrefix(t.ID, shortID) {
+			found = t
+			count++
+		}
+	})
+
+	if count == 0 {
+		return nil, fmt.Errorf("no todo found with reference '%s'", shortID)
+	}
+	if count > 1 {
+		return nil, fmt.Errorf("multiple todos found with ambiguous reference '%s'", shortID)
+	}
+	return found, nil
+}
+
+// Walk traverses the entire todo tree and calls the given function for each todo.
+func (c *Collection) Walk(fn func(*Todo)) {
+	for _, todo := range c.Todos {
+		walk(todo, fn)
+	}
+}
+
+func walk(t *Todo, fn func(*Todo)) {
+	fn(t)
+	for _, child := range t.Items {
+		walk(child, fn)
+	}
 }
 
 // FindItemByPositionPath finds a todo item by its dot-notation position path (e.g., "1.2.3")
@@ -229,4 +338,112 @@ func findItemByPositions(todos []*Todo, positions []int) (*Todo, error) {
 
 	// Otherwise, recursively search in the found item's children
 	return findItemByPositions(found.Items, positions[1:])
+}
+
+// GetShortID returns the first 7 characters of the todo's UUID.
+func (t *Todo) GetShortID() string {
+	if len(t.ID) >= 7 {
+		return t.ID[:7]
+	}
+	return t.ID
+}
+
+// GetPositionPath returns the full dot-notation position path for a todo.
+// This requires a full collection scan and is intended for use in user-facing output or tests.
+func (t *Todo) GetPositionPath(collection *Collection) string {
+	// A done item has no active position path.
+	if t.Status == StatusDone {
+		return ""
+	}
+	// Find the path recursively
+	return findPath(collection.Todos, t, "")
+}
+
+// findPath recursively builds the position path for a target todo
+func findPath(todos []*Todo, target *Todo, currentPath string) string {
+	for _, todo := range todos {
+		var newPath string
+		if currentPath == "" {
+			newPath = fmt.Sprintf("%d", todo.Position)
+		} else {
+			newPath = fmt.Sprintf("%s.%d", currentPath, todo.Position)
+		}
+
+		if todo.ID == target.ID {
+			return newPath
+		}
+
+		// Recurse into children
+		if foundPath := findPath(todo.Items, target, newPath); foundPath != "" {
+			return foundPath
+		}
+	}
+	return ""
+}
+
+// ListActive returns only active (pending) todos from the collection.
+// This implements behavioral propagation: when a parent is done, all its
+// descendants are hidden regardless of their status.
+func (c *Collection) ListActive() []*Todo {
+	return filterTodos(c.Todos, func(t *Todo) bool {
+		return t.Status == StatusPending
+	}, false) // Don't recurse into done items
+}
+
+// ListArchived returns only archived (done) todos from the collection.
+// When showing archived items, behavioral propagation stops - we don't
+// show the children of done items.
+func (c *Collection) ListArchived() []*Todo {
+	return filterTodos(c.Todos, func(t *Todo) bool {
+		return t.Status == StatusDone
+	}, false) // Don't recurse into done items
+}
+
+// ListAll returns all todos from the collection regardless of status.
+// This shows the complete tree structure including any inconsistent states
+// (e.g., pending children under done parents).
+func (c *Collection) ListAll() []*Todo {
+	return cloneTodos(c.Todos)
+}
+
+// filterTodos recursively filters todos based on a predicate function.
+// If recurseIntoDone is false, it stops recursion at done items (behavioral propagation).
+func filterTodos(todos []*Todo, predicate func(*Todo) bool, recurseIntoDone bool) []*Todo {
+	var filtered []*Todo
+
+	for _, todo := range todos {
+		if predicate(todo) {
+			// Clone the todo to avoid modifying the original
+			filteredTodo := &Todo{
+				ID:       todo.ID,
+				ParentID: todo.ParentID,
+				Position: todo.Position,
+				Text:     todo.Text,
+				Status:   todo.Status,
+				Modified: todo.Modified,
+				Items:    []*Todo{},
+			}
+
+			// If this todo is done and we're not recursing into done items,
+			// stop here (behavioral propagation)
+			if todo.Status == StatusDone && !recurseIntoDone {
+				filtered = append(filtered, filteredTodo)
+			} else {
+				// Recursively filter children
+				filteredTodo.Items = filterTodos(todo.Items, predicate, recurseIntoDone)
+				filtered = append(filtered, filteredTodo)
+			}
+		}
+	}
+
+	return filtered
+}
+
+// cloneTodos creates a deep copy of a slice of todos
+func cloneTodos(todos []*Todo) []*Todo {
+	cloned := make([]*Todo, len(todos))
+	for i, todo := range todos {
+		cloned[i] = todo.Clone()
+	}
+	return cloned
 }

@@ -41,8 +41,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent = collection.Todos[0]
 		assert.Equal(t, models.StatusPending, parent.Status)
 
-		// Complete the second child (1.2)
-		result, err = complete.Execute("1.2", complete.Options{
+		// Complete the second child (now at position 1.1 after reordering)
+		result, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -89,8 +89,9 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Complete grandchild 1.2.1
-		_, err = complete.Execute("1.2.1", complete.Options{
+		// After completing 1.1, Sub-task 1.2 moves to position 1
+		// So its grandchild is now at path 1.1.1
+		_, err = complete.Execute("1.1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -99,8 +100,17 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
 		parent := collection.Todos[0]
-		subTask2 := parent.Items[1]
-		assert.Equal(t, "Sub-task 1.2", subTask2.Text)
+
+		// After reordering, both children should be done and at the end of the slice
+		// Find Sub-task 1.2 by text
+		var subTask2 *models.Todo
+		for _, child := range parent.Items {
+			if child.Text == "Sub-task 1.2" {
+				subTask2 = child
+				break
+			}
+		}
+		assert.NotNil(t, subTask2, "Sub-task 1.2 should exist")
 		assert.Equal(t, models.StatusDone, subTask2.Status)
 
 		// And verify parent was also auto-completed
@@ -123,13 +133,16 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// Complete first two children
+		// Complete first child
 		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("1.2", complete.Options{
+		// After completing 1.1, positions are renumbered:
+		// Child 2 is now at position 1 (path 1.1)
+		// Child 3 is now at position 2 (path 1.2)
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -140,8 +153,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent := collection.Todos[0]
 		assert.Equal(t, models.StatusPending, parent.Status)
 
-		// Complete the third child
-		_, err = complete.Execute("1.3", complete.Options{
+		// Complete the last child (now at position 1)
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -181,7 +194,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		_, err = complete.Execute("1.1.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("1.1.2", complete.Options{CollectionPath: s.Path()})
+		// After reordering, Task B is now at 1.1.1
+		_, err = complete.Execute("1.1.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
 		// Phase 1 should be auto-completed
@@ -194,7 +208,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		// But project should still be pending (Phase 2 not complete)
 		assert.Equal(t, models.StatusPending, project.Status)
 
-		// Complete Task C
+		// After Phase 1 is done (position 0), Phase 2 is still at position 2
+		// So Task C is at path 1.2.1
 		_, err = complete.Execute("1.2.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
@@ -242,13 +257,15 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent := collection.Todos[0]
 		assert.Equal(t, models.StatusPending, parent.Status)
 
+		// After completing childless child, the child with grandchildren is now at position 1
 		// Complete grandchildren
 		_, err = complete.Execute("1.1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("1.1.2", complete.Options{
+		// After first grandchild is done, second grandchild is at position 1
+		_, err = complete.Execute("1.1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -259,11 +276,14 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		parent = collection.Todos[0]
 		assert.Equal(t, models.StatusDone, parent.Status)
 
-		// Verify the childless child is still childless and complete
-		childless := parent.Items[1]
-		assert.Equal(t, "Childless child", childless.Text)
-		assert.Equal(t, 0, len(childless.Items))
-		assert.Equal(t, models.StatusDone, childless.Status)
+		// Verify both children are done with position 0
+		for _, child := range parent.Items {
+			assert.Equal(t, 0, child.Position)
+			assert.Equal(t, models.StatusDone, child.Status)
+			if child.Text == "Childless child" {
+				assert.Equal(t, 0, len(child.Items))
+			}
+		}
 	})
 
 	t.Run("should handle root level items without panic", func(t *testing.T) {
@@ -292,13 +312,15 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		assert.Equal(t, "Root todo 1", result.Todo.Text)
 		assert.Equal(t, "", result.Todo.ParentID) // Verify it has no parent
 
+		// After reordering, "Root with children" is now at position 1
 		// Complete children to trigger bottom-up on a root item
-		_, err = complete.Execute("2.1", complete.Options{
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
 
-		_, err = complete.Execute("2.2", complete.Options{
+		// Complete the second child (now also at 1.1 after reordering)
+		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
 		testutil.AssertNoError(t, err)
@@ -306,8 +328,16 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		// Verify root item with children was auto-completed
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
-		rootWithChildren := collection.Todos[1]
-		assert.Equal(t, "Root with children", rootWithChildren.Text)
+
+		// Find "Root with children" by text since positions have changed
+		var rootWithChildren *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Root with children" {
+				rootWithChildren = todo
+				break
+			}
+		}
+		assert.NotNil(t, rootWithChildren, "Root with children should exist")
 		assert.Equal(t, models.StatusDone, rootWithChildren.Status)
 		assert.Equal(t, "", rootWithChildren.ParentID) // Verify it's still at root
 	})
