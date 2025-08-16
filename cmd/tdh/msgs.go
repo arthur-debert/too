@@ -62,6 +62,7 @@ const (
 	// Global flags
 	msgFlagVerbose  = "Increase verbosity (-v, -vv, -vvv)"
 	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.json)"
+	msgFlagFormat   = "output format (term, json, markdown)"
 
 	// List command flags
 	msgFlagDone = "print done todos"

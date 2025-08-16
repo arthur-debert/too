@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
-	"github.com/arthur-debert/tdh/pkg/tdh/output"
 )
 
 var moveCmd = &cobra.Command{
@@ -28,7 +27,10 @@ var moveCmd = &cobra.Command{
 			return err
 		}
 
-		renderer := output.NewRenderer(nil)
+		renderer, err := getRenderer()
+		if err != nil {
+			return err
+		}
 		return renderer.RenderMove(result)
 	},
 }
