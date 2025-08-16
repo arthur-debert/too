@@ -109,7 +109,7 @@ cd "$TEMP_DIR"
 # Initialize or copy todos file
 if [[ -n "$TODOS_FILE" ]]; then
     echo -e "${BLUE}Copying todos file from: $TODOS_FILE${NC}"
-    cp "$TODOS_FILE" .todos.json
+    cp "$TODOS_FILE" .todos
     echo -e "${GREEN}Test environment initialized with existing data${NC}"
 else
     echo -e "${BLUE}Initializing fresh .todos file${NC}"
@@ -120,7 +120,7 @@ fi
 echo -e "\n${GREEN}=== Test Environment Ready ===${NC}"
 echo -e "Working directory: ${BLUE}$TEMP_DIR${NC}"
 echo -e "Using tdh binary: ${BLUE}$TDH_BIN${NC}"
-echo -e "Data file: ${BLUE}$TEMP_DIR/.todos.json${NC}"
+echo -e "Data file: ${BLUE}$TEMP_DIR/.todos${NC}"
 echo -e "\n${YELLOW}Type 'exit' or press Ctrl+D to leave and cleanup${NC}\n"
 
 # Create a custom prompt to indicate test environment

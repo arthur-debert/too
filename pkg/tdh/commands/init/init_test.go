@@ -53,11 +53,11 @@ func TestInitCommand(t *testing.T) {
 		// Verify results
 		testutil.AssertNoError(t, err)
 		assert.True(t, result.Created)
-		assert.Equal(t, ".todos.json", result.DBPath)
+		assert.Equal(t, ".todos", result.DBPath)
 		assert.Contains(t, result.Message, "Initialized empty tdh collection")
 
 		// Verify file was created in current directory
-		expectedPath := filepath.Join(dir, ".todos.json")
+		expectedPath := filepath.Join(dir, ".todos")
 		_, err = os.Stat(expectedPath)
 		assert.NoError(t, err)
 	})

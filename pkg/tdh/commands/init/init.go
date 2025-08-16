@@ -38,7 +38,7 @@ func Execute(opts Options) (*Result, error) {
 		storePath = filepath.Join(home, ".todos.json")
 	} else {
 		// Use current directory (default)
-		storePath = ".todos.json"
+		storePath = ".todos"
 	}
 
 	s := store.NewStore(storePath)
