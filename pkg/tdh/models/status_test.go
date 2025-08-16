@@ -41,13 +41,18 @@ func TestSetStatus(t *testing.T) {
 		}
 
 		// Mark first todo as done
-		collection.Todos[0].SetStatus(models.StatusDone, collection)
+		firstTodo := collection.Todos[0]
+		firstTodo.SetStatus(models.StatusDone, collection)
 
-		// First todo should have position 0
-		assert.Equal(t, 0, collection.Todos[0].Position)
-		// Other todos should be renumbered
-		assert.Equal(t, 1, collection.Todos[1].Position)
-		assert.Equal(t, 2, collection.Todos[2].Position)
+		// After reordering, slice should have active items first, then done items
+		// Active items: Second (pos 1), Third (pos 2)
+		// Done items: First (pos 0)
+		assert.Equal(t, "Second", collection.Todos[0].Text)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, "Third", collection.Todos[1].Text)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "First", collection.Todos[2].Text)
+		assert.Equal(t, 0, collection.Todos[2].Position)
 	})
 
 	t.Run("marking nested todo as done triggers sibling reorder", func(t *testing.T) {
@@ -65,13 +70,18 @@ func TestSetStatus(t *testing.T) {
 		collection := &models.Collection{Todos: []*models.Todo{parent}}
 
 		// Mark first child as done
-		parent.Items[0].SetStatus(models.StatusDone, collection)
+		firstChild := parent.Items[0]
+		firstChild.SetStatus(models.StatusDone, collection)
 
-		// First child should have position 0
-		assert.Equal(t, 0, parent.Items[0].Position)
-		// Other children should be renumbered
-		assert.Equal(t, 1, parent.Items[1].Position)
-		assert.Equal(t, 2, parent.Items[2].Position)
+		// After reordering, parent.Items should have active items first, then done items
+		// Active items: Child 2 (pos 1), Child 3 (pos 2)
+		// Done items: Child 1 (pos 0)
+		assert.Equal(t, "Child 2", parent.Items[0].Text)
+		assert.Equal(t, 1, parent.Items[0].Position)
+		assert.Equal(t, "Child 3", parent.Items[1].Text)
+		assert.Equal(t, 2, parent.Items[1].Position)
+		assert.Equal(t, "Child 1", parent.Items[2].Text)
+		assert.Equal(t, 0, parent.Items[2].Position)
 		// Parent position unchanged
 		assert.Equal(t, 1, parent.Position)
 	})
@@ -121,12 +131,19 @@ func TestMarkComplete(t *testing.T) {
 			},
 		}
 
-		collection.Todos[0].MarkComplete(collection)
+		firstTodo := collection.Todos[0]
+		firstTodo.MarkComplete(collection)
 
-		assert.Equal(t, models.StatusDone, collection.Todos[0].Status)
-		assert.Equal(t, 0, collection.Todos[0].Position)
-		// Reorder should have happened
-		assert.Equal(t, 1, collection.Todos[1].Position)
+		// After reordering, slice should have active items first, then done item
+		// Active: Second (pos 1)
+		// Done: First (pos 0)
+		assert.Equal(t, "Second", collection.Todos[0].Text)
+		assert.Equal(t, models.StatusPending, collection.Todos[0].Status)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+
+		assert.Equal(t, "First", collection.Todos[1].Text)
+		assert.Equal(t, models.StatusDone, collection.Todos[1].Status)
+		assert.Equal(t, 0, collection.Todos[1].Position)
 	})
 
 	t.Run("MarkComplete with skipReorder", func(t *testing.T) {
@@ -156,11 +173,17 @@ func TestMarkPending(t *testing.T) {
 			},
 		}
 
-		collection.Todos[0].MarkPending(collection)
+		doneTodo := collection.Todos[0]
+		doneTodo.MarkPending(collection)
 
-		assert.Equal(t, models.StatusPending, collection.Todos[0].Status)
-		// Should get position 3 (after existing 1 and 2)
-		assert.Equal(t, 3, collection.Todos[0].Position)
+		// After reordering, the slice should be: Second (1), Third (2), First (3)
+		assert.Equal(t, "Second", collection.Todos[0].Text)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, "Third", collection.Todos[1].Text)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "First", collection.Todos[2].Text)
+		assert.Equal(t, models.StatusPending, collection.Todos[2].Status)
+		assert.Equal(t, 3, collection.Todos[2].Position)
 	})
 
 	t.Run("MarkPending in nested context", func(t *testing.T) {
@@ -176,11 +199,15 @@ func TestMarkPending(t *testing.T) {
 		}
 		collection := &models.Collection{Todos: []*models.Todo{parent}}
 
-		parent.Items[0].MarkPending(collection)
+		doneChild := parent.Items[0]
+		doneChild.MarkPending(collection)
 
-		assert.Equal(t, models.StatusPending, parent.Items[0].Status)
-		// Should get position 2 (after existing position 1)
-		assert.Equal(t, 2, parent.Items[0].Position)
+		// After reordering, parent.Items should be: Child 2 (1), Child 1 (2)
+		assert.Equal(t, "Child 2", parent.Items[0].Text)
+		assert.Equal(t, 1, parent.Items[0].Position)
+		assert.Equal(t, "Child 1", parent.Items[1].Text)
+		assert.Equal(t, models.StatusPending, parent.Items[1].Status)
+		assert.Equal(t, 2, parent.Items[1].Position)
 	})
 }
 
@@ -193,14 +220,22 @@ func TestResetActivePositions(t *testing.T) {
 			{ID: "4", Position: 4, Text: "Fourth", Status: models.StatusPending},
 		}
 
-		models.ResetActivePositions(todos)
+		models.ResetActivePositions(&todos)
 
-		// Done items should have position 0
-		assert.Equal(t, 0, todos[0].Position)
+		// After reordering, slice should have active items first, then done items
+		// Active items: Second (ID: 2), Fourth (ID: 4)
+		// Done items: First (ID: 1), Third (ID: 3)
+		assert.Len(t, todos, 4)
+
+		// Check the new order and positions
+		assert.Equal(t, "2", todos[0].ID) // Second is now first
+		assert.Equal(t, 1, todos[0].Position)
+		assert.Equal(t, "4", todos[1].ID) // Fourth is now second
+		assert.Equal(t, 2, todos[1].Position)
+		assert.Equal(t, "1", todos[2].ID) // First (done) is now third
 		assert.Equal(t, 0, todos[2].Position)
-		// Pending items should be renumbered sequentially
-		assert.Equal(t, 1, todos[1].Position)
-		assert.Equal(t, 2, todos[3].Position)
+		assert.Equal(t, "3", todos[3].ID) // Third (done) is now fourth
+		assert.Equal(t, 0, todos[3].Position)
 	})
 
 	t.Run("handles newly reopened items with position 0", func(t *testing.T) {
@@ -210,18 +245,25 @@ func TestResetActivePositions(t *testing.T) {
 			{ID: "3", Position: 2, Text: "Third", Status: models.StatusPending},
 		}
 
-		models.ResetActivePositions(todos)
+		models.ResetActivePositions(&todos)
 
-		// Items should be ordered with position 0 items at the end
-		assert.Equal(t, 1, todos[0].Position) // First stays first
-		assert.Equal(t, 3, todos[1].Position) // Reopened goes to end
-		assert.Equal(t, 2, todos[2].Position) // Third becomes second
+		// After reordering, slice should have:
+		// 1. Existing active items in order: First (ID: 1), Third (ID: 3)
+		// 2. Reopened items at the end: Reopened (ID: 2)
+		assert.Len(t, todos, 3)
+
+		assert.Equal(t, "1", todos[0].ID) // First stays first
+		assert.Equal(t, 1, todos[0].Position)
+		assert.Equal(t, "3", todos[1].ID) // Third becomes second
+		assert.Equal(t, 2, todos[1].Position)
+		assert.Equal(t, "2", todos[2].ID) // Reopened goes to end
+		assert.Equal(t, 3, todos[2].Position)
 	})
 
 	t.Run("empty list", func(t *testing.T) {
 		todos := []*models.Todo{}
 		// Should not panic
-		models.ResetActivePositions(todos)
+		models.ResetActivePositions(&todos)
 	})
 
 	t.Run("all done items", func(t *testing.T) {
@@ -230,7 +272,7 @@ func TestResetActivePositions(t *testing.T) {
 			{ID: "2", Position: 2, Text: "Second", Status: models.StatusDone},
 		}
 
-		models.ResetActivePositions(todos)
+		models.ResetActivePositions(&todos)
 
 		// All should have position 0
 		assert.Equal(t, 0, todos[0].Position)
@@ -254,12 +296,18 @@ func TestCollectionResetMethods(t *testing.T) {
 
 		collection.ResetRootPositions()
 
-		// Root level should be reset
+		// After reordering, root slice should have active items first, then done
+		// Active: First (1), Third (2)
+		// Done: Second (0)
+		assert.Equal(t, "First", collection.Todos[0].Text)
 		assert.Equal(t, 1, collection.Todos[0].Position)
-		assert.Equal(t, 0, collection.Todos[1].Position) // Done
-		assert.Equal(t, 2, collection.Todos[2].Position)
+		assert.Equal(t, "Third", collection.Todos[1].Text)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "Second", collection.Todos[2].Text)
+		assert.Equal(t, 0, collection.Todos[2].Position)
+
 		// Child should be unchanged
-		assert.Equal(t, 99, collection.Todos[2].Items[0].Position)
+		assert.Equal(t, 99, collection.Todos[1].Items[0].Position)
 	})
 
 	t.Run("ResetSiblingPositions affects only specified parent's children", func(t *testing.T) {
@@ -280,9 +328,11 @@ func TestCollectionResetMethods(t *testing.T) {
 
 		collection.ResetSiblingPositions("p1")
 
-		// Parent 1's children should be reset
-		assert.Equal(t, 0, parent1.Items[0].Position) // Done
-		assert.Equal(t, 1, parent1.Items[1].Position)
+		// Parent 1's children should be reordered: active first, then done
+		assert.Equal(t, "Child 1.2", parent1.Items[0].Text)
+		assert.Equal(t, 1, parent1.Items[0].Position)
+		assert.Equal(t, "Child 1.1", parent1.Items[1].Text)
+		assert.Equal(t, 0, parent1.Items[1].Position) // Done
 		// Parent 2's children should be unchanged
 		assert.Equal(t, 99, parent2.Items[0].Position)
 	})

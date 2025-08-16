@@ -100,8 +100,17 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
 		parent := collection.Todos[0]
-		subTask2 := parent.Items[1]
-		assert.Equal(t, "Sub-task 1.2", subTask2.Text)
+
+		// After reordering, both children should be done and at the end of the slice
+		// Find Sub-task 1.2 by text
+		var subTask2 *models.Todo
+		for _, child := range parent.Items {
+			if child.Text == "Sub-task 1.2" {
+				subTask2 = child
+				break
+			}
+		}
+		assert.NotNil(t, subTask2, "Sub-task 1.2 should exist")
 		assert.Equal(t, models.StatusDone, subTask2.Status)
 
 		// And verify parent was also auto-completed
@@ -310,7 +319,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		})
 		testutil.AssertNoError(t, err)
 
-		// After reordering, second child is now at 1.1
+		// Complete the second child (now also at 1.1 after reordering)
 		_, err = complete.Execute("1.1", complete.Options{
 			CollectionPath: s.Path(),
 		})
@@ -319,8 +328,16 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		// Verify root item with children was auto-completed
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
-		rootWithChildren := collection.Todos[1]
-		assert.Equal(t, "Root with children", rootWithChildren.Text)
+
+		// Find "Root with children" by text since positions have changed
+		var rootWithChildren *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Root with children" {
+				rootWithChildren = todo
+				break
+			}
+		}
+		assert.NotNil(t, rootWithChildren, "Root with children should exist")
 		assert.Equal(t, models.StatusDone, rootWithChildren.Status)
 		assert.Equal(t, "", rootWithChildren.ParentID) // Verify it's still at root
 	})

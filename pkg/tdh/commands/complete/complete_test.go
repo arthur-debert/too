@@ -30,17 +30,18 @@ func TestComplete(t *testing.T) {
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
 
-		// With new behavior: completed todo has position 0
-		completedTodo := collection.Todos[0] // First in slice
-		assert.Equal(t, "Test todo 1", completedTodo.Text)
-		assert.Equal(t, 0, completedTodo.Position)
-		testutil.AssertTodoHasStatus(t, completedTodo, models.StatusDone)
-
-		// Other todo gets position 1 after reordering
-		activeTodo := collection.Todos[1]
+		// With new behavior: slice is reordered with active items first
+		// Active todo is now first in slice with position 1
+		activeTodo := collection.Todos[0]
 		assert.Equal(t, "Test todo 2", activeTodo.Text)
 		assert.Equal(t, 1, activeTodo.Position)
 		testutil.AssertTodoHasStatus(t, activeTodo, models.StatusPending)
+
+		// Completed todo is now second in slice with position 0
+		completedTodo := collection.Todos[1]
+		assert.Equal(t, "Test todo 1", completedTodo.Text)
+		assert.Equal(t, 0, completedTodo.Position)
+		testutil.AssertTodoHasStatus(t, completedTodo, models.StatusDone)
 	})
 
 	t.Run("complete nested todo", func(t *testing.T) {
@@ -66,18 +67,20 @@ func TestComplete(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.Equal(t, models.StatusPending, parent.Status)
 
-		// With new behavior: completed child has position 0
+		// With new behavior: slice is reordered with active items first
 		assert.Equal(t, 2, len(parent.Items))
-		completedChild := parent.Items[0] // First in slice
-		assert.Equal(t, "Sub-task 1.1", completedChild.Text)
-		assert.Equal(t, 0, completedChild.Position)
-		assert.Equal(t, models.StatusDone, completedChild.Status)
 
-		// Sibling now has position 1 after reordering
-		sibling := parent.Items[1]
+		// Active sibling is now first in slice with position 1
+		sibling := parent.Items[0]
 		assert.Equal(t, "Sub-task 1.2", sibling.Text)
 		assert.Equal(t, 1, sibling.Position)
 		assert.Equal(t, models.StatusPending, sibling.Status)
+
+		// Completed child is now second in slice with position 0
+		completedChild := parent.Items[1]
+		assert.Equal(t, "Sub-task 1.1", completedChild.Text)
+		assert.Equal(t, 0, completedChild.Position)
+		assert.Equal(t, models.StatusDone, completedChild.Status)
 
 		// Can still find sibling by new position path
 		sibling2, err := collection.FindItemByPositionPath("1.1")

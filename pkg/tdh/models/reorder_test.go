@@ -167,13 +167,17 @@ func TestCollectionReorder(t *testing.T) {
 
 		collection.Reorder()
 
-		// Done items should have position 0
-		assert.Equal(t, 0, collection.Todos[0].Position) // First (done)
-		assert.Equal(t, 0, collection.Todos[3].Position) // Fourth (done)
-
-		// Pending items should be reordered sequentially
-		assert.Equal(t, 1, collection.Todos[1].Position) // Second (pending)
-		assert.Equal(t, 2, collection.Todos[2].Position) // Third (pending)
+		// After reordering, slice should have active items first, then done items
+		// Active: Second (pos 1), Third (pos 2)
+		// Done: First (pos 0), Fourth (pos 0)
+		assert.Equal(t, "Second", collection.Todos[0].Text)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, "Third", collection.Todos[1].Text)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "First", collection.Todos[2].Text)
+		assert.Equal(t, 0, collection.Todos[2].Position)
+		assert.Equal(t, "Fourth", collection.Todos[3].Text)
+		assert.Equal(t, 0, collection.Todos[3].Position)
 	})
 
 	t.Run("reorders all pending todos", func(t *testing.T) {
@@ -187,11 +191,15 @@ func TestCollectionReorder(t *testing.T) {
 
 		collection.Reorder()
 
-		// The todos should be reordered by their original position
-		// Second (was 2) -> 1, First (was 5) -> 2, Third (was 8) -> 3
-		assert.Equal(t, 2, collection.Todos[0].Position) // First stays in original slice position
-		assert.Equal(t, 1, collection.Todos[1].Position) // Second gets position 1
-		assert.Equal(t, 3, collection.Todos[2].Position) // Third gets position 3
+		// The todos should be reordered by their original position values
+		// Second (was pos 2) -> pos 1, First (was pos 5) -> pos 2, Third (was pos 8) -> pos 3
+		// And slice order should match: Second, First, Third
+		assert.Equal(t, "Second", collection.Todos[0].Text)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+		assert.Equal(t, "First", collection.Todos[1].Text)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+		assert.Equal(t, "Third", collection.Todos[2].Text)
+		assert.Equal(t, 3, collection.Todos[2].Position)
 	})
 
 	t.Run("handles empty collection", func(t *testing.T) {

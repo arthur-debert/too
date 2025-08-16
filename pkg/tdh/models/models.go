@@ -159,7 +159,7 @@ func (c *Collection) Clone() *Collection {
 // Reorder resets positions for active (pending) todos, giving them sequential positions starting from 1.
 // Done todos are left with position 0.
 func (c *Collection) Reorder() {
-	ResetActivePositions(c.Todos)
+	ResetActivePositions(&c.Todos)
 }
 
 // ResetSiblingPositions resets positions for all siblings of the todo with the given parent ID.
@@ -168,7 +168,7 @@ func (c *Collection) ResetSiblingPositions(parentID string) {
 	parent := c.FindItemByID(parentID)
 	if parent != nil && len(parent.Items) > 0 {
 		// Reset positions only for active (pending) items
-		ResetActivePositions(parent.Items)
+		ResetActivePositions(&parent.Items)
 	}
 }
 
@@ -176,7 +176,7 @@ func (c *Collection) ResetSiblingPositions(parentID string) {
 func (c *Collection) ResetRootPositions() {
 	if len(c.Todos) > 0 {
 		// Reset positions only for active (pending) items
-		ResetActivePositions(c.Todos)
+		ResetActivePositions(&c.Todos)
 	}
 }
 
@@ -228,6 +228,53 @@ func findItemByIDInSlice(todos []*Todo, id string) *Todo {
 		}
 	}
 	return nil
+}
+
+// FindItemByRef finds a todo by a user-provided reference, which can be either
+// a position path (e.g., "1.2") or a short ID (e.g., "a1b2c3d").
+func (c *Collection) FindItemByRef(ref string) (*Todo, error) {
+	// First, try to parse as a position path.
+	todo, err := c.FindItemByPositionPath(ref)
+	if err == nil && todo != nil {
+		return todo, nil
+	}
+
+	// If it's not a valid position path, assume it's a short ID.
+	return c.FindItemByShortID(ref)
+}
+
+// FindItemByShortID finds a todo item by its short ID, searching recursively.
+func (c *Collection) FindItemByShortID(shortID string) (*Todo, error) {
+	var found *Todo
+	var count int
+	c.Walk(func(t *Todo) {
+		if strings.HasPrefix(t.ID, shortID) {
+			found = t
+			count++
+		}
+	})
+
+	if count == 0 {
+		return nil, fmt.Errorf("no todo found with reference '%s'", shortID)
+	}
+	if count > 1 {
+		return nil, fmt.Errorf("multiple todos found with ambiguous reference '%s'", shortID)
+	}
+	return found, nil
+}
+
+// Walk traverses the entire todo tree and calls the given function for each todo.
+func (c *Collection) Walk(fn func(*Todo)) {
+	for _, todo := range c.Todos {
+		walk(todo, fn)
+	}
+}
+
+func walk(t *Todo, fn func(*Todo)) {
+	fn(t)
+	for _, child := range t.Items {
+		walk(child, fn)
+	}
 }
 
 // FindItemByPositionPath finds a todo item by its dot-notation position path (e.g., "1.2.3")
@@ -291,6 +338,47 @@ func findItemByPositions(todos []*Todo, positions []int) (*Todo, error) {
 
 	// Otherwise, recursively search in the found item's children
 	return findItemByPositions(found.Items, positions[1:])
+}
+
+// GetShortID returns the first 7 characters of the todo's UUID.
+func (t *Todo) GetShortID() string {
+	if len(t.ID) >= 7 {
+		return t.ID[:7]
+	}
+	return t.ID
+}
+
+// GetPositionPath returns the full dot-notation position path for a todo.
+// This requires a full collection scan and is intended for use in user-facing output or tests.
+func (t *Todo) GetPositionPath(collection *Collection) string {
+	// A done item has no active position path.
+	if t.Status == StatusDone {
+		return ""
+	}
+	// Find the path recursively
+	return findPath(collection.Todos, t, "")
+}
+
+// findPath recursively builds the position path for a target todo
+func findPath(todos []*Todo, target *Todo, currentPath string) string {
+	for _, todo := range todos {
+		var newPath string
+		if currentPath == "" {
+			newPath = fmt.Sprintf("%d", todo.Position)
+		} else {
+			newPath = fmt.Sprintf("%s.%d", currentPath, todo.Position)
+		}
+
+		if todo.ID == target.ID {
+			return newPath
+		}
+
+		// Recurse into children
+		if foundPath := findPath(todo.Items, target, newPath); foundPath != "" {
+			return foundPath
+		}
+	}
+	return ""
 }
 
 // ListActive returns only active (pending) todos from the collection.

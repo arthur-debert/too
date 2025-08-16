@@ -1,6 +1,8 @@
 package models
 
-import "sort"
+import (
+	"sort"
+)
 
 // ReorderTodos sorts todos by their current position and reassigns sequential positions starting from 1.
 // This is a pure function that performs an in-memory data transformation.
@@ -27,44 +29,54 @@ func ReorderTodos(todos []*Todo) {
 	}
 }
 
-// ResetActivePositions resets positions for only active (pending) todos in the slice.
-// Done items are left with position 0, pending items get sequential positions starting from 1.
-func ResetActivePositions(todos []*Todo) {
-	if len(todos) == 0 {
+// ResetActivePositions reorders the slice to put active items first (in order),
+// followed by done items, and assigns proper positions.
+func ResetActivePositions(todos *[]*Todo) {
+	if todos == nil || len(*todos) == 0 {
 		return
 	}
 
-	// First, collect active todos and ensure done todos have position 0
+	// Separate existing active todos from newly reopened ones (pos 0)
 	var activeTodos []*Todo
-	for _, todo := range todos {
+	var reopenedTodos []*Todo
+	var doneTodos []*Todo
+
+	for _, todo := range *todos {
 		switch todo.Status {
-		case StatusPending:
-			activeTodos = append(activeTodos, todo)
+		case StatusPending, "": // Handle empty status as pending
+			if todo.Position == 0 {
+				reopenedTodos = append(reopenedTodos, todo)
+			} else {
+				activeTodos = append(activeTodos, todo)
+			}
 		case StatusDone:
-			// Ensure done items have position 0
+			// Ensure done items have position 0 and collect them
 			todo.Position = 0
+			doneTodos = append(doneTodos, todo)
+		default:
+			// Handle any other unexpected status as pending
+			if todo.Position == 0 {
+				reopenedTodos = append(reopenedTodos, todo)
+			} else {
+				activeTodos = append(activeTodos, todo)
+			}
 		}
 	}
 
-	// Sort active todos by their current position
-	// Items with position 0 (newly reopened) go to the end
+	// Sort the existing active todos by their current position
 	sort.SliceStable(activeTodos, func(i, j int) bool {
-		// If one has position 0 and the other doesn't, the one with 0 goes after
-		if activeTodos[i].Position == 0 && activeTodos[j].Position != 0 {
-			return false
-		}
-		if activeTodos[i].Position != 0 && activeTodos[j].Position == 0 {
-			return true
-		}
-		// Otherwise sort by position
 		return activeTodos[i].Position < activeTodos[j].Position
 	})
 
-	// Assign sequential positions to active todos only
-	for i, todo := range activeTodos {
+	// Build the new order: existing active, then reopened, then done
+	combinedActive := append(activeTodos, reopenedTodos...)
+
+	// Assign sequential positions to the combined active list
+	for i, todo := range combinedActive {
 		todo.Position = i + 1
 	}
 
-	// Note: We don't recursively process children here because
-	// position reset should only happen at the requested level
+	// Reconstruct the slice in the new order
+	newOrder := append(combinedActive, doneTodos...)
+	*todos = newOrder
 }

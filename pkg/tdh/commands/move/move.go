@@ -185,6 +185,11 @@ func getPositionPath(collection *models.Collection, todo *models.Todo) string {
 // buildPath recursively builds the position path
 func buildPath(todos []*models.Todo, target *models.Todo, currentPath string) string {
 	for _, t := range todos {
+		// Skip done items (position 0) when building paths
+		if t.Position == 0 {
+			continue
+		}
+
 		newPath := currentPath
 		if newPath == "" {
 			newPath = fmt.Sprintf("%d", t.Position)

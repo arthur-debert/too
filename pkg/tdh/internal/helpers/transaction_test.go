@@ -93,10 +93,18 @@ func TestTransactOnTodo(t *testing.T) {
 		// Verify both the status change and reorder happened
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, models.StatusDone, collection.Todos[1].Status)
-		// With new behavior: done todo gets position 0, active todos get 1, 2
-		assert.Equal(t, 1, collection.Todos[0].Position) // Active
-		assert.Equal(t, 0, collection.Todos[1].Position) // Done (was position 5)
-		assert.Equal(t, 2, collection.Todos[2].Position) // Active
+
+		// After reordering, slice should have active items first (pos 1, 2), then done item (pos 0)
+		assert.Equal(t, "First", collection.Todos[0].Text)
+		assert.Equal(t, models.StatusPending, collection.Todos[0].Status)
+		assert.Equal(t, 1, collection.Todos[0].Position)
+
+		assert.Equal(t, "Third", collection.Todos[1].Text)
+		assert.Equal(t, models.StatusPending, collection.Todos[1].Status)
+		assert.Equal(t, 2, collection.Todos[1].Position)
+
+		assert.Equal(t, "Second", collection.Todos[2].Text)
+		assert.Equal(t, models.StatusDone, collection.Todos[2].Status)
+		assert.Equal(t, 0, collection.Todos[2].Position)
 	})
 }
