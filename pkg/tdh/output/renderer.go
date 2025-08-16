@@ -22,7 +22,7 @@ var templateFS embed.FS
 
 // LipbamlRenderer is a renderer that uses lipbalm for styled output
 type LipbamlRenderer struct {
-	writer    io.Writer
+	Writer    io.Writer // Exported to allow formatter to update it
 	useColor  bool
 	styles    lipbalm.StyleMap
 	templates map[string]string
@@ -83,7 +83,7 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	}
 
 	r := &LipbamlRenderer{
-		writer:    w,
+		Writer:    w,
 		useColor:  useColor,
 		styles:    styleMap,
 		templates: make(map[string]string),
@@ -210,7 +210,7 @@ func (r *LipbamlRenderer) RenderAdd(result *tdh.AddResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render add result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -220,7 +220,7 @@ func (r *LipbamlRenderer) RenderModify(result *tdh.ModifyResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render modify result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -230,7 +230,7 @@ func (r *LipbamlRenderer) RenderInit(result *tdh.InitResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render init result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -240,7 +240,7 @@ func (r *LipbamlRenderer) RenderClean(result *tdh.CleanResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render clean result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -250,7 +250,7 @@ func (r *LipbamlRenderer) RenderSearch(result *tdh.SearchResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render search result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -260,7 +260,7 @@ func (r *LipbamlRenderer) RenderList(result *tdh.ListResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render list: %w", err)
 	}
-	_, err = fmt.Fprint(r.writer, output)
+	_, err = fmt.Fprint(r.Writer, output)
 	return err
 }
 
@@ -271,7 +271,7 @@ func (r *LipbamlRenderer) RenderComplete(results []*tdh.CompleteResult) error {
 		if err != nil {
 			return fmt.Errorf("failed to render complete result: %w", err)
 		}
-		_, err = fmt.Fprintln(r.writer, output)
+		_, err = fmt.Fprintln(r.Writer, output)
 		if err != nil {
 			return err
 		}
@@ -286,7 +286,7 @@ func (r *LipbamlRenderer) RenderReopen(results []*tdh.ReopenResult) error {
 		if err != nil {
 			return fmt.Errorf("failed to render reopen result: %w", err)
 		}
-		_, err = fmt.Fprintln(r.writer, output)
+		_, err = fmt.Fprintln(r.Writer, output)
 		if err != nil {
 			return err
 		}
@@ -300,7 +300,7 @@ func (r *LipbamlRenderer) RenderMove(result *tdh.MoveResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render move result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -310,7 +310,7 @@ func (r *LipbamlRenderer) RenderSwap(result *tdh.SwapResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render swap result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -320,7 +320,17 @@ func (r *LipbamlRenderer) RenderDataPath(result *tdh.ShowDataPathResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render datapath result: %w", err)
 	}
-	_, err = fmt.Fprintln(r.writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
+	return err
+}
+
+// RenderFormats renders the formats command result using lipbalm
+func (r *LipbamlRenderer) RenderFormats(result *tdh.ListFormatsResult) error {
+	output, err := r.renderTemplate("formats_result", result)
+	if err != nil {
+		return fmt.Errorf("failed to render formats result: %w", err)
+	}
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
@@ -330,6 +340,6 @@ func (r *LipbamlRenderer) RenderError(err error) error {
 	if renderErr != nil {
 		return renderErr
 	}
-	_, writeErr := fmt.Fprintln(r.writer, output)
+	_, writeErr := fmt.Fprintln(r.Writer, output)
 	return writeErr
 }
