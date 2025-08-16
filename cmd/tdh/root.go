@@ -12,6 +12,7 @@ import (
 
 var (
 	verbosity int
+	formatFlag string
 
 	rootCmd = &cobra.Command{
 		Use:     "tdh",
@@ -86,6 +87,7 @@ func init() {
 
 	// Add persistent flags
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
+	rootCmd.PersistentFlags().StringVarP(&formatFlag, "format", "f", "term", msgFlagFormat)
 
 	// Setup custom help
 	setupHelp()

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
-	"github.com/arthur-debert/tdh/pkg/tdh/output"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +50,10 @@ var addCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer := output.NewRenderer(nil)
+		renderer, err := getRenderer()
+		if err != nil {
+			return err
+		}
 		return renderer.RenderAdd(result)
 	},
 }
