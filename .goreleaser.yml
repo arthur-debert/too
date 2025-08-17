@@ -15,37 +15,12 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
-  
-  # Build completion generator
-  - id: tdh-completion
-    main: ./cmd/tools/tdh-completion
-    binary: tdh-completion
-    env:
-      - CGO_ENABLED=0
-    goos: [linux, darwin]
-    goarch: [amd64, arm64]
-  
-  # Build manpage generator
-  - id: tdh-manpage
-    main: ./cmd/tools/tdh-manpage
-    binary: tdh-manpage
-    env:
-      - CGO_ENABLED=0
-    goos: [linux, darwin]
-    goarch: [amd64, arm64]
 
 before:
   hooks:
-    # Build the completion and manpage generators first
-    - go build -o tdh-completion ./cmd/tools/tdh-completion
-    - go build -o tdh-manpage ./cmd/tools/tdh-manpage
     # Generate completions and man pages before archiving
-    - mkdir -p completions man/man1
-    - ./tdh-completion bash > completions/tdh.bash
-    - ./tdh-completion zsh > completions/_tdh
-    - ./tdh-completion fish > completions/tdh.fish
-    - ./tdh-manpage > man/man1/tdh.1
-    - gzip man/man1/tdh.1
+    - ./scripts/gen-completion
+    - ./scripts/gen-manpage
 
 archives:
   - id: tdh-archive
