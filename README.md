@@ -37,8 +37,8 @@ Withing that scope, tdh has plenty of useful features such as:
 ### Installation
 
 - From *homebrew*: `brew install tdh`
-- From *binary*: go to the [release page](https://github.com/Swatto/tdh/releases)
-- From *source*: `go get github.com/Swatto/tdh`
+- From *binary*: go to the [release page](https://github.com/arthur-debert/tdh/releases)
+- From *source*: `go get github.com/arthur-debert/tdh`
 - From .deb: get the .deb in the github releases page.
 
 ### Data Files
