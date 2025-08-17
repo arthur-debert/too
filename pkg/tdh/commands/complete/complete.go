@@ -12,13 +12,18 @@ import (
 // Options contains options for the complete command
 type Options struct {
 	CollectionPath string
+	Mode           string // Output mode: "short" or "long"
 }
 
 // Result contains the result of the complete command
 type Result struct {
-	Todo      *models.Todo
-	OldStatus string
-	NewStatus string
+	Todo       *models.Todo
+	OldStatus  string
+	NewStatus  string
+	Mode       string         // Output mode passed from options
+	AllTodos   []*models.Todo // All todos for long mode
+	TotalCount int            // Total count for long mode
+	DoneCount  int            // Done count for long mode
 }
 
 // Execute marks a todo as complete
@@ -77,6 +82,7 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 			Todo:      todo,
 			OldStatus: oldStatus,
 			NewStatus: string(todo.Status),
+			Mode:      opts.Mode,
 		}
 
 		return nil
@@ -86,12 +92,39 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		return nil, err
 	}
 
+	// If in long mode, get all active todos
+	if opts.Mode == "long" {
+		collection, err := s.Load()
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to load collection for long mode")
+			return nil, fmt.Errorf("failed to load collection for long mode: %w", err)
+		}
+
+		result.AllTodos = collection.ListActive()
+		result.TotalCount, result.DoneCount = countTodos(collection.Todos)
+	}
+
 	logger.Info().
 		Str("positionPath", positionPath).
 		Str("todoText", result.Todo.Text).
 		Msg("successfully completed todo")
 
 	return result, nil
+}
+
+// countTodos recursively counts total and done todos
+func countTodos(todos []*models.Todo) (total int, done int) {
+	for _, todo := range todos {
+		total++
+		if todo.Status == models.StatusDone {
+			done++
+		}
+		// Recursively count children
+		childTotal, childDone := countTodos(todo.Items)
+		total += childTotal
+		done += childDone
+	}
+	return total, done
 }
 
 // checkAndCompleteParent recursively checks if all children of a parent are complete,

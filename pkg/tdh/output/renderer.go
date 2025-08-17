@@ -69,7 +69,8 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 		"position": lipgloss.NewStyle().
 			Foreground(styles.SUBDUED_TEXT),
 		"muted": lipgloss.NewStyle().
-			Foreground(styles.MUTED_TEXT),
+			Foreground(styles.MUTED_TEXT).
+			Faint(true),
 		"subdued": lipgloss.NewStyle().
 			Foreground(styles.SUBDUED_TEXT),
 		"accent": lipgloss.NewStyle().
@@ -151,6 +152,49 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 			// For use in templates where we don't have the full context
 			baseIndent := strings.Repeat(" ", indent)
 			return formatMultilineText(text, baseIndent, 6)
+		},
+		"renderNestedTodosWithHighlight": func(todos []*models.Todo, parentPath string, level int, highlightID string) string {
+			var result strings.Builder
+			for _, todo := range todos {
+				path := parentPath
+				if path == "" {
+					path = fmt.Sprintf("%d", todo.Position)
+				} else {
+					path = fmt.Sprintf("%s.%d", parentPath, todo.Position)
+				}
+
+				// Render this todo with its path and indentation
+				indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
+				isDone := r.templateFuncs()["isDone"].(func(*models.Todo) bool)(todo)
+				statusSymbol := "✕"
+				statusStyle := "todo-pending"
+				if isDone {
+					statusSymbol = "✓"
+					statusStyle = "todo-done"
+				}
+
+				// Format the todo text with proper indentation for multi-line content
+				formattedText := formatMultilineText(todo.Text, indent, 6)
+
+				// Apply muted style if this is not the highlighted todo
+				if highlightID != "" && todo.ID != highlightID {
+					// For non-highlighted todos, wrap entire line in muted tag
+					result.WriteString(fmt.Sprintf("%s<muted>%6s | %s %s</muted>\n",
+						indent, path, statusSymbol, formattedText))
+				} else {
+					// For highlighted todo, use normal styling
+					result.WriteString(fmt.Sprintf("%s<subdued>%6s</subdued> | <%s>%s</%s> %s\n",
+						indent, path, statusStyle, statusSymbol, statusStyle, formattedText))
+				}
+
+				// Recursively render children
+				if len(todo.Items) > 0 {
+					childrenOutput := r.templateFuncs()["renderNestedTodosWithHighlight"].(func([]*models.Todo, string, int, string) string)(
+						todo.Items, path, level+1, highlightID)
+					result.WriteString(childrenOutput)
+				}
+			}
+			return result.String()
 		},
 		"renderNestedTodos": func(todos []*models.Todo, parentPath string, level int) string {
 			var result strings.Builder

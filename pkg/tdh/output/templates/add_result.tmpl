@@ -1,1 +1,8 @@
+{{- if eq .Mode "long" -}}
 <success>Added todo</success> <position>#{{.Todo.Position}}</position>: {{.Todo.Text}}
+
+{{renderNestedTodosWithHighlight .AllTodos "" 0 .Todo.ID -}}
+<count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
+{{- else -}}
+<success>Added todo</success> <position>#{{.Todo.Position}}</position>: {{.Todo.Text}}
+{{- end -}}
