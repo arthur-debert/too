@@ -9,6 +9,7 @@ import (
 	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/json"
 	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/markdown"
 	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/term"
+	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/yaml"
 )
 
 func init() {
@@ -68,5 +69,18 @@ func registerBuiltinFormatters() {
 		},
 	}); err != nil {
 		panic(fmt.Sprintf("failed to register term formatter: %v", err))
+	}
+
+	// Register YAML formatter
+	if err := output.Register(&output.FormatterInfo{
+		Info: formatter.Info{
+			Name:        "yaml",
+			Description: "YAML output for programmatic consumption",
+		},
+		Factory: func() (output.Formatter, error) {
+			return yaml.New(), nil
+		},
+	}); err != nil {
+		panic(fmt.Sprintf("failed to register yaml formatter: %v", err))
 	}
 }
