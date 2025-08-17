@@ -75,7 +75,61 @@ and reliable tests.
     --
 
 
-4. Best Practices
+4. Integration Testing Environment
+
+    For manual integration testing, use scripts/run-integration-env.sh:
+    
+    Purpose:
+    
+        • Test tdh commands without affecting your real todo data
+        • Verify behavior with different .todos file states
+        • Debug issues in an isolated environment
+    
+    Usage:
+    
+        -- bash
+        # Start with empty .todos file
+        ./scripts/run-integration-env.sh
+        
+        # Copy your current todos for testing
+        ./scripts/run-integration-env.sh ~/.todos.json
+        
+        # Use test fixtures
+        ./scripts/run-integration-env.sh test/fixtures/complex.todos
+        --
+    
+    The script:
+    
+        • Creates a temporary directory in PROJECT_ROOT/tmp/
+        • Initializes or copies a .todos file
+        • Drops you into a shell with custom "[tdh-test]" prompt
+        • Adds tdh to PATH for easy testing
+        • Automatically cleans up when you exit
+    
+    Example Session:
+    
+        -- bash
+        $ ./scripts/run-integration-env.sh
+        Initializing fresh .todos file
+        Initialized empty tdh collection in .todos
+        
+        === Test Environment Ready ===
+        Working directory: /path/to/tdh/tmp/tdh-test-ABC123
+        Using tdh binary: /path/to/tdh/bin/tdh
+        Data file: /path/to/tdh/tmp/tdh-test-ABC123/.todos
+        
+        Type 'exit' or press Ctrl+D to leave and cleanup
+        
+        [tdh-test] ~/tdh/tmp/tdh-test-ABC123 $ tdh add "Test todo"
+        1 | ✕ Test todo
+        [tdh-test] ~/tdh/tmp/tdh-test-ABC123 $ exit
+        
+        Cleaning up test environment...
+        Test environment cleaned up
+        --
+
+
+5. Best Practices
 
     DO:
     

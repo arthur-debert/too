@@ -5,6 +5,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var initUseHomeDir bool
+
 var initCmd = &cobra.Command{
 	Use:     msgInitUse,
 	Aliases: aliasesInit,
@@ -17,7 +19,8 @@ var initCmd = &cobra.Command{
 
 		// Call business logic
 		result, err := tdh.Init(tdh.InitOptions{
-			DBPath: collectionPath,
+			DBPath:     collectionPath,
+			UseHomeDir: initUseHomeDir,
 		})
 		if err != nil {
 			return err
@@ -34,4 +37,5 @@ var initCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(initCmd)
+	initCmd.Flags().BoolVar(&initUseHomeDir, "home", false, "Create .todos file in home directory instead of current directory")
 }

@@ -35,6 +35,46 @@ func TestInitCommand(t *testing.T) {
 		testutil.AssertCollectionSize(t, collection, 0)
 	})
 
+	t.Run("creates todo file in current directory by default", func(t *testing.T) {
+		// Setup temp directory and change to it
+		dir := t.TempDir()
+		oldDir, err := os.Getwd()
+		require.NoError(t, err)
+		err = os.Chdir(dir)
+		require.NoError(t, err)
+		defer func() {
+			_ = os.Chdir(oldDir) // Restore original directory
+		}()
+
+		// Execute init command without explicit path
+		opts := cmdinit.Options{}
+		result, err := cmdinit.Execute(opts)
+
+		// Verify results
+		testutil.AssertNoError(t, err)
+		assert.True(t, result.Created)
+		assert.Equal(t, ".todos", result.DBPath)
+		assert.Contains(t, result.Message, "Initialized empty tdh collection")
+
+		// Verify file was created in current directory
+		expectedPath := filepath.Join(dir, ".todos")
+		_, err = os.Stat(expectedPath)
+		assert.NoError(t, err)
+	})
+
+	t.Run("creates todo file in home directory with UseHomeDir flag", func(t *testing.T) {
+		// Execute init command with UseHomeDir
+		opts := cmdinit.Options{UseHomeDir: true}
+		result, err := cmdinit.Execute(opts)
+
+		// Verify results
+		testutil.AssertNoError(t, err)
+		home, _ := os.UserHomeDir()
+		expectedPath := filepath.Join(home, ".todos.json")
+		assert.Equal(t, expectedPath, result.DBPath)
+		assert.Contains(t, result.Message, "tdh collection")
+	})
+
 	t.Run("reinitializes when file already exists", func(t *testing.T) {
 		// Create a populated store using testutil
 		s := testutil.CreatePopulatedStore(t, "Existing todo 1", "Existing todo 2")
