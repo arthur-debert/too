@@ -88,10 +88,11 @@ It stores todos in a JSON file and provides commands to add, modify, toggle, and
 	rootCmd.PersistentFlags().CountP("verbose", "v", "Increase verbosity (-v, -vv, -vvv)")
 
 	// Set up man page header
+	now := time.Now()
 	header := &doc.GenManHeader{
 		Title:   "TDH",
 		Section: "1",
-		Date:    &time.Time{},
+		Date:    &now,
 		Source:  "tdh",
 		Manual:  "User Commands",
 	}
