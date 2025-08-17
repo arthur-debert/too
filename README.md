@@ -1,84 +1,49 @@
-# Go CLI Module
+# tdh
 
-This module sets up a complete Go CLI application with Cobra framework, comprehensive build tooling, and CI/CD pipelines.
+> A minimal terminal based todo list manager that's feature rich. Design to be
+> fast on a command line first and foremost.
 
-## What You Get
+# No long commands, no need to quote 
+thd a This is a todo # long forms are avaialable too tdh add "This is a todo"
+tdh c 1 # complete todo 1, tdh complete 1 
+>
+Let's expand on minimal and feature rich :)
+tdh is not a task manager doesn't support multi user and other interfaces
+but the cli.
 
-### 📁 Project Structure
-```
-tdh/
-├── cmd/tdh/    # CLI entry point with Cobra commands
-│   ├── main.go                # Main application entry
-│   └── root.go                # Root command configuration
-├── pkg/                       # Reusable packages
-│   └── logging/               # Structured logging setup
-├── scripts/                   # Build and development scripts
-├── .github/workflows/         # GitHub Actions CI/CD
-├── .goreleaser.yml           # Multi-platform release configuration
-└── go.mod                    # Go module definition
-```
+Withing that scope, tdh has plenty of useful features such as: 
+- Nested todos
+- Automatic scoping per git repos.
+- Multi-line todos
+- Search
+- Rich terminal output
+- Various outputs formats, including mardown and json.
+- Can use $EDITOR to edit more complex todos.
+- Move and reorder of todo items.
+- Archiving and cleaning of todos.
 
-### 🛠️ Build & Development Scripts
-- **`./scripts/build`** - Builds the CLI binary with embedded version info
-- **`./scripts/test`** - Runs tests with race detection and coverage
-- **`./scripts/test-with-coverage`** - Detailed coverage report with visualization
-- **`./scripts/lint`** - Comprehensive code linting with golangci-lint
-- **`./scripts/pre-commit`** - Git hooks for code quality enforcement
-- **`./scripts/release-new`** - Automated semantic versioning and releases
-- **`./scripts/cloc-go`** - Go-specific line counting statistics
+## Usage
+  tdh init                    # creates a new todo list here  
+  tdh add "Buy Groceries"
+      Added todo #1: Buy Groceries
+  tdh add --to 1 "Milk"
+  tdh complete 1.1            # completes todo item 1 (Groceries)'s first item (Milk)
+  tdh reopen 1.1              # My bad, we still need milk
+  tdh search bread
+  thd  list --format=markdown # prints all todos in markdown format
+  thd clean # remove completed todos
 
-### 🚀 GitHub Actions Workflows
-- **Test workflow** - Runs on every push: build, test, coverage upload
-- **Release workflow** - Triggers on version tags: multi-platform builds, GitHub releases
-- **Codecov integration** - Automatic coverage reporting
 
-### 📦 Release & Distribution
-- **GoReleaser** configuration for:
-  - Linux, macOS, Windows binaries (amd64, arm64)
-  - Homebrew formula generation
-  - Debian packages (.deb)
-  - Checksums and release notes
-- **Homebrew tap** support with debug mode for testing
+### Installation
 
-### 🔧 Pre-configured Features
-- **Cobra CLI framework** with command structure
-- **Structured logging** with zerolog
-- **Version command** with git commit info
-- **Comprehensive error handling**
-- **Context-aware configuration**
-- **Pre-commit hooks** for consistent code quality
+- From *homebrew*: `brew install td`
+- From *binary*: go to the [release page](https://github.com/Swatto/td/releases)
+- From *source*: `go get github.com/Swatto/td`
+- From .deb: get the .deb in the github releases page.
 
-### 🎯 Development Tools
-- **golangci-lint** - Comprehensive Go linting (auto-installed)
-- **gotestsum** - Better test output formatting (auto-installed)
-- **Race detection** enabled in tests
-- **Coverage reporting** with HTML output
-- **Semantic versioning** automation
+### Data Files
 
-## Quick Start Commands
+*td* will look at a `.todos` files to store your todos (like Git does: it will try recursively in each parent folder). This permit to have different list of todos per folder.
 
-After adding this module:
+If it doesn't find a `.todos`, *td* will store in $HOME/.todos, unless you override this with the  `TODO_DB_PATH` environment variable.
 
-```bash
-# Build your CLI
-./scripts/build
-./bin/tdh --version
-
-# Run tests
-./scripts/test
-
-# Set up development environment
-./scripts/pre-commit install
-
-# Create a release
-./scripts/release-new --patch
-```
-
-## Configuration
-
-The module is pre-configured with:
-- Go 1.23+ support
-- MIT license
-- GitHub Actions for CI/CD
-- Codecov for coverage tracking
-- Homebrew formula generation
