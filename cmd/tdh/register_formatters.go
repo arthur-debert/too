@@ -5,6 +5,7 @@ import (
 
 	"github.com/arthur-debert/tdh/pkg/tdh/formatter"
 	"github.com/arthur-debert/tdh/pkg/tdh/output"
+	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/csv"
 	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/json"
 	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/markdown"
 	"github.com/arthur-debert/tdh/pkg/tdh/output/formatters/term"
@@ -17,6 +18,19 @@ func init() {
 
 // registerBuiltinFormatters registers all built-in formatters.
 func registerBuiltinFormatters() {
+	// Register CSV formatter
+	if err := output.Register(&output.FormatterInfo{
+		Info: formatter.Info{
+			Name:        "csv",
+			Description: "CSV output for spreadsheet applications",
+		},
+		Factory: func() (output.Formatter, error) {
+			return csv.New(), nil
+		},
+	}); err != nil {
+		panic(fmt.Sprintf("failed to register csv formatter: %v", err))
+	}
+
 	// Register JSON formatter
 	if err := output.Register(&output.FormatterInfo{
 		Info: formatter.Info{
@@ -29,7 +43,7 @@ func registerBuiltinFormatters() {
 	}); err != nil {
 		panic(fmt.Sprintf("failed to register json formatter: %v", err))
 	}
-	
+
 	// Register Markdown formatter
 	if err := output.Register(&output.FormatterInfo{
 		Info: formatter.Info{
@@ -42,7 +56,7 @@ func registerBuiltinFormatters() {
 	}); err != nil {
 		panic(fmt.Sprintf("failed to register markdown formatter: %v", err))
 	}
-	
+
 	// Register Terminal formatter
 	if err := output.Register(&output.FormatterInfo{
 		Info: formatter.Info{
