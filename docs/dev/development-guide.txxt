@@ -148,6 +148,29 @@ covering quick start, conventions, and architecture.
         • Test error codes, not error messages
         • Use assertion libraries for cleaner tests
 
+    Integration Testing:
+    
+        Use scripts/run-integration-env.sh for isolated testing:
+        
+        -- bash
+        # Start with a fresh .todos file
+        ./scripts/run-integration-env.sh
+        
+        # Start with existing data
+        ./scripts/run-integration-env.sh ~/.todos.json
+        
+        # Start with test fixtures
+        ./scripts/run-integration-env.sh test/fixtures/sample.todos.json
+        --
+        
+        Features:
+        
+        • Creates isolated temporary directory
+        • Separate .todos file that won't affect your real data
+        • Drops you into a shell with tdh in PATH
+        • Automatically cleans up on exit
+        • Custom prompt "[tdh-test]" to indicate test environment
+
     Code Quality:
     
         • Pre-commit hooks are MANDATORY
