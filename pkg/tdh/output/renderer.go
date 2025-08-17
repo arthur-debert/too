@@ -69,7 +69,7 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 		"position": lipgloss.NewStyle().
 			Foreground(styles.SUBDUED_TEXT),
 		"muted": lipgloss.NewStyle().
-			Foreground(styles.MUTED_TEXT).
+			Foreground(styles.VERY_FAINT_TEXT).
 			Faint(true),
 		"subdued": lipgloss.NewStyle().
 			Foreground(styles.SUBDUED_TEXT),

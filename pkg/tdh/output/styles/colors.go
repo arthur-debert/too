@@ -27,6 +27,11 @@ var (
 		Dark:  "#CED4DA",
 	}
 
+	VERY_FAINT_TEXT = lipgloss.AdaptiveColor{
+		Light: "#D6DADD", // ~20% darker than white (more faint)
+		Dark:  "#3A3D42", // ~20% lighter than black (more faint)
+	}
+
 	// Status colors
 	SUCCESS_COLOR = lipgloss.AdaptiveColor{
 		Light: "#2B8A3E",
