@@ -71,6 +71,8 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 		"muted": lipgloss.NewStyle().
 			Foreground(styles.VERY_FAINT_TEXT).
 			Faint(true),
+		"highlighted-todo": lipgloss.NewStyle().
+			Bold(true),
 		"subdued": lipgloss.NewStyle().
 			Foreground(styles.SUBDUED_TEXT),
 		"accent": lipgloss.NewStyle().
@@ -167,10 +169,8 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 				indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
 				isDone := r.templateFuncs()["isDone"].(func(*models.Todo) bool)(todo)
 				statusSymbol := "✕"
-				statusStyle := "todo-pending"
 				if isDone {
 					statusSymbol = "✓"
-					statusStyle = "todo-done"
 				}
 
 				// Format the todo text with proper indentation for multi-line content
@@ -182,9 +182,10 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 					result.WriteString(fmt.Sprintf("%s<muted>%6s | %s %s</muted>\n",
 						indent, path, statusSymbol, formattedText))
 				} else {
-					// For highlighted todo, use normal styling
-					result.WriteString(fmt.Sprintf("%s<subdued>%6s</subdued> | <%s>%s</%s> %s\n",
-						indent, path, statusStyle, statusSymbol, statusStyle, formattedText))
+					// For highlighted todo, wrap everything in highlighted-todo tag for bold
+					// Don't use nested style tags that might override the bold
+					result.WriteString(fmt.Sprintf("%s<highlighted-todo>%6s | %s %s</highlighted-todo>\n",
+						indent, path, statusSymbol, formattedText))
 				}
 
 				// Recursively render children

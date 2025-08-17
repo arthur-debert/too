@@ -1,52 +1,49 @@
-# td
+# tdh
 
-> Your todo list in your terminal.
+> A minimal terminal based todo list manager that's feature rich. Design to be
+> fast on a command line first and foremost.
+
+# No long commands, no need to quote 
+thd a This is a todo # long forms are avaialable too tdh add "This is a todo"
+tdh c 1 # complete todo 1, tdh complete 1 
 >
-> ![Screenshot](screenshot.png)
+Let's expand on minimal and feature rich :)
+tdh is not a task manager doesn't support multi user and other interfaces
+but the cli.
+
+Withing that scope, tdh has plenty of useful features such as: 
+- Nested todos
+- Automatic scoping per git repos.
+- Multi-line todos
+- Search
+- Rich terminal output
+- Various outputs formats, including mardown and json.
+- Can use $EDITOR to edit more complex todos.
+- Move and reorder of todo items.
+- Archiving and cleaning of todos.
 
 ## Usage
+  tdh init                    # creates a new todo list here  
+  tdh add "Buy Groceries"
+      Added todo #1: Buy Groceries
+  tdh add --to 1 "Milk"
+  tdh complete 1.1            # completes todo item 1 (Groceries)'s first item (Milk)
+  tdh reopen 1.1              # My bad, we still need milk
+  tdh search bread
+  thd  list --format=markdown # prints all todos in markdown format
+  thd clean # remove completed todos
+
 
 ### Installation
 
 - From *homebrew*: `brew install td`
 - From *binary*: go to the [release page](https://github.com/Swatto/td/releases)
 - From *source*: `go get github.com/Swatto/td`
+- From .deb: get the .deb in the github releases page.
 
-### Information
+### Data Files
 
 *td* will look at a `.todos` files to store your todos (like Git does: it will try recursively in each parent folder). This permit to have different list of todos per folder.
 
-If it doesn't find a `.todos`, *td* use an environment variable to store your todos: `TODO_DB_PATH` where you define the path to the JSON file. If the file doesn't exist, the program will create it for you.
+If it doesn't find a `.todos`, *td* will store in $HOME/.todos, unless you override this with the  `TODO_DB_PATH` environment variable.
 
-### CLI
-
-```
-NAME:
-   td - Your todos manager
-
-USAGE:
-   td [global options] command [command options] [arguments...]
-
-VERSION:
-   1.4.1
-
-AUTHOR:
-  Gaël Gillard - <gael@gaelgillard.com>
-
-COMMANDS:
-   init, i  Initialize a collection of todos
-   add, a   Add a new todo
-   modify, m   Modify the text of an existing todo
-   complete, c   Mark todos as complete
-   reopen, o     Mark todos as pending
-   clean Remove finished todos from the list
-   reorder, r  Reset ids of todo or swap the position of two todo
-   search, s   Search a string in all todos
-   help, h  Shows a list of commands or help for one command
-
-GLOBAL OPTIONS:
-   --done, -d     print done todos
-   --all, -a      print all todos
-   --help, -h     show help
-   --version, -v  print the version
-```
