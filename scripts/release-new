@@ -272,7 +272,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Show header
-echo -e "${BLUE}${BOLD}🚀 my-cli Release Tool${NC}"
+echo -e "${BLUE}${BOLD}🚀 tdh Release Tool${NC}"
 echo
 
 # Pre-flight checks
