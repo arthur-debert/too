@@ -129,5 +129,5 @@ export PS1="[tdh-test] \w $ "
 # Add project bin to PATH for easy tdh access
 export PATH="$PROJECT_ROOT/bin:$PATH"
 
-# Start a new shell
-exec bash --norc
+# Start a new shell (without exec to ensure cleanup trap runs)
+bash --norc
