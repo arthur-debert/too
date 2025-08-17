@@ -88,6 +88,7 @@ var addCmd = &cobra.Command{
 		result, err := tdh.Add(text, tdh.AddOptions{
 			CollectionPath: collectionPath,
 			ParentPath:     parentPath,
+			Mode:           modeFlag,
 		})
 		if err != nil {
 			return err

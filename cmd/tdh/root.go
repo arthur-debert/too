@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	verbosity int
+	verbosity  int
 	formatFlag string
+	modeFlag   string
 
 	rootCmd = &cobra.Command{
 		Use:     "tdh",
@@ -26,6 +27,11 @@ var (
 			// Setup logging based on verbosity
 			logging.SetupLogger(verbosity)
 			log.Debug().Str("command", cmd.Name()).Msg("Command started")
+
+			// Validate mode flag
+			if modeFlag != "short" && modeFlag != "long" {
+				log.Fatal().Str("mode", modeFlag).Msg("Invalid mode flag value. Must be 'short' or 'long'")
+			}
 		},
 	}
 )
@@ -88,6 +94,7 @@ func init() {
 	// Add persistent flags
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
 	rootCmd.PersistentFlags().StringVarP(&formatFlag, "format", "f", "term", msgFlagFormat)
+	rootCmd.PersistentFlags().StringVarP(&modeFlag, "mode", "m", "short", msgFlagMode)
 
 	// Setup custom help
 	setupHelp()

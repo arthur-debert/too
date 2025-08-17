@@ -21,6 +21,7 @@ var completeCmd = &cobra.Command{
 		for _, positionPath := range args {
 			result, err := tdh.Complete(positionPath, tdh.CompleteOptions{
 				CollectionPath: collectionPath,
+				Mode:           modeFlag,
 			})
 			if err != nil {
 				return err
