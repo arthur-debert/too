@@ -21,7 +21,9 @@ go.work
 go.work.sum
 # Binary output
 /tdh
-tdh-*
+# Match tdh-* binaries but not source directories
+/tdh-*
+/bin/tdh-*
 # Build directories
 /bin/
 /dist/
