@@ -3,6 +3,13 @@ set -euo pipefail
 
 # Release automation script with interactive version bumping
 # This script helps create new version tags by bumping major, minor, or patch versions
+# Once the tag is creted, the github worfflow release.yml will run the
+# goreleaser tool . We will l use the build artifact to :
+# - Create a github release including:
+#   - Uploading the release binaries for various platforms
+#   - The .deb package for Debian/Ubuntu
+#
+# - Update the Homebrew formula in repo homrebrew-tools/
 
 # Colors for output
 RED='\033[0;31m'
@@ -113,9 +120,18 @@ prompt_for_bump_type() {
         echo >&2 # Add newline after input
 
         case $choice in
-        1 | p | P) echo "patch"; break ;;
-        2 | n | N) echo "minor"; break ;;
-        3 | m | M) echo "major"; break ;;
+        1 | p | P)
+            echo "patch"
+            break
+            ;;
+        2 | n | N)
+            echo "minor"
+            break
+            ;;
+        3 | m | M)
+            echo "major"
+            break
+            ;;
         *)
             echo -e "${YELLOW}Invalid choice. Please enter 1, 2, or 3${NC}" >&2
             ;;
@@ -312,3 +328,4 @@ new_version=$(get_new_version "$latest_version")
 
 # Create and push the tag
 bump_and_push "$new_version"
+
