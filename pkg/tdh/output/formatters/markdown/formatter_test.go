@@ -197,6 +197,76 @@ func TestMarkdownFormatter(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "Data file path: `/home/user/.todos.json`\n", buf.String())
 	})
+
+	t.Run("RenderList with multiline todos", func(t *testing.T) {
+		var buf bytes.Buffer
+		result := &tdh.ListResult{
+			Todos: []*models.Todo{
+				{
+					Position: 1,
+					Text:     "Single line todo",
+					Status:   models.StatusPending,
+				},
+				{
+					Position: 2,
+					Text:     "Multi-line todo\nSecond line\nThird line",
+					Status:   models.StatusPending,
+				},
+				{
+					Position: 3,
+					Text:     "Nested parent",
+					Status:   models.StatusPending,
+					Items: []*models.Todo{
+						{
+							Position: 1,
+							Text:     "Nested child with\nmultiple lines",
+							Status:   models.StatusPending,
+						},
+					},
+				},
+			},
+			TotalCount: 4,
+			DoneCount:  0,
+		}
+
+		err := formatter.RenderList(&buf, result)
+		require.NoError(t, err)
+
+		output := buf.String()
+		lines := strings.Split(output, "\n")
+
+		// Check single line todo
+		assert.Contains(t, lines[0], "1. [ ] Single line todo")
+
+		// Check multi-line todo with proper indentation
+		assert.Contains(t, lines[1], "2. [ ] Multi-line todo")
+		assert.Equal(t, "      Second line", lines[2])
+		assert.Equal(t, "      Third line", lines[3])
+
+		// Check nested todos with multi-line content
+		assert.Contains(t, lines[4], "3. [ ] Nested parent")
+		assert.Contains(t, lines[5], "   1. [ ] Nested child with")
+		assert.Equal(t, "         multiple lines", lines[6])
+	})
+
+	t.Run("RenderAdd with multiline todo", func(t *testing.T) {
+		var buf bytes.Buffer
+		result := &tdh.AddResult{
+			Todo: &models.Todo{
+				Position: 1,
+				Text:     "New todo with\nmultiple lines",
+				Status:   models.StatusPending,
+			},
+		}
+
+		err := formatter.RenderAdd(&buf, result)
+		require.NoError(t, err)
+
+		output := buf.String()
+		// For single-line output commands, we expect the newlines to be preserved
+		// but the helper function should format them correctly
+		assert.Contains(t, output, "Added todo #1: [ ] New todo with\n      multiple lines")
+	})
 }
 
 func TestMarkdownFormatterBehavior(t *testing.T) {

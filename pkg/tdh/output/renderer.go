@@ -110,6 +110,29 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	return r, nil
 }
 
+// formatMultilineText formats text with newlines, indenting subsequent lines
+func formatMultilineText(text string, baseIndent string, columnWidth int) string {
+	lines := strings.Split(text, "\n")
+	if len(lines) <= 1 {
+		return text
+	}
+
+	// Calculate the indentation for continuation lines
+	// baseIndent + position column (6) + " | " (3) + status symbol (1) + " " (1) = baseIndent + 11
+	continuationIndent := baseIndent + strings.Repeat(" ", columnWidth+11)
+
+	// Build the result with proper indentation
+	var result strings.Builder
+	for i, line := range lines {
+		if i == 0 {
+			result.WriteString(line)
+		} else {
+			result.WriteString("\n" + continuationIndent + line)
+		}
+	}
+	return result.String()
+}
+
 // templateFuncs returns custom functions for templates
 func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 	return map[string]interface{}{
@@ -123,6 +146,11 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 			config := tdh.GetConfig()
 			indent := strings.Repeat(config.Display.IndentString, config.Display.IndentSize)
 			return strings.Repeat(indent, level)
+		},
+		"formatMultiline": func(text string, indent int) string {
+			// For use in templates where we don't have the full context
+			baseIndent := strings.Repeat(" ", indent)
+			return formatMultilineText(text, baseIndent, 6)
 		},
 		"renderNestedTodos": func(todos []*models.Todo, parentPath string, level int) string {
 			var result strings.Builder
@@ -144,8 +172,10 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 					statusStyle = "todo-done"
 				}
 
+				// Format the todo text with proper indentation for multi-line content
+				formattedText := formatMultilineText(todo.Text, indent, 6)
 				result.WriteString(fmt.Sprintf("%s<subdued>%6s</subdued> | <%s>%s</%s> %s\n",
-					indent, path, statusStyle, statusSymbol, statusStyle, todo.Text))
+					indent, path, statusStyle, statusSymbol, statusStyle, formattedText))
 
 				// Recursively render children
 				if len(todo.Items) > 0 {
