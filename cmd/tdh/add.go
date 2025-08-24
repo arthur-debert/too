@@ -7,6 +7,7 @@ import (
 
 	"github.com/arthur-debert/tdh/pkg/tdh"
 	"github.com/arthur-debert/tdh/pkg/tdh/editor"
+	"github.com/arthur-debert/tdh/pkg/tdh/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -84,6 +85,74 @@ var addCmd = &cobra.Command{
 			}
 		}
 
+		// Check if text contains multiple todos (bullet points)
+		if containsBulletPoints(text) {
+			// Parse multiple todos
+			todos := parser.ParseMultipleTodos(text, parser.DefaultParseOptions())
+			if len(todos) == 0 {
+				return fmt.Errorf("no todos found in input")
+			}
+
+			// For now, we'll add them one by one
+			// TODO: Create a batch add function for efficiency
+			results := make([]*tdh.AddResult, 0)
+
+			// Helper function to add todos recursively
+			var addTodoWithChildren func(todo *parser.TodoItem, parentPath string) error
+			addTodoWithChildren = func(todo *parser.TodoItem, parentPath string) error {
+				// Add the current todo
+				result, err := tdh.Add(todo.Text, tdh.AddOptions{
+					CollectionPath: collectionPath,
+					ParentPath:     parentPath,
+					Mode:           modeFlag,
+				})
+				if err != nil {
+					return fmt.Errorf("failed to add todo '%s': %w", todo.Text, err)
+				}
+				results = append(results, result)
+
+				// Add children with this todo as parent
+				if len(todo.Children) > 0 {
+					// Get the position of the newly created todo
+					newParentPath := fmt.Sprintf("%d", result.Todo.Position)
+					if parentPath != "" {
+						newParentPath = parentPath + "." + newParentPath
+					}
+
+					for _, child := range todo.Children {
+						if err := addTodoWithChildren(child, newParentPath); err != nil {
+							return err
+						}
+					}
+				}
+
+				return nil
+			}
+
+			// Add all root-level todos
+			for _, todo := range todos {
+				if err := addTodoWithChildren(todo, parentPath); err != nil {
+					return err
+				}
+			}
+
+			// Render all results
+			renderer, err := getRenderer()
+			if err != nil {
+				return err
+			}
+
+			// For now, render each result individually
+			// TODO: Create a batch render method
+			for _, result := range results {
+				if err := renderer.RenderAdd(result); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}
+
 		// Call business logic
 		result, err := tdh.Add(text, tdh.AddOptions{
 			CollectionPath: collectionPath,
@@ -110,6 +179,19 @@ func isPositionPath(s string) bool {
 	pattern := `^\d+(\.\d+)*$`
 	matched, _ := regexp.MatchString(pattern, strings.TrimSpace(s))
 	return matched
+}
+
+// containsBulletPoints checks if text contains markdown-style bullet points
+func containsBulletPoints(text string) bool {
+	// Check for lines starting with - or * (with optional leading whitespace)
+	lines := strings.Split(text, "\n")
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {
