@@ -2,23 +2,23 @@
 set -euo pipefail
 
 # Build the completion generator
-echo "Building tdh-completion..."
-go build -o tdh-completion ./cmd/tools/tdh-completion
+echo "Building too-completion..."
+go build -o too-completion ./cmd/tools/too-completion
 
 # Create completions directory
 mkdir -p completions
 
 # Generate completions
 echo "Generating bash completion..."
-./tdh-completion bash > completions/tdh.bash
+./too-completion bash > completions/too.bash
 
 echo "Generating zsh completion..."
-./tdh-completion zsh > completions/_tdh
+./too-completion zsh > completions/_too
 
 echo "Generating fish completion..."
-./tdh-completion fish > completions/tdh.fish
+./too-completion fish > completions/too.fish
 
 # Clean up
-rm tdh-completion
+rm too-completion
 
 echo "✅ Completions generated in completions/"

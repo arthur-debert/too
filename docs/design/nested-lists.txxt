@@ -1,6 +1,6 @@
                 # Nested Lists Design Specification
 
-This document outlines the design and behavior of the nested todo lists feature in `tdh`.
+This document outlines the design and behavior of the nested todo lists feature in `too`.
 
 ## 1. Problem Analysis
 
@@ -26,10 +26,10 @@ The core principle of the system is **preserving user intent**. The status of an
 1.  **No Direct `delete` or `toggle`**: The workflow for removing items is a two-step process: an item is first marked as `done`, and then a separate `cleanup` command removes all `done` items. This makes completion a non-destructive, reversible action. The ambiguous `toggle` command has been replaced with explicit `complete` and `reopen` commands.
 
 2.  **Behavioral Propagation (Top-Down Effect)**: When a parent item is marked as `done`, the status of its children is **not** changed. Instead, commands that operate on the list treat the `done` parent as a "gate," stopping traversal down that branch.
-    -   `tdh ls` (default view): Does not display `done` items or any of their descendants, regardless of the children's status. This matches the user's expectation: "If I'm done with a category, don't show me its contents."
-    -   `tdh cleanup`: Removes `done` items and all of their descendants. This also matches user expectation, cleaning up the entire branch at once.
+    -   `too ls` (default view): Does not display `done` items or any of their descendants, regardless of the children's status. This matches the user's expectation: "If I'm done with a category, don't show me its contents."
+    -   `too cleanup`: Removes `done` items and all of their descendants. This also matches user expectation, cleaning up the entire branch at once.
 
-3.  **Bottom-Up Completion (Roll-Up Effect)**: As a quality-of-life improvement, when a user marks an item as `complete`, `tdh` checks the status of its siblings. If all siblings are now `complete`, the parent item is automatically marked as `complete` as well. This recursively applies up the tree.
+3.  **Bottom-Up Completion (Roll-Up Effect)**: As a quality-of-life improvement, when a user marks an item as `complete`, `too` checks the status of its siblings. If all siblings are now `complete`, the parent item is automatically marked as `complete` as well. This recursively applies up the tree.
 
 3. Internal API
 
@@ -52,61 +52,61 @@ The core principle of the system is **preserving user intent**. The status of an
     
         Users will interact with items using a dot-separated path of `Position` numbers (e.g., `1`, `1.2`, `2.1.1`).
 
-    `tdh add`:
+    `too add`:
     
         The `add` command will be enhanced with a `--parent` flag to create sub-items:
         
-        • `tdh a "New top-level task"`: Adds an item to the root of the list.
+        • `too a "New top-level task"`: Adds an item to the root of the list.
         ## 4. User-Facing API (CLI)
 
 The command-line interface is extended to manage the hierarchy, using dot-notation for addressing items.
 
 -   **Addressing Items**: Users interact with items using a dot-separated path of `Position` numbers (e.g., `1`, `1.2`, `2.1.1`).
 
--   **`tdh add`**: The `add` command is enhanced with a `--parent` flag to create sub-items.
-    -   `tdh a "New top-level task"`: Adds an item to the root of the list.
-    -   `tdh a --parent 1.2 "New sub-task"`: Adds a new item as a child of the item at position 1.2.
+-   **`too add`**: The `add` command is enhanced with a `--parent` flag to create sub-items.
+    -   `too a "New top-level task"`: Adds an item to the root of the list.
+    -   `too a --parent 1.2 "New sub-task"`: Adds a new item as a child of the item at position 1.2.
 
--   **`tdh complete <positions...>`**: Marks one or more items as `done`.
-    -   `tdh complete 1.2`: Marks the item at 1.2 as `done`.
+-   **`too complete <positions...>`**: Marks one or more items as `done`.
+    -   `too complete 1.2`: Marks the item at 1.2 as `done`.
     -   This command triggers the "Bottom-Up Completion" logic.
 
--   **`tdh reopen <positions...>`**: Marks one or more items as `pending`.
-    -   `tdh reopen 1.2`: Marks the item at 1.2 as `pending`. This action only affects the specified item.
+-   **`too reopen <positions...>`**: Marks one or more items as `pending`.
+    -   `too reopen 1.2`: Marks the item at 1.2 as `pending`. This action only affects the specified item.
 
--   **`tdh move <source> <destination>`**: Restructures the list by moving an item.
-    -   `tdh move <source_path> <destination_parent_path>`: Moves an item from its current location to become a child of the destination parent.
-    -   `tdh move 2.1.1 1`: Moves the item at 2.1.1 to be the last child of the item at 1.
-    -   `tdh move 1.2 ""`: Moves the item at 1.2 to the root of the list.
+-   **`too move <source> <destination>`**: Restructures the list by moving an item.
+    -   `too move <source_path> <destination_parent_path>`: Moves an item from its current location to become a child of the destination parent.
+    -   `too move 2.1.1 1`: Moves the item at 2.1.1 to be the last child of the item at 1.
+    -   `too move 1.2 ""`: Moves the item at 1.2 to the root of the list.
 
--   **`tdh ls`**: The list command handles the new hierarchy and respects the "Behavioral Propagation" rule.
-    -   `tdh ls`: Renders the indented list of all `pending` items. Traversal stops at any `done` item.
-    -   `tdh ls --depth 1`: (Future) Displays only the top-level items.
+-   **`too ls`**: The list command handles the new hierarchy and respects the "Behavioral Propagation" rule.
+    -   `too ls`: Renders the indented list of all `pending` items. Traversal stops at any `done` item.
+    -   `too ls --depth 1`: (Future) Displays only the top-level items.
 
--   **`tdh cleanup`**: The cleanup command respects "Behavioral Propagation," deleting `done` items and all their descendants.
+-   **`too cleanup`**: The cleanup command respects "Behavioral Propagation," deleting `done` items and all their descendants.
 
 
-    `tdh complete <positions...>`:
+    `too complete <positions...>`:
     
         A new command to mark one or more items as done.
         
-        • `tdh complete 1.2`: Marks the item at 1.2 as `done`.
+        • `too complete 1.2`: Marks the item at 1.2 as `done`.
         • Triggers "Bottom-Up Completion" logic if applicable.
 
-    `tdh reopen <positions...>`:
+    `too reopen <positions...>`:
     
         A new command to mark one or more items as pending.
         
-        • `tdh reopen 1.2`: Marks the item at 1.2 as `pending`.
+        • `too reopen 1.2`: Marks the item at 1.2 as `pending`.
         • This action only affects the specified item and does not propagate in any direction.
 
-    `tdh ls`:
+    `too ls`:
     
         The list command will be updated to handle the new hierarchy and respect the "Behavioral Propagation" rule.
         
-        • `tdh ls`: Renders the full, indented list of all `pending` items. Traversal stops at any `done` item.
-        • `tdh ls --depth 1`: (Future) Displays only the top-level items.
+        • `too ls`: Renders the full, indented list of all `pending` items. Traversal stops at any `done` item.
+        • `too ls --depth 1`: (Future) Displays only the top-level items.
 
-    `tdh cleanup`:
+    `too cleanup`:
     
         The cleanup command will be updated to respect the "Behavioral Propagation" rule, deleting `done` items and all their descendants.

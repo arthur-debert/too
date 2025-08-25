@@ -4,7 +4,7 @@ This document addresses the review concerns and demonstrates that all requiremen
 
 ## 1. Todo Struct Updates ✅ COMPLETED
 
-The `Todo` struct in `pkg/tdh/models/models.go` has been updated with the required fields:
+The `Todo` struct in `pkg/too/models/models.go` has been updated with the required fields:
 
 ```go
 type Todo struct {
@@ -26,7 +26,7 @@ Key changes:
 
 ## 2. Data Migration ✅ COMPLETED
 
-The migration strategy is implemented in `pkg/tdh/models/models.go`:
+The migration strategy is implemented in `pkg/too/models/models.go`:
 
 ### Migration Function
 ```go
@@ -58,7 +58,7 @@ func migrateTodo(t *Todo) {
 ```
 
 ### Automatic Migration on Load
-The migration happens automatically in `pkg/tdh/store/internal/json_file_store.go`:
+The migration happens automatically in `pkg/too/store/internal/json_file_store.go`:
 
 ```go
 func (s *JSONFileStore) Load() (*models.Collection, error) {
@@ -126,13 +126,13 @@ To verify the implementation:
 3. Check the implementation:
    ```bash
    # View the updated Todo struct
-   cat pkg/tdh/models/models.go | grep -A 10 "type Todo struct"
+   cat pkg/too/models/models.go | grep -A 10 "type Todo struct"
    
    # View the migration logic
-   cat pkg/tdh/models/models.go | grep -A 20 "MigrateCollection"
+   cat pkg/too/models/models.go | grep -A 20 "MigrateCollection"
    
    # View the automatic migration on load
-   cat pkg/tdh/store/internal/json_file_store.go | grep -A 5 "MigrateCollection"
+   cat pkg/too/store/internal/json_file_store.go | grep -A 5 "MigrateCollection"
    ```
 
 ## Summary

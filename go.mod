@@ -1,4 +1,4 @@
-module github.com/arthur-debert/tdh
+module github.com/arthur-debert/too
 
 go 1.23.0
 

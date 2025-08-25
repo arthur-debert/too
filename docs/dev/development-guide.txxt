@@ -1,6 +1,6 @@
                 Development Guide
 
-This guide provides comprehensive information for tdh contributors,
+This guide provides comprehensive information for too contributors,
 covering quick start, conventions, and architecture.
 
 
@@ -17,8 +17,8 @@ covering quick start, conventions, and architecture.
         1. Clone and enter the repository:
         
             -- bash
-            git clone https://github.com/arthur-debert/tdh.git
-            cd tdh
+            git clone https://github.com/arthur-debert/too.git
+            cd too
             --
 
         2. Source the environment variables if not using direnv:
@@ -66,35 +66,35 @@ covering quick start, conventions, and architecture.
 
 2. Architecture Overview
 
-    tdh follows a strict separation of concerns:
+    too follows a strict separation of concerns:
 
     CLI Layer (cmd/):
     
         • Thin layer using Cobra framework
         • Only handles argument parsing and validation
         • Help text and user messages
-        • Output formatting via pkg/tdh/display
+        • Output formatting via pkg/too/display
         • NO business logic
 
     Business Logic (pkg/):
     
-        • pkg/tdh/commands.go - API entry points
-        • pkg/tdh/commands/ - Implementation packages
+        • pkg/too/commands.go - API entry points
+        • pkg/too/commands/ - Implementation packages
         • Pure Go functions with typed parameters
         • Returns structured data, never prints
-        • pkg/tdh/output/ - Template-based rendering
+        • pkg/too/output/ - Template-based rendering
 
     Data Flow:
     
-        1. User runs command: tdh add "todo text"
-        2. cmd/tdh/add.go parses arguments and flags
-        3. Calls pkg/tdh.Add(text, options)
+        1. User runs command: too add "todo text"
+        2. cmd/too/add.go parses arguments and flags
+        3. Calls pkg/too.Add(text, options)
         4. Business logic processes and returns result
-        5. pkg/tdh/display renders output using templates
+        5. pkg/too/display renders output using templates
 
     Message Management:
     
-        All user-facing strings are centralized in cmd/tdh/msgs.go:
+        All user-facing strings are centralized in cmd/too/msgs.go:
         
         • Command descriptions and usage
         • Flag descriptions
@@ -116,9 +116,9 @@ covering quick start, conventions, and architecture.
         err := errors.New(errors.ErrTodoNotFound, "todo not found: %d", id)
 
         // Testing errors - ALWAYS test codes, never messages
-        var tdhErr errors.TdhError
-        require.True(t, errors.As(err, &tdhErr))
-        assert.Equal(t, errors.ErrTodoNotFound, tdhErr.Code())
+        var tooErr errors.TooError
+        require.True(t, errors.As(err, &tooErr))
+        assert.Equal(t, errors.ErrTodoNotFound, tooErr.Code())
         --
 
     Logging:
@@ -126,7 +126,7 @@ covering quick start, conventions, and architecture.
         Logging is MANDATORY for all new code:
 
         -- go
-        logger := logging.GetLogger("tdh.commands.add")
+        logger := logging.GetLogger("too.commands.add")
         logger.Debug().
             Str("text", todoText).
             Int("position", result.Position).
@@ -167,9 +167,9 @@ covering quick start, conventions, and architecture.
         
         • Creates isolated temporary directory
         • Separate .todos file that won't affect your real data
-        • Drops you into a shell with tdh in PATH
+        • Drops you into a shell with too in PATH
         • Automatically cleans up on exit
-        • Custom prompt "[tdh-test]" to indicate test environment
+        • Custom prompt "[too-test]" to indicate test environment
 
     Code Quality:
     
@@ -199,8 +199,8 @@ covering quick start, conventions, and architecture.
         • Always use scripts/* for operations
         • Never compile binaries in root directory
         • Meta-tools in separate binaries:
-            - cmd/tdh-completion
-            - cmd/tdh-manpage
+            - cmd/too-completion
+            - cmd/too-manpage
 
 
 5. Documentation Standards
@@ -224,10 +224,10 @@ covering quick start, conventions, and architecture.
 
     Adding a New Command:
     
-        1. Create cmd/tdh/newcmd.go with Cobra command
-        2. Add strings to cmd/tdh/msgs.go
-        3. Create pkg/tdh/commands/newcmd/newcmd.go
-        4. Add API function to pkg/tdh/commands.go
+        1. Create cmd/too/newcmd.go with Cobra command
+        2. Add strings to cmd/too/msgs.go
+        3. Create pkg/too/commands/newcmd/newcmd.go
+        4. Add API function to pkg/too/commands.go
         5. Create result type and template
         6. Write comprehensive tests
 
@@ -238,7 +238,7 @@ covering quick start, conventions, and architecture.
         todos := testutil.ExampleTodoList()
         
         // Test the business logic, not CLI parsing
-        result, err := tdh.Add("New todo", tdh.AddOptions{})
+        result, err := too.Add("New todo", too.AddOptions{})
         require.NoError(t, err)
         assert.Equal(t, 3, result.Todo.Position)
         --
@@ -256,10 +256,10 @@ TLDR
     • Use test utils for creating todo lists and assertions
     • CLI architecture:
         - CLI (cmd) is thin layer: argument/option validation, parsing, help, output
-        - All logic via pure Go API in pkg/tdh/commands.go (directs to implementations)
-        - Implementations in pkg/tdh/commands/*
+        - All logic via pure Go API in pkg/too/commands.go (directs to implementations)
+        - Implementations in pkg/too/commands/*
         - API returns structured data
-        - Rendering: pkg/tdh/output uses templates with lipgloss
+        - Rendering: pkg/too/output uses templates with lipgloss
     • Working on issues:
         - GitHub issue: gh issue develop -c <issue-id> to get branch
         - Otherwise: create feature branch

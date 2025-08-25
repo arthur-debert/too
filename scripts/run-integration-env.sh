@@ -18,7 +18,7 @@ usage() {
     cat << EOF
 Usage: $(basename "$0") [OPTIONS] [TODOS_FILE]
 
-Create an isolated testing environment for tdh commands with a temporary data store.
+Create an isolated testing environment for too commands with a temporary data store.
 
 Arguments:
   TODOS_FILE    Optional .todos file to populate the test environment with.
@@ -29,8 +29,8 @@ Options:
 
 Description:
   This script creates a temporary directory with an isolated .todos file for
-  testing tdh commands. It drops you into a new shell session where you can
-  run tdh commands without affecting your real todo data. The temporary
+  testing too commands. It drops you into a new shell session where you can
+  run too commands without affecting your real todo data. The temporary
   environment is automatically cleaned up when you exit the shell.
 
 Examples:
@@ -82,12 +82,12 @@ TMP_BASE="$PROJECT_ROOT/tmp"
 mkdir -p "$TMP_BASE"
 
 # Create a unique temporary directory
-TEMP_DIR=$(mktemp -d "$TMP_BASE/tdh-test-XXXXXX")
+TEMP_DIR=$(mktemp -d "$TMP_BASE/too-test-XXXXXX")
 
-# Build tdh if needed
-TDH_BIN="$PROJECT_ROOT/bin/tdh"
-if [[ ! -x "$TDH_BIN" ]]; then
-    echo -e "${YELLOW}Building tdh...${NC}"
+# Build too if needed
+TOO_BIN="$PROJECT_ROOT/bin/too"
+if [[ ! -x "$TOO_BIN" ]]; then
+    echo -e "${YELLOW}Building too...${NC}"
     (cd "$PROJECT_ROOT" && ./scripts/build)
 fi
 
@@ -113,20 +113,20 @@ if [[ -n "$TODOS_FILE" ]]; then
     echo -e "${GREEN}Test environment initialized with existing data${NC}"
 else
     echo -e "${BLUE}Initializing fresh .todos file${NC}"
-    "$TDH_BIN" init
+    "$TOO_BIN" init
 fi
 
 # Display environment info
 echo -e "\n${GREEN}=== Test Environment Ready ===${NC}"
 echo -e "Working directory: ${BLUE}$TEMP_DIR${NC}"
-echo -e "Using tdh binary: ${BLUE}$TDH_BIN${NC}"
+echo -e "Using too binary: ${BLUE}$TOO_BIN${NC}"
 echo -e "Data file: ${BLUE}$TEMP_DIR/.todos${NC}"
 echo -e "\n${YELLOW}Type 'exit' or press Ctrl+D to leave and cleanup${NC}\n"
 
 # Create a custom prompt to indicate test environment
-export PS1="[tdh-test] \w $ "
+export PS1="[too-test] \w $ "
 
-# Add project bin to PATH for easy tdh access
+# Add project bin to PATH for easy too access
 export PATH="$PROJECT_ROOT/bin:$PATH"
 
 # Start a new shell (without exec to ensure cleanup trap runs)

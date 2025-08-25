@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/arthur-debert/tdh/pkg/lipbalm"
+	"github.com/arthur-debert/too/pkg/lipbalm"
 )
 
 var testStyles = lipbalm.StyleMap{
