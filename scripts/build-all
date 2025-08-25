@@ -13,28 +13,28 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-echo -e "${BLUE}${BOLD}🚀 Building tdh and tool binaries...${NC}"
+echo -e "${BLUE}${BOLD}🚀 Building too and tool binaries...${NC}"
 echo
 
 # Create build directory if it doesn't exist
 mkdir -p build
 
-# Build main tdh binary
-echo -e "${GREEN}Building tdh...${NC}"
-go build -o build/tdh ./cmd/tdh
-echo -e "${GREEN}✅ tdh built${NC}"
+# Build main too binary
+echo -e "${GREEN}Building too...${NC}"
+go build -o build/too ./cmd/too
+echo -e "${GREEN}✅ too built${NC}"
 echo
 
 # Build completion generator
-echo -e "${GREEN}Building tdh-completion...${NC}"
-go build -o build/tdh-completion ./cmd/tools/tdh-completion
-echo -e "${GREEN}✅ tdh-completion built${NC}"
+echo -e "${GREEN}Building too-completion...${NC}"
+go build -o build/too-completion ./cmd/tools/too-completion
+echo -e "${GREEN}✅ too-completion built${NC}"
 echo
 
 # Build man page generator
-echo -e "${GREEN}Building tdh-manpage...${NC}"
-go build -o build/tdh-manpage ./cmd/tools/tdh-manpage
-echo -e "${GREEN}✅ tdh-manpage built${NC}"
+echo -e "${GREEN}Building too-manpage...${NC}"
+go build -o build/too-manpage ./cmd/tools/too-manpage
+echo -e "${GREEN}✅ too-manpage built${NC}"
 echo
 
 echo -e "${GREEN}${BOLD}✅ All binaries built successfully!${NC}"

@@ -1,0 +1,20 @@
+{{.Long}}
+
+{{ bold "USAGE:" }}
+  too init                    # creates a new todo list here  
+  too add "Buy Groceries"
+      Added todo #1: Buy Groceries
+  too add --to 1 "Milk"
+  too complete 1.1            # completes todo item 1 (Groceries)'s first item (Milk)
+  too reopen 1.1              # My bad, we still need milk
+  too search bread
+
+{{range $group := .Groups}}{{ bold $group.Title }}{{range $cmd := $.Commands}}{{if eq $cmd.GroupID $group.ID}}
+  {{rpad (commandAliases $cmd.Name $cmd.Aliases) 15}} : {{$cmd.Short}}{{end}}{{end}}
+
+{{end}}
+
+{{ bold "FLAGS:" }}
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}
+
+Use "too help [command]" for more info on a command.

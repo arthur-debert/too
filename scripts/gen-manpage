@@ -2,24 +2,24 @@
 set -euo pipefail
 
 # Build the manpage generator
-echo "Building tdh-manpage..."
-go build -o tdh-manpage ./cmd/tools/tdh-manpage
+echo "Building too-manpage..."
+go build -o too-manpage ./cmd/tools/too-manpage
 
 # Create man directory
 mkdir -p man/man1
 
 # Generate man page
 echo "Generating man page..."
-./tdh-manpage > man/man1/tdh.1
+./too-manpage > man/man1/too.1
 
 # Compress the man page
-if [ -f "man/man1/tdh.1" ]; then
-    gzip -f man/man1/tdh.1
-    echo "✅ Man page generated in man/man1/tdh.1.gz"
+if [ -f "man/man1/too.1" ]; then
+    gzip -f man/man1/too.1
+    echo "✅ Man page generated in man/man1/too.1.gz"
 else
     echo "❌ Failed to generate man page"
     exit 1
 fi
 
 # Clean up
-rm tdh-manpage
+rm too-manpage

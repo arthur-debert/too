@@ -20,12 +20,13 @@ coverage.txt
 go.work
 go.work.sum
 # Binary output
-/tdh
-# Match tdh-* binaries but not source directories
-/tdh-*
-/bin/tdh-*
+/too
+# Match too-* binaries but not source directories
+/too-*
+/bin/too-*
 # Build directories
 /bin/
+/build
 /dist/
 /completions/
 /man/

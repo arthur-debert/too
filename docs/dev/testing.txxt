@@ -12,7 +12,7 @@ and reliable tests.
         
         • Always use testutil package for in-memory stores
         • No manual store creation or cleanup needed
-        • Test the pkg/tdh API, not CLI parsing
+        • Test the pkg/too API, not CLI parsing
 
     Integration Tests:
     
@@ -47,7 +47,7 @@ and reliable tests.
         • AssertTodoCount(t, result, total, doneCount)
         • AssertTodoHasStatus(t, todo, models.StatusDone)
 
-    See pkg/tdh/testutil for the complete API.
+    See pkg/too/testutil for the complete API.
 
 
 3. Test Pattern
@@ -63,7 +63,7 @@ and reliable tests.
         })
         
         // ACT: Execute the code under test
-        result, err := tdh.Clean(CleanOptions{
+        result, err := too.Clean(CleanOptions{
             CollectionPath: store.Path(),
         })
         require.NoError(t, err)
@@ -81,7 +81,7 @@ and reliable tests.
     
     Purpose:
     
-        • Test tdh commands without affecting your real todo data
+        • Test too commands without affecting your real todo data
         • Verify behavior with different .todos file states
         • Debug issues in an isolated environment
     
@@ -102,8 +102,8 @@ and reliable tests.
     
         • Creates a temporary directory in PROJECT_ROOT/tmp/
         • Initializes or copies a .todos file
-        • Drops you into a shell with custom "[tdh-test]" prompt
-        • Adds tdh to PATH for easy testing
+        • Drops you into a shell with custom "[too-test]" prompt
+        • Adds too to PATH for easy testing
         • Automatically cleans up when you exit
     
     Example Session:
@@ -111,18 +111,18 @@ and reliable tests.
         -- bash
         $ ./scripts/run-integration-env.sh
         Initializing fresh .todos file
-        Initialized empty tdh collection in .todos
+        Initialized empty too collection in .todos
         
         === Test Environment Ready ===
-        Working directory: /path/to/tdh/tmp/tdh-test-ABC123
-        Using tdh binary: /path/to/tdh/bin/tdh
-        Data file: /path/to/tdh/tmp/tdh-test-ABC123/.todos
+        Working directory: /path/to/too/tmp/too-test-ABC123
+        Using too binary: /path/to/too/bin/too
+        Data file: /path/to/too/tmp/too-test-ABC123/.todos
         
         Type 'exit' or press Ctrl+D to leave and cleanup
         
-        [tdh-test] ~/tdh/tmp/tdh-test-ABC123 $ tdh add "Test todo"
+        [too-test] ~/too/tmp/too-test-ABC123 $ too add "Test todo"
         1 | ✕ Test todo
-        [tdh-test] ~/tdh/tmp/tdh-test-ABC123 $ exit
+        [too-test] ~/too/tmp/too-test-ABC123 $ exit
         
         Cleaning up test environment...
         Test environment cleaned up

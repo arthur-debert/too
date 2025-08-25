@@ -1,0 +1,45 @@
+package json_test
+
+import (
+	"bytes"
+	"encoding/json"
+	"testing"
+
+	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/models"
+	. "github.com/arthur-debert/too/pkg/too/output/formatters/json"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// TestJSONFormatterBehavior tests the JSON formatter behavior directly
+func TestJSONFormatterBehavior(t *testing.T) {
+	t.Run("JSON formatter renders correctly", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		formatter := New()
+		
+		// Test rendering an add result
+		result := &too.AddResult{
+			Todo: &models.Todo{
+				Position: 1,
+				Text:     "Test todo",
+				Status:   models.StatusPending,
+			},
+		}
+
+		err := formatter.RenderAdd(buf, result)
+		require.NoError(t, err)
+
+		// Verify JSON output
+		var decoded too.AddResult
+		err = json.Unmarshal(buf.Bytes(), &decoded)
+		require.NoError(t, err)
+		assert.Equal(t, "Test todo", decoded.Todo.Text)
+	})
+	
+	t.Run("JSON formatter has correct metadata", func(t *testing.T) {
+		formatter := New()
+		assert.Equal(t, "json", formatter.Name())
+		assert.Equal(t, "JSON output for programmatic consumption", formatter.Description())
+	})
+}
