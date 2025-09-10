@@ -147,10 +147,14 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 		}
 
 		// Get new path after reordering
-		newPath := "" // TODO: This needs to be recalculated
+		// Calculate the new position path directly from the collection
+		newPath := calculatePositionPath(collection, sourceTodo)
 		if newPath == "" {
 			logger.Error().
 				Str("todoID", sourceTodo.ID).
+				Str("todoText", sourceTodo.Text).
+				Str("parentID", sourceTodo.ParentID).
+				Int("position", sourceTodo.Position).
 				Msg("failed to get new position path")
 			return fmt.Errorf("failed to determine new position path")
 		}
@@ -190,4 +194,64 @@ func isDescendantOf(child, parent *models.Todo) bool {
 		}
 	}
 	return false
+}
+
+// calculatePositionPath calculates the position path for a todo directly from the collection
+func calculatePositionPath(collection *models.Collection, todo *models.Todo) string {
+	if todo == nil {
+		return ""
+	}
+
+	// Build the path from the todo up to the root
+	path := []string{}
+	current := todo
+	
+	for current != nil {
+		// Find position among pending siblings
+		var siblings []*models.Todo
+		if current.ParentID == "" {
+			// Root level
+			siblings = collection.Todos
+		} else {
+			parent := collection.FindItemByID(current.ParentID)
+			if parent == nil {
+				return ""
+			}
+			siblings = parent.Items
+		}
+		
+		// Count position among pending siblings
+		position := 0
+		for _, sibling := range siblings {
+			if sibling.Status == models.StatusPending {
+				position++
+				if sibling.ID == current.ID {
+					break
+				}
+			}
+		}
+		
+		if position == 0 {
+			return "" // Todo not found or not pending
+		}
+		
+		// Prepend position to path
+		path = append([]string{fmt.Sprintf("%d", position)}, path...)
+		
+		// Move up to parent
+		if current.ParentID == "" {
+			break // Reached root
+		}
+		current = collection.FindItemByID(current.ParentID)
+	}
+	
+	// Join path components
+	if len(path) == 0 {
+		return ""
+	}
+	result := path[0]
+	for i := 1; i < len(path); i++ {
+		result += "." + path[i]
+	}
+	return result
 }

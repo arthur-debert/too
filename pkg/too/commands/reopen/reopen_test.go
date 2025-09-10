@@ -21,10 +21,20 @@ func TestReopen(t *testing.T) {
 		testutil.AssertNoError(t, store.Save(collection))
 
 		// Execute
+		// Since done todos don't have positions in the new system, we need to use short ID
+		// Find the done todo
+		var doneTodo *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Status == models.StatusDone {
+				doneTodo = todo
+				break
+			}
+		}
+		assert.NotNil(t, doneTodo, "Should have a done todo")
+		shortID := doneTodo.ID[:8]  // Use first 8 chars as short ID
+		
 		opts := reopen.Options{CollectionPath: store.Path()}
-		// In the --all view, the done todo would appear. Let's assume it's at position 2
-		// after the pending one. This is a temporary fix until the adapter is improved.
-		result, err := reopen.Execute("2", opts)
+		result, err := reopen.Execute(shortID, opts)
 
 		// Assert
 		testutil.AssertNoError(t, err)
@@ -53,7 +63,7 @@ func TestReopen(t *testing.T) {
 
 		var child *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				child = todo.Items[0]
 				break
 			}
@@ -67,9 +77,11 @@ func TestReopen(t *testing.T) {
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Execute - reopen child todo
+		// Execute - reopen child todo using short ID since it's done
+		// and done todos don't have positions in the current implementation
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.1", opts)
+		childShortID := child.ID[:8]
+		result, err := reopen.Execute(childShortID, opts)
 
 		// Assert
 		testutil.AssertNoError(t, err)
@@ -84,7 +96,7 @@ func TestReopen(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		var parent *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				parent = todo
 				break
 			}
@@ -109,7 +121,7 @@ func TestReopen(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		var item *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				item = todo.Items[1].Items[0]
 				break
 			}
@@ -119,9 +131,10 @@ func TestReopen(t *testing.T) {
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Execute - reopen grandchild
+		// Execute - reopen grandchild using short ID since it's done
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.2.1", opts)
+		grandchildShortID := item.ID[:8]
+		result, err := reopen.Execute(grandchildShortID, opts)
 
 		// Assert
 		testutil.AssertNoError(t, err)
@@ -135,7 +148,7 @@ func TestReopen(t *testing.T) {
 		testutil.AssertNoError(t, err)
 
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				item = todo.Items[1].Items[0]
 				break
 			}
@@ -146,7 +159,7 @@ func TestReopen(t *testing.T) {
 		// Verify no propagation happened
 		var parent *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				parent = todo
 				break
 			}
@@ -199,7 +212,7 @@ func TestReopen(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		var parent *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				parent = todo
 				break
 			}
@@ -211,9 +224,10 @@ func TestReopen(t *testing.T) {
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Execute - reopen child when parent is done
+		// Execute - reopen child when parent is done using short ID
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.1", opts)
+		childShortID := child.ID[:8]
+		result, err := reopen.Execute(childShortID, opts)
 
 		// Assert - should still work per spec (no propagation)
 		testutil.AssertNoError(t, err)
@@ -225,7 +239,7 @@ func TestReopen(t *testing.T) {
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				parent = todo
 				break
 			}

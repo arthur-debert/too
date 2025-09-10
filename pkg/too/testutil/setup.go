@@ -91,7 +91,12 @@ func addTodoFromSpec(t *testing.T, collection *models.Collection, spec TodoSpec,
 	if err != nil {
 		t.Fatalf("failed to create todo from spec: %v", err)
 	}
-	todo.Status = spec.Status
+	// Set status, defaulting to pending if not specified
+	if spec.Status != "" {
+		todo.Status = spec.Status
+	} else {
+		todo.Status = models.StatusPending
+	}
 
 	for _, childSpec := range spec.Children {
 		addTodoFromSpec(t, collection, childSpec, todo.ID)

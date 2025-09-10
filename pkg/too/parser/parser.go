@@ -178,6 +178,17 @@ func IsPositionPath(s string) bool {
 	// Pattern: one or more digits, optionally followed by dot and more digits
 	// Examples: "1", "12", "1.2", "1.2.3", "12.34.56"
 	pattern := `^\d+(\.\d+)*$`
-	matched, _ := regexp.MatchString(pattern, strings.TrimSpace(s))
-	return matched
+	trimmed := strings.TrimSpace(s)
+	matched, _ := regexp.MatchString(pattern, trimmed)
+	if !matched {
+		return false
+	}
+	
+	// Additional check: if it's a single number, it should be reasonable for a position
+	// Short IDs are usually 8+ chars, while positions are typically < 1000
+	if !strings.Contains(trimmed, ".") && len(trimmed) >= 8 {
+		return false
+	}
+	
+	return true
 }

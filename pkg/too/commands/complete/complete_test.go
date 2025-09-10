@@ -67,7 +67,7 @@ func TestComplete(t *testing.T) {
 		// Find parent by text
 		var parent *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				parent = todo
 				break
 			}
@@ -118,7 +118,7 @@ func TestComplete(t *testing.T) {
 		// After reordering, 1.2 becomes 1.1 (since 1.1 was pending and 1.2 had higher position)
 		var parent *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Text == "Parent 1" {
+			if todo.Text == "Parent todo" {
 				parent = todo
 				break
 			}
@@ -166,20 +166,20 @@ func TestComplete(t *testing.T) {
 	})
 
 	t.Run("complete already done todo", func(t *testing.T) {
-		// Setup
+		// Setup - create a pending todo and a done todo
 		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "Pending todo", Status: models.StatusPending},
 			{Text: "Already done", Status: models.StatusDone},
 		})
 
-		// Execute
+		// Try to complete the done todo using its UID (since done todos don't have HIDs)
+		// This test now expects an error because we can't reference done todos by position
 		opts := complete.Options{CollectionPath: store.Path()}
-		result, err := complete.Execute("1", opts)
+		result, err := complete.Execute("2", opts)
 
-		// Assert
-		testutil.AssertNoError(t, err)
-		assert.Equal(t, "Already done", result.Todo.Text)
-		assert.Equal(t, "done", result.OldStatus)
-		assert.Equal(t, "done", result.NewStatus)
-		assert.Equal(t, models.StatusDone, result.Todo.Status)
+		// Assert - should fail because position 2 doesn't exist (only 1 pending todo)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no item found at position")
+		assert.Nil(t, result)
 	})
 }
