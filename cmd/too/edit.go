@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
@@ -34,11 +33,8 @@ var editCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Parse position
-		position, err := strconv.Atoi(args[0])
-		if err != nil {
-			return err
-		}
+		// The position is the first argument
+		position := args[0]
 
 		var text string
 		collectionPath, _ := cmd.Flags().GetString("data-path")

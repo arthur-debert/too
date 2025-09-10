@@ -61,7 +61,7 @@ func Add(text string, opts AddOptions) (*AddResult, error) {
 }
 
 // Modify modifies the text of an existing todo by position
-func Modify(position int, newText string, opts ModifyOptions) (*ModifyResult, error) {
+func Modify(position string, newText string, opts ModifyOptions) (*ModifyResult, error) {
 	return cmdModify.Execute(position, newText, opts)
 }
 

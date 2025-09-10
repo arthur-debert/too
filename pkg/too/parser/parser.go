@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"regexp"
 	"strings"
 )
 
@@ -85,7 +86,7 @@ func ParseMultipleTodos(text string, opts ParseOptions) []*TodoItem {
 			// Ensure we have enough stack depth
 			for len(stack) < level {
 				// Create placeholder if needed
-				if len(stack) == 0 {
+			if len(stack) == 0 {
 					// Can't have nested todo without parent, treat as root
 					level = 0
 					todo.Level = 0
@@ -107,11 +108,11 @@ func ParseMultipleTodos(text string, opts ParseOptions) []*TodoItem {
 				parent.Children = append(parent.Children, todo)
 
 				// Update or extend stack
-				if len(stack) == level {
-					stack = append(stack, todo)
-				} else {
-					stack[level] = todo
-				}
+			if len(stack) == level {
+				stack = append(stack, todo)
+			} else {
+				stack[level] = todo
+			}
 			}
 		}
 
@@ -170,4 +171,13 @@ func flattenRecursive(todos []*TodoItem, result *[]string, prefix string) {
 			flattenRecursive(todo.Children, result, childPrefix)
 		}
 	}
+}
+
+// IsPositionPath checks if a string matches the position path pattern (e.g., "1", "1.2", "1.2.3")
+func IsPositionPath(s string) bool {
+	// Pattern: one or more digits, optionally followed by dot and more digits
+	// Examples: "1", "12", "1.2", "1.2.3", "12.34.56"
+	pattern := `^\d+(\.\d+)*$`
+	matched, _ := regexp.MatchString(pattern, strings.TrimSpace(s))
+	return matched
 }

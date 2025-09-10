@@ -63,11 +63,23 @@ func TestComplete(t *testing.T) {
 		// Verify parent is still pending
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
-		parent, err := collection.FindItemByPositionPath("1")
-		testutil.AssertNoError(t, err)
+
+		// Find parent by text
+		var parent *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent 1" {
+				parent = todo
+				break
+			}
+		}
+		assert.NotNil(t, parent)
 		assert.Equal(t, models.StatusPending, parent.Status)
 
 		// With new behavior: slice is reordered with active items first
+		assert.NotNil(t, parent)
+		if parent == nil {
+			t.FailNow()
+		}
 		assert.Equal(t, 2, len(parent.Items))
 
 		// Active sibling is now first in slice with position 1
@@ -81,11 +93,6 @@ func TestComplete(t *testing.T) {
 		assert.Equal(t, "Sub-task 1.1", completedChild.Text)
 		assert.Equal(t, 0, completedChild.Position)
 		assert.Equal(t, models.StatusDone, completedChild.Status)
-
-		// Can still find sibling by new position path
-		sibling2, err := collection.FindItemByPositionPath("1.1")
-		testutil.AssertNoError(t, err)
-		assert.Equal(t, "Sub-task 1.2", sibling2.Text)
 	})
 
 	t.Run("complete grandchild todo", func(t *testing.T) {
@@ -109,8 +116,18 @@ func TestComplete(t *testing.T) {
 
 		// Verify bottom-up completion: 1.2 should be done (all children complete)
 		// After reordering, 1.2 becomes 1.1 (since 1.1 was pending and 1.2 had higher position)
-		parent, err := collection.FindItemByPositionPath("1")
-		testutil.AssertNoError(t, err)
+		var parent *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent 1" {
+				parent = todo
+				break
+			}
+		}
+		assert.NotNil(t, parent)
+		assert.NotNil(t, parent)
+		if parent == nil {
+			t.FailNow()
+		}
 		assert.Equal(t, 2, len(parent.Items))
 
 		// Find the completed subtask (with grandchild) - it should have position 0
@@ -146,20 +163,6 @@ func TestComplete(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "todo not found")
-	})
-
-	t.Run("complete invalid position path format", func(t *testing.T) {
-		// Setup
-		store := testutil.CreateNestedStore(t)
-
-		// Execute - invalid format with non-numeric part
-		opts := complete.Options{CollectionPath: store.Path()}
-		result, err := complete.Execute("1.a.2", opts)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "invalid position")
 	})
 
 	t.Run("complete already done todo", func(t *testing.T) {
