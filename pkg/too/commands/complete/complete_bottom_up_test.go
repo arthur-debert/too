@@ -202,15 +202,22 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
 		project := collection.Todos[0]
-		phase1 := project.Items[0]
+		var phase1 *models.Todo
+		for _, item := range project.Items {
+			if item.Text == "Phase 1" {
+				phase1 = item
+				break
+			}
+		}
+		assert.NotNil(t, phase1)
 		assert.Equal(t, models.StatusDone, phase1.Status)
 
 		// But project should still be pending (Phase 2 not complete)
 		assert.Equal(t, models.StatusPending, project.Status)
 
-		// After Phase 1 is done (position 0), Phase 2 is still at position 2
-		// So Task C is at path 1.2.1
-		_, err = complete.Execute("1.2.1", complete.Options{CollectionPath: s.Path()})
+		// After Phase 1 is done (position 0), Phase 2 is now at position 1
+		// So Task C is at path 1.1
+		_, err = complete.Execute("1.1", complete.Options{CollectionPath: s.Path()})
 		testutil.AssertNoError(t, err)
 
 		// Now everything should be complete
@@ -218,8 +225,9 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		project = collection.Todos[0]
 		assert.Equal(t, models.StatusDone, project.Status)
-		assert.Equal(t, models.StatusDone, project.Items[0].Status) // Phase 1
-		assert.Equal(t, models.StatusDone, project.Items[1].Status) // Phase 2
+		for _, item := range project.Items {
+			assert.Equal(t, models.StatusDone, item.Status)
+		}
 	})
 
 	t.Run("should not auto-complete childless parent when sibling completes", func(t *testing.T) {

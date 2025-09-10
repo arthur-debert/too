@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -230,19 +229,6 @@ func findItemByIDInSlice(todos []*Todo, id string) *Todo {
 	return nil
 }
 
-// FindItemByRef finds a todo by a user-provided reference, which can be either
-// a position path (e.g., "1.2") or a short ID (e.g., "a1b2c3d").
-func (c *Collection) FindItemByRef(ref string) (*Todo, error) {
-	// First, try to parse as a position path.
-	todo, err := c.FindItemByPositionPath(ref)
-	if err == nil && todo != nil {
-		return todo, nil
-	}
-
-	// If it's not a valid position path, assume it's a short ID.
-	return c.FindItemByShortID(ref)
-}
-
 // FindItemByShortID finds a todo item by its short ID, searching recursively.
 func (c *Collection) FindItemByShortID(shortID string) (*Todo, error) {
 	var found *Todo
@@ -277,108 +263,12 @@ func walk(t *Todo, fn func(*Todo)) {
 	}
 }
 
-// FindItemByPositionPath finds a todo item by its dot-notation position path (e.g., "1.2.3")
-func (c *Collection) FindItemByPositionPath(path string) (*Todo, error) {
-	if path == "" {
-		return nil, fmt.Errorf("empty path")
-	}
-
-	positions, err := parsePositionPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	return findItemByPositions(c.Todos, positions)
-}
-
-// parsePositionPath converts a dot-notation path like "1.2.3" into a slice of positions
-func parsePositionPath(path string) ([]int, error) {
-	parts := strings.Split(path, ".")
-	positions := make([]int, len(parts))
-
-	for i, part := range parts {
-		pos, err := strconv.Atoi(strings.TrimSpace(part))
-		if err != nil {
-			return nil, fmt.Errorf("invalid position '%s' in path: %w", part, err)
-		}
-		if pos < 1 {
-			return nil, fmt.Errorf("position must be >= 1, got %d", pos)
-		}
-		positions[i] = pos
-	}
-
-	return positions, nil
-}
-
-// findItemByPositions recursively finds an item using a slice of positions
-func findItemByPositions(todos []*Todo, positions []int) (*Todo, error) {
-	if len(positions) == 0 {
-		return nil, fmt.Errorf("no positions provided")
-	}
-
-	position := positions[0]
-
-	// Find the todo at the current position
-	var found *Todo
-	for _, todo := range todos {
-		if todo.Position == position {
-			found = todo
-			break
-		}
-	}
-
-	if found == nil {
-		return nil, fmt.Errorf("no item found at position %d", position)
-	}
-
-	// If this is the last position, return the found item
-	if len(positions) == 1 {
-		return found, nil
-	}
-
-	// Otherwise, recursively search in the found item's children
-	return findItemByPositions(found.Items, positions[1:])
-}
-
 // GetShortID returns the first 7 characters of the todo's UUID.
 func (t *Todo) GetShortID() string {
 	if len(t.ID) >= 7 {
 		return t.ID[:7]
 	}
 	return t.ID
-}
-
-// GetPositionPath returns the full dot-notation position path for a todo.
-// This requires a full collection scan and is intended for use in user-facing output or tests.
-func (t *Todo) GetPositionPath(collection *Collection) string {
-	// A done item has no active position path.
-	if t.Status == StatusDone {
-		return ""
-	}
-	// Find the path recursively
-	return findPath(collection.Todos, t, "")
-}
-
-// findPath recursively builds the position path for a target todo
-func findPath(todos []*Todo, target *Todo, currentPath string) string {
-	for _, todo := range todos {
-		var newPath string
-		if currentPath == "" {
-			newPath = fmt.Sprintf("%d", todo.Position)
-		} else {
-			newPath = fmt.Sprintf("%s.%d", currentPath, todo.Position)
-		}
-
-		if todo.ID == target.ID {
-			return newPath
-		}
-
-		// Recurse into children
-		if foundPath := findPath(todo.Items, target, newPath); foundPath != "" {
-			return foundPath
-		}
-	}
-	return ""
 }
 
 // ListActive returns only active (pending) todos from the collection.

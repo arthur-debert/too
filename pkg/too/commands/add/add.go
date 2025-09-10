@@ -3,6 +3,7 @@ package add
 import (
 	"fmt"
 
+	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
 )
@@ -33,18 +34,39 @@ func Execute(text string, opts Options) (*Result, error) {
 	var todo *models.Todo
 
 	err := s.Update(func(collection *models.Collection) error {
-		var err error
 		var parentID string
 
-		// If parent path is specified, find the parent todo
+		// If parent path is specified, resolve it to a UID
 		if opts.ParentPath != "" {
-			parent, err := collection.FindItemByPositionPath(opts.ParentPath)
+			// We need an adapter scoped to the *current* state of the collection
+			// within the transaction, but since the adapter loads on creation,
+			// we create it outside and pass it in. This is a bit of a workaround
+			// for the current architecture. A better approach might be to have
+			// the adapter take a collection directly.
+			// For now, we'll create a fresh adapter and registry inside.
+			adapter, err := store.NewIDMStoreAdapter(s)
+			if err != nil {
+				return fmt.Errorf("failed to create idm adapter: %w", err)
+			}
+			reg := idm.NewRegistry()
+			scopes, err := adapter.GetScopes()
+			if err != nil {
+				return fmt.Errorf("failed to get scopes: %w", err)
+			}
+			for _, scope := range scopes {
+				if err := reg.RebuildScope(adapter, scope); err != nil {
+					return fmt.Errorf("failed to build idm scope '%s': %w", scope, err)
+				}
+			}
+
+			uid, err := reg.ResolvePositionPath(store.RootScope, opts.ParentPath)
 			if err != nil {
 				return fmt.Errorf("parent todo not found: %w", err)
 			}
-			parentID = parent.ID
+			parentID = uid
 		}
 
+		var err error
 		todo, err = collection.CreateTodo(text, parentID)
 		return err
 	})

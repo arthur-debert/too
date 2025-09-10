@@ -3,6 +3,7 @@ package move
 import (
 	"fmt"
 
+	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
@@ -35,26 +36,42 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 	var result *Result
 
 	err := s.Update(func(collection *models.Collection) error {
-		// Find the source todo
-		sourceTodo, err := collection.FindItemByPositionPath(sourcePath)
+		// Set up the IDM registry
+		adapter, err := store.NewIDMStoreAdapter(s)
 		if err != nil {
-			logger.Error().
-				Str("sourcePath", sourcePath).
-				Err(err).
-				Msg("failed to find source todo")
+			return fmt.Errorf("failed to create idm adapter: %w", err)
+		}
+		reg := idm.NewRegistry()
+		scopes, err := adapter.GetScopes()
+		if err != nil {
+			return fmt.Errorf("failed to get scopes: %w", err)
+		}
+		for _, scope := range scopes {
+			if err := reg.RebuildScope(adapter, scope); err != nil {
+				return fmt.Errorf("failed to build idm scope '%s': %w", scope, err)
+			}
+		}
+
+		// Find the source todo
+		sourceUID, err := reg.ResolvePositionPath(store.RootScope, sourcePath)
+		if err != nil {
 			return fmt.Errorf("todo not found at position: %s", sourcePath)
+		}
+		sourceTodo := collection.FindItemByID(sourceUID)
+		if sourceTodo == nil {
+			return fmt.Errorf("todo with ID '%s' not found", sourceUID)
 		}
 
 		// Find the destination parent (empty string means root)
 		var destParent *models.Todo
 		if destParentPath != "" {
-			destParent, err = collection.FindItemByPositionPath(destParentPath)
+			destParentUID, err := reg.ResolvePositionPath(store.RootScope, destParentPath)
 			if err != nil {
-				logger.Error().
-					Str("destParentPath", destParentPath).
-					Err(err).
-					Msg("failed to find destination parent")
 				return fmt.Errorf("destination parent not found at position: %s", destParentPath)
+			}
+			destParent = collection.FindItemByID(destParentUID)
+			if destParent == nil {
+				return fmt.Errorf("destination parent with ID '%s' not found", destParentUID)
 			}
 		}
 
@@ -130,10 +147,14 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 		}
 
 		// Get new path after reordering
-		newPath := getPositionPath(collection, sourceTodo)
+		// Calculate the new position path directly from the collection
+		newPath := calculatePositionPath(collection, sourceTodo)
 		if newPath == "" {
 			logger.Error().
 				Str("todoID", sourceTodo.ID).
+				Str("todoText", sourceTodo.Text).
+				Str("parentID", sourceTodo.ParentID).
+				Int("position", sourceTodo.Position).
 				Msg("failed to get new position path")
 			return fmt.Errorf("failed to determine new position path")
 		}
@@ -162,7 +183,6 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 	return result, nil
 }
 
-// isDescendantOf checks if child is a descendant of parent
 func isDescendantOf(child, parent *models.Todo) bool {
 	// Check all children recursively
 	for _, item := range parent.Items {
@@ -176,35 +196,62 @@ func isDescendantOf(child, parent *models.Todo) bool {
 	return false
 }
 
-// getPositionPath builds the dot-notation position path for a todo
-func getPositionPath(collection *models.Collection, todo *models.Todo) string {
-	path := buildPath(collection.Todos, todo, "")
-	return path
-}
-
-// buildPath recursively builds the position path
-func buildPath(todos []*models.Todo, target *models.Todo, currentPath string) string {
-	for _, t := range todos {
-		// Skip done items (position 0) when building paths
-		if t.Position == 0 {
-			continue
-		}
-
-		newPath := currentPath
-		if newPath == "" {
-			newPath = fmt.Sprintf("%d", t.Position)
-		} else {
-			newPath = fmt.Sprintf("%s.%d", currentPath, t.Position)
-		}
-
-		if t.ID == target.ID {
-			return newPath
-		}
-
-		// Recursively check children
-		if foundPath := buildPath(t.Items, target, newPath); foundPath != "" {
-			return foundPath
-		}
+// calculatePositionPath calculates the position path for a todo directly from the collection
+func calculatePositionPath(collection *models.Collection, todo *models.Todo) string {
+	if todo == nil {
+		return ""
 	}
-	return ""
+
+	// Build the path from the todo up to the root
+	path := []string{}
+	current := todo
+	
+	for current != nil {
+		// Find position among pending siblings
+		var siblings []*models.Todo
+		if current.ParentID == "" {
+			// Root level
+			siblings = collection.Todos
+		} else {
+			parent := collection.FindItemByID(current.ParentID)
+			if parent == nil {
+				return ""
+			}
+			siblings = parent.Items
+		}
+		
+		// Count position among pending siblings
+		position := 0
+		for _, sibling := range siblings {
+			if sibling.Status == models.StatusPending {
+				position++
+				if sibling.ID == current.ID {
+					break
+				}
+			}
+		}
+		
+		if position == 0 {
+			return "" // Todo not found or not pending
+		}
+		
+		// Prepend position to path
+		path = append([]string{fmt.Sprintf("%d", position)}, path...)
+		
+		// Move up to parent
+		if current.ParentID == "" {
+			break // Reached root
+		}
+		current = collection.FindItemByID(current.ParentID)
+	}
+	
+	// Join path components
+	if len(path) == 0 {
+		return ""
+	}
+	result := path[0]
+	for i := 1; i < len(path); i++ {
+		result += "." + path[i]
+	}
+	return result
 }

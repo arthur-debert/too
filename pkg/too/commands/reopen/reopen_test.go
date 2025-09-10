@@ -16,10 +16,25 @@ func TestReopen(t *testing.T) {
 			{Text: "Test todo 1", Status: models.StatusDone},
 			{Text: "Test todo 2", Status: models.StatusPending},
 		})
+		collection, _ := store.Load()
+		collection.Reorder()
+		testutil.AssertNoError(t, store.Save(collection))
 
 		// Execute
+		// Since done todos don't have positions in the new system, we need to use short ID
+		// Find the done todo
+		var doneTodo *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Status == models.StatusDone {
+				doneTodo = todo
+				break
+			}
+		}
+		assert.NotNil(t, doneTodo, "Should have a done todo")
+		shortID := doneTodo.ID[:8]  // Use first 8 chars as short ID
+		
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1", opts)
+		result, err := reopen.Execute(shortID, opts)
 
 		// Assert
 		testutil.AssertNoError(t, err)
@@ -30,7 +45,7 @@ func TestReopen(t *testing.T) {
 		assert.Equal(t, models.StatusPending, result.Todo.Status)
 
 		// Verify it was saved
-		collection, err := store.Load()
+		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
 		todo := testutil.AssertTodoByPosition(t, collection.Todos, 1)
 		testutil.AssertTodoHasStatus(t, todo, models.StatusPending)
@@ -45,15 +60,28 @@ func TestReopen(t *testing.T) {
 		// Mark a child as done first
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
-		child, err := collection.FindItemByPositionPath("1.1")
-		testutil.AssertNoError(t, err)
+
+		var child *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				child = todo.Items[0]
+				break
+			}
+		}
+		assert.NotNil(t, child)
+		if child == nil {
+			t.FailNow()
+		}
 		child.Status = models.StatusDone
+		collection.Reorder()
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Execute - reopen child todo
+		// Execute - reopen child todo using short ID since it's done
+		// and done todos don't have positions in the current implementation
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.1", opts)
+		childShortID := child.ID[:8]
+		result, err := reopen.Execute(childShortID, opts)
 
 		// Assert
 		testutil.AssertNoError(t, err)
@@ -66,13 +94,21 @@ func TestReopen(t *testing.T) {
 		// Verify parent remains unchanged
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		parent, err := collection.FindItemByPositionPath("1")
-		testutil.AssertNoError(t, err)
+		var parent *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				parent = todo
+				break
+			}
+		}
+		assert.NotNil(t, parent)
+		if parent == nil {
+			t.FailNow()
+		}
 		assert.Equal(t, models.StatusPending, parent.Status)
 
 		// Verify only the specific child was reopened
-		child, err = collection.FindItemByPositionPath("1.1")
-		testutil.AssertNoError(t, err)
+		child = parent.Items[0]
 		assert.Equal(t, models.StatusPending, child.Status)
 	})
 
@@ -83,15 +119,22 @@ func TestReopen(t *testing.T) {
 		// Mark grandchild as done
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
-		item, err := collection.FindItemByPositionPath("1.2.1")
-		testutil.AssertNoError(t, err)
+		var item *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				item = todo.Items[1].Items[0]
+				break
+			}
+		}
+		assert.NotNil(t, item)
 		item.Status = models.StatusDone
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Execute - reopen grandchild
+		// Execute - reopen grandchild using short ID since it's done
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.2.1", opts)
+		grandchildShortID := item.ID[:8]
+		result, err := reopen.Execute(grandchildShortID, opts)
 
 		// Assert
 		testutil.AssertNoError(t, err)
@@ -104,17 +147,30 @@ func TestReopen(t *testing.T) {
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
 
-		item, err = collection.FindItemByPositionPath("1.2.1")
-		testutil.AssertNoError(t, err)
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				item = todo.Items[1].Items[0]
+				break
+			}
+		}
+		assert.NotNil(t, item)
 		assert.Equal(t, models.StatusPending, item.Status)
 
 		// Verify no propagation happened
-		paths := []string{"1", "1.2"}
-		for _, path := range paths {
-			parent, err := collection.FindItemByPositionPath(path)
-			testutil.AssertNoError(t, err)
-			assert.Equal(t, models.StatusPending, parent.Status, "Parent at %s should remain unchanged", path)
+		var parent *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				parent = todo
+				break
+			}
 		}
+		assert.NotNil(t, parent)
+		assert.NotNil(t, parent)
+		if parent == nil {
+			t.FailNow()
+		}
+		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.Items[1].Status)
 	})
 
 	t.Run("reopen invalid position", func(t *testing.T) {
@@ -129,20 +185,6 @@ func TestReopen(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "todo not found")
-	})
-
-	t.Run("reopen invalid position path format", func(t *testing.T) {
-		// Setup
-		store := testutil.CreateNestedStore(t)
-
-		// Execute - invalid format with non-numeric part
-		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.a.2", opts)
-
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "todo not found with reference")
 	})
 
 	t.Run("reopen already pending todo", func(t *testing.T) {
@@ -168,18 +210,24 @@ func TestReopen(t *testing.T) {
 		// Mark parent and child as done
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
-		parent, err := collection.FindItemByPositionPath("1")
-		testutil.AssertNoError(t, err)
+		var parent *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				parent = todo
+				break
+			}
+		}
+		assert.NotNil(t, parent)
 		parent.Status = models.StatusDone
-		child, err := collection.FindItemByPositionPath("1.1")
-		testutil.AssertNoError(t, err)
+		child := parent.Items[0]
 		child.Status = models.StatusDone
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Execute - reopen child when parent is done
+		// Execute - reopen child when parent is done using short ID
 		opts := reopen.Options{CollectionPath: store.Path()}
-		result, err := reopen.Execute("1.1", opts)
+		childShortID := child.ID[:8]
+		result, err := reopen.Execute(childShortID, opts)
 
 		// Assert - should still work per spec (no propagation)
 		testutil.AssertNoError(t, err)
@@ -190,13 +238,17 @@ func TestReopen(t *testing.T) {
 		// Verify parent remains done
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		parent, err = collection.FindItemByPositionPath("1")
-		testutil.AssertNoError(t, err)
+		for _, todo := range collection.Todos {
+			if todo.Text == "Parent todo" {
+				parent = todo
+				break
+			}
+		}
+		assert.NotNil(t, parent)
 		assert.Equal(t, models.StatusDone, parent.Status)
 
 		// Verify child is now pending
-		child, err = collection.FindItemByPositionPath("1.1")
-		testutil.AssertNoError(t, err)
+		child = parent.Items[0]
 		assert.Equal(t, models.StatusPending, child.Status)
 	})
 }

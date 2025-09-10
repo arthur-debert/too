@@ -3,6 +3,7 @@ package complete
 import (
 	"fmt"
 
+	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
@@ -38,14 +39,30 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 	s := store.NewStore(opts.CollectionPath)
 	err := s.Update(func(collection *models.Collection) error {
-		// Find the todo by position path
-		todo, err := collection.FindItemByPositionPath(positionPath)
+		// Resolve the position path to a UID
+		adapter, err := store.NewIDMStoreAdapter(s)
 		if err != nil {
-			logger.Error().
-				Err(err).
-				Str("positionPath", positionPath).
-				Msg("failed to find todo")
+			return fmt.Errorf("failed to create idm adapter: %w", err)
+		}
+		reg := idm.NewRegistry()
+		scopes, err := adapter.GetScopes()
+		if err != nil {
+			return fmt.Errorf("failed to get scopes: %w", err)
+		}
+		for _, scope := range scopes {
+			if err := reg.RebuildScope(adapter, scope); err != nil {
+				return fmt.Errorf("failed to build idm scope '%s': %w", scope, err)
+			}
+		}
+
+		uid, err := reg.ResolvePositionPath(store.RootScope, positionPath)
+		if err != nil {
 			return fmt.Errorf("todo not found: %w", err)
+		}
+
+		todo := collection.FindItemByID(uid)
+		if todo == nil {
+			return fmt.Errorf("todo with ID '%s' not found", uid)
 		}
 
 		// Capture old status

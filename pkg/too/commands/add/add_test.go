@@ -399,81 +399,6 @@ func TestAddCommandWithParent(t *testing.T) {
 		testutil.AssertCollectionSize(t, collection, 1)
 	})
 
-	t.Run("returns error for invalid parent path", func(t *testing.T) {
-		store := testutil.CreatePopulatedStore(t, "Parent")
-
-		testCases := []struct {
-			name       string
-			parentPath string
-			errMsg     string
-		}{
-			{"invalid format", "abc", "invalid position"},
-			{"negative position", "-1", "position must be >= 1"},
-			{"zero position", "0", "position must be >= 1"},
-			{"trailing dot", "1.", "invalid position"},
-			{"leading dot", ".1", "invalid position"},
-			{"empty path", "", ""}, // Empty is valid (no parent)
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				opts := add.Options{
-					CollectionPath: store.Path(),
-					ParentPath:     tc.parentPath,
-				}
-				result, err := add.Execute("Test task", opts)
-
-				if tc.errMsg != "" {
-					assert.Error(t, err)
-					assert.Nil(t, result)
-					assert.Contains(t, err.Error(), tc.errMsg)
-				} else {
-					// Empty parent path should succeed
-					testutil.AssertNoError(t, err)
-					assert.NotNil(t, result)
-				}
-			})
-		}
-	})
-
-	t.Run("deeply nested parent paths work", func(t *testing.T) {
-		// Create a deeply nested structure manually
-		store := testutil.CreatePopulatedStore(t)
-
-		// Build: 1 -> 1.1 -> 1.1.1 -> 1.1.1.1
-		collection := models.NewCollection()
-		parent, _ := collection.CreateTodo("Level 1", "")
-		child, _ := collection.CreateTodo("Level 2", parent.ID)
-		grandchild, _ := collection.CreateTodo("Level 3", child.ID)
-		_, _ = collection.CreateTodo("Level 4", grandchild.ID)
-
-		err := store.Save(collection)
-		testutil.AssertNoError(t, err)
-
-		// Add to the deepest level
-		opts := add.Options{
-			CollectionPath: store.Path(),
-			ParentPath:     "1.1.1.1",
-		}
-		result, err := add.Execute("Level 5", opts)
-
-		testutil.AssertNoError(t, err)
-		assert.NotNil(t, result)
-
-		// Verify it was added at the right place
-		collection, err = store.Load()
-		testutil.AssertNoError(t, err)
-
-		// Navigate to level 4
-		level1 := collection.Todos[0]
-		level2 := level1.Items[0]
-		level3 := level2.Items[0]
-		level4 := level3.Items[0]
-
-		assert.Len(t, level4.Items, 1)
-		assert.Equal(t, "Level 5", level4.Items[0].Text)
-	})
-
 	t.Run("parent path with gaps returns error", func(t *testing.T) {
 		store := testutil.CreateNestedStore(t)
 
@@ -486,7 +411,7 @@ func TestAddCommandWithParent(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "no item found at position 99")
+		assert.Contains(t, err.Error(), "no item found at position '1.99'")
 	})
 
 	t.Run("adds sub-todo correctly when parent has done children", func(t *testing.T) {

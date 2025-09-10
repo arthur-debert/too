@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
@@ -44,7 +43,7 @@ var addCmd = &cobra.Command{
 			initialContent := ""
 			if len(args) > 0 {
 				// Check if first arg is a position path when --to isn't set
-				if parentPath == "" && isPositionPath(args[0]) {
+				if parentPath == "" && parser.IsPositionPath(args[0]) {
 					parentPath = args[0]
 					// Use remaining args as initial content if any
 					if len(args) > 1 {
@@ -72,7 +71,7 @@ var addCmd = &cobra.Command{
 			// If --to wasn't explicitly set and we have at least 2 args
 			if parentPath == "" && len(args) >= 2 {
 				// Check if first arg matches position path pattern (e.g., "1", "1.2", "1.2.3")
-				if isPositionPath(args[0]) {
+				if parser.IsPositionPath(args[0]) {
 					parentPath = args[0]
 					text = strings.Join(args[1:], " ")
 				} else {
@@ -170,15 +169,6 @@ var addCmd = &cobra.Command{
 		}
 		return renderer.RenderAdd(result)
 	},
-}
-
-// isPositionPath checks if a string matches the position path pattern (e.g., "1", "1.2", "1.2.3")
-func isPositionPath(s string) bool {
-	// Pattern: one or more digits, optionally followed by dot and more digits
-	// Examples: "1", "12", "1.2", "1.2.3", "12.34.56"
-	pattern := `^\d+(\.\d+)*$`
-	matched, _ := regexp.MatchString(pattern, strings.TrimSpace(s))
-	return matched
 }
 
 // containsBulletPoints checks if text contains markdown-style bullet points

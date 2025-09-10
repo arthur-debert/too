@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -257,7 +258,7 @@ func createTestRootCommand() *cobra.Command {
 			// If --to wasn't explicitly set and we have at least 2 args
 			if parentPath == "" && len(args) >= 2 {
 				// Check if first arg matches position path pattern (e.g., "1", "1.2", "1.2.3")
-				if isPositionPath(args[0]) {
+				if parser.IsPositionPath(args[0]) {
 					parentPath = args[0]
 					text = strings.Join(args[1:], " ")
 				} else {
