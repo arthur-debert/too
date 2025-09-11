@@ -503,3 +503,55 @@ func TestStatusManager_GetMetrics(t *testing.T) {
 		t.Errorf("Expected 1 low priority item, got %d", metrics.GetCount("priority", "low"))
 	}
 }
+
+func TestGetParent(t *testing.T) {
+	_, adapter := createTestStatusManager(t)
+
+	// Create hierarchy: root -> parent -> child
+	parentUID, err := adapter.AddItem("root")
+	if err != nil {
+		t.Fatalf("Failed to add parent: %v", err)
+	}
+
+	childUID, err := adapter.AddItem(parentUID)
+	if err != nil {
+		t.Fatalf("Failed to add child: %v", err)
+	}
+
+	t.Run("root has no parent", func(t *testing.T) {
+		parent, err := adapter.GetParent("root")
+		if err != nil {
+			t.Errorf("GetParent failed for root: %v", err)
+		}
+		if parent != "" {
+			t.Errorf("Expected root to have no parent (empty string), got %q", parent)
+		}
+	})
+
+	t.Run("direct child of root", func(t *testing.T) {
+		parent, err := adapter.GetParent(parentUID)
+		if err != nil {
+			t.Errorf("GetParent failed for parent: %v", err)
+		}
+		if parent != "root" {
+			t.Errorf("Expected parent to be 'root', got %q", parent)
+		}
+	})
+
+	t.Run("nested child", func(t *testing.T) {
+		parent, err := adapter.GetParent(childUID)
+		if err != nil {
+			t.Errorf("GetParent failed for child: %v", err)
+		}
+		if parent != parentUID {
+			t.Errorf("Expected child's parent to be %q, got %q", parentUID, parent)
+		}
+	})
+
+	t.Run("non-existent item", func(t *testing.T) {
+		_, err := adapter.GetParent("non-existent")
+		if err == nil {
+			t.Error("Expected error for non-existent item")
+		}
+	})
+}

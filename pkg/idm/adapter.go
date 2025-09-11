@@ -28,6 +28,8 @@ type ManagedStoreAdapter interface {
 	RemoveItem(uid string) error
 	// MoveItem changes an item's parent.
 	MoveItem(uid, newParentUID string) error
+	// GetParent returns the parent UID of the given item. Returns empty string if item is a root.
+	GetParent(uid string) (string, error)
 
 	// --- Soft Delete Methods ---
 	// SetStatus changes the status of an item (e.g., "active", "deleted").

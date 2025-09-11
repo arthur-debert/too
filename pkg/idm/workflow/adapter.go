@@ -226,6 +226,25 @@ func (m *MockWorkflowAdapter) SetPinned(uid string, isPinned bool) error {
 	return m.SetItemStatus(uid, "pinned", value)
 }
 
+func (m *MockWorkflowAdapter) GetParent(uid string) (string, error) {
+	// Handle root scope specially
+	if uid == "root" {
+		return "", nil // Root has no parent
+	}
+	
+	item, exists := m.items[uid]
+	if !exists {
+		return "", fmt.Errorf("item %s not found", uid)
+	}
+	
+	// If ParentID is empty, this item is a direct child of root
+	if item.ParentID == "" {
+		return "root", nil
+	}
+	
+	return item.ParentID, nil
+}
+
 // Implementation of WorkflowStoreAdapter interface
 
 func (m *MockWorkflowAdapter) SetItemStatus(uid, dimension, value string) error {

@@ -543,33 +543,17 @@ func (sm *StatusManager) InitializeItemWithDefaults(uid string) error {
 
 // triggerParentAutoTransitions triggers auto-transitions on the parent of the given item.
 func (sm *StatusManager) triggerParentAutoTransitions(uid string) error {
-	// If this is a root scope (like "root"), it has no parent
-	scopes, err := sm.adapter.GetScopes()
+	// Use the new GetParent method for efficient parent discovery
+	parentUID, err := sm.adapter.GetParent(uid)
 	if err != nil {
 		return err
 	}
 	
-	// Check if uid itself is a scope (root item)
-	for _, scope := range scopes {
-		if scope == uid {
-			return nil // This is a root scope, no parent to trigger
-		}
+	// If there's no parent (empty string), this is a root item
+	if parentUID == "" {
+		return nil
 	}
 	
-	// Find parent by checking all scopes
-	for _, scope := range scopes {
-		children, err := sm.adapter.GetChildren(scope)
-		if err != nil {
-			continue
-		}
-		
-		for _, child := range children {
-			if child == uid {
-				// Found parent, trigger auto-transitions on it
-				return sm.TriggerAutoTransitions("child_status_change", scope)
-			}
-		}
-	}
-	
-	return nil // No parent found (probably root item)
+	// Trigger auto-transitions on the parent
+	return sm.TriggerAutoTransitions("child_status_change", parentUID)
 }
