@@ -3,7 +3,6 @@ package modify
 import (
 	"fmt"
 
-	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
 )
@@ -27,23 +26,12 @@ func Execute(positionStr string, newText string, opts Options) (*Result, error) 
 	}
 
 	s := store.NewStore(opts.CollectionPath)
-	adapter, err := store.NewIDMStoreAdapter(s)
+	manager, err := store.NewManagerFromStore(s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create idm adapter: %w", err)
+		return nil, fmt.Errorf("failed to create idm manager: %w", err)
 	}
 
-	reg := idm.NewRegistry()
-	scopes, err := adapter.GetScopes()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get scopes: %w", err)
-	}
-	for _, scope := range scopes {
-		if err := reg.RebuildScope(adapter, scope); err != nil {
-			return nil, fmt.Errorf("failed to build idm scope '%s': %w", scope, err)
-		}
-	}
-
-	uid, err := reg.ResolvePositionPath(store.RootScope, positionStr)
+	uid, err := manager.Registry().ResolvePositionPath(store.RootScope, positionStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve todo position '%s': %w", positionStr, err)
 	}

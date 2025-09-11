@@ -3,7 +3,6 @@ package reopen
 import (
 	"fmt"
 
-	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/arthur-debert/too/pkg/too/models"
@@ -39,23 +38,13 @@ func Execute(ref string, opts Options) (*Result, error) {
 		var err error
 
 		if parser.IsPositionPath(ref) {
-			// Resolve the position path to a UID
-			adapter, err := store.NewIDMStoreAdapter(s)
+			// Resolve the position path to a UID using transaction-aware manager
+			manager, err := store.NewManagerFromCollection(collection)
 			if err != nil {
-				return fmt.Errorf("failed to create idm adapter: %w", err)
-			}
-			reg := idm.NewRegistry()
-			scopes, err := adapter.GetScopes()
-			if err != nil {
-				return fmt.Errorf("failed to get scopes: %w", err)
-			}
-			for _, scope := range scopes {
-				if err := reg.RebuildScope(adapter, scope); err != nil {
-					return fmt.Errorf("failed to build idm scope '%s': %w", scope, err)
-				}
+				return fmt.Errorf("failed to create idm manager: %w", err)
 			}
 
-			uid, err := reg.ResolvePositionPath(store.RootScope, ref)
+			uid, err := manager.Registry().ResolvePositionPath(store.RootScope, ref)
 			if err != nil {
 				return fmt.Errorf("todo not found: %w", err)
 			}

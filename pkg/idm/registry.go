@@ -76,3 +76,17 @@ func (r *Registry) GetUIDs(scopes ...string) []string {
 	}
 	return allUIDs
 }
+
+// ResolvePositionPaths translates multiple dot-notation paths into UIDs.
+// It returns a map of path -> UID and the first error encountered.
+func (r *Registry) ResolvePositionPaths(startScope string, paths []string) (map[string]string, error) {
+	results := make(map[string]string, len(paths))
+	for _, path := range paths {
+		uid, err := r.ResolvePositionPath(startScope, path)
+		if err != nil {
+			return nil, err // Stop on first error
+		}
+		results[path] = uid
+	}
+	return results, nil
+}

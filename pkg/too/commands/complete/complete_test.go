@@ -73,13 +73,10 @@ func TestComplete(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, parent)
-		assert.Equal(t, models.StatusPending, parent.Status)
-
-		// With new behavior: slice is reordered with active items first
-		assert.NotNil(t, parent)
 		if parent == nil {
 			t.FailNow()
 		}
+		assert.Equal(t, models.StatusPending, parent.Status)
 		assert.Equal(t, 2, len(parent.Items))
 
 		// Active sibling is now first in slice with position 1

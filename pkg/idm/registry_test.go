@@ -36,6 +36,22 @@ func (m *mockStoreAdapter) GetScopes() ([]string, error) {
 	return scopes, nil
 }
 
+// GetAllUIDs implements the StoreAdapter interface for the mock.
+func (m *mockStoreAdapter) GetAllUIDs() ([]string, error) {
+	uidSet := make(map[string]bool)
+	for _, children := range m.data {
+		for _, uid := range children {
+			uidSet[uid] = true
+		}
+	}
+	
+	uids := make([]string, 0, len(uidSet))
+	for uid := range uidSet {
+		uids = append(uids, uid)
+	}
+	return uids, nil
+}
+
 // --- Test Cases ---
 
 func TestNewRegistry(t *testing.T) {
@@ -178,4 +194,58 @@ func TestGetUIDs(t *testing.T) {
 	if len(uids) != 0 {
 		t.Errorf("GetUIDs() with no arguments should return an empty slice. Got: %d", len(uids))
 	}
+}
+
+func TestResolvePositionPaths(t *testing.T) {
+	r := NewRegistry()
+	r.scopes["root"] = []string{"uidA", "uidB"}
+	r.scopes["uidA"] = []string{"uidA1", "uidA2"}
+	r.scopes["uidB"] = []string{"uidB1"}
+	r.scopes["uidA2"] = []string{"uidA2.1"}
+
+	t.Run("resolve multiple valid paths", func(t *testing.T) {
+		paths := []string{"1.2", "2.1", "1.2.1"}
+		expected := map[string]string{
+			"1.2":   "uidA2",
+			"2.1":   "uidB1",
+			"1.2.1": "uidA2.1",
+		}
+
+		resolved, err := r.ResolvePositionPaths("root", paths)
+		if err != nil {
+			t.Fatalf("ResolvePositionPaths() returned an unexpected error: %v", err)
+		}
+
+		if len(resolved) != len(expected) {
+			t.Fatalf("Expected %d resolved paths, but got %d", len(expected), len(resolved))
+		}
+
+		for path, expectedUID := range expected {
+			if resolved[path] != expectedUID {
+				t.Errorf("For path '%s', expected UID '%s', but got '%s'", path, expectedUID, resolved[path])
+			}
+		}
+	})
+
+	t.Run("stops on first invalid path", func(t *testing.T) {
+		paths := []string{"1.1", "9.9", "2.1"} // "9.9" is invalid
+		_, err := r.ResolvePositionPaths("root", paths)
+		if err == nil {
+			t.Fatal("Expected an error for an invalid path, but got nil")
+		}
+		if err.Error() != `no item found at position '9'` {
+			t.Errorf("Expected error message for invalid HID, but got: %s", err.Error())
+		}
+	})
+
+	t.Run("handles empty path slice", func(t *testing.T) {
+		paths := []string{}
+		resolved, err := r.ResolvePositionPaths("root", paths)
+		if err != nil {
+			t.Fatalf("ResolvePositionPaths() with empty slice returned an error: %v", err)
+		}
+		if len(resolved) != 0 {
+			t.Errorf("Expected an empty map for an empty path slice, but got %d items", len(resolved))
+		}
+	})
 }

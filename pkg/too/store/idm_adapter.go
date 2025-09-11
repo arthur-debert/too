@@ -1,8 +1,10 @@
 package store
 
 import (
+	"fmt"
 	"sort"
 
+	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/too/models"
 )
 
@@ -89,4 +91,147 @@ func (a *IDMStoreAdapter) GetScopes() ([]string, error) {
 	}
 
 	return scopeList, nil
+}
+
+// GetAllUIDs implements the idm.StoreAdapter interface. It returns all UIDs
+// in the collection, regardless of status.
+func (a *IDMStoreAdapter) GetAllUIDs() ([]string, error) {
+	var uids []string
+	a.collection.Walk(func(t *models.Todo) {
+		uids = append(uids, t.ID)
+	})
+	return uids, nil
+}
+
+// --- ManagedStoreAdapter Write Methods ---
+
+// AddItem implements the idm.ManagedStoreAdapter interface. It creates a new
+// todo item with the given parent and returns its new UID.
+func (a *IDMStoreAdapter) AddItem(parentUID string) (string, error) {
+	var parentID string
+	if parentUID != RootScope {
+		parentID = parentUID
+	}
+	
+	todo, err := a.collection.CreateTodo("", parentID)
+	if err != nil {
+		return "", fmt.Errorf("failed to create todo: %w", err)
+	}
+	
+	return todo.ID, nil
+}
+
+// RemoveItem implements the idm.ManagedStoreAdapter interface. It permanently
+// deletes an item and all its descendants.
+func (a *IDMStoreAdapter) RemoveItem(uid string) error {
+	todo := a.collection.FindItemByID(uid)
+	if todo == nil {
+		return fmt.Errorf("todo with UID %s not found", uid)
+	}
+
+	// Find the parent and remove from its Items slice
+	if todo.ParentID != "" {
+		parent := a.collection.FindItemByID(todo.ParentID)
+		if parent != nil {
+			for i, item := range parent.Items {
+				if item.ID == uid {
+					parent.Items = append(parent.Items[:i], parent.Items[i+1:]...)
+					break
+				}
+			}
+		}
+	} else {
+		// Remove from root todos
+		for i, item := range a.collection.Todos {
+			if item.ID == uid {
+				a.collection.Todos = append(a.collection.Todos[:i], a.collection.Todos[i+1:]...)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// MoveItem implements the idm.ManagedStoreAdapter interface. It changes an
+// item's parent.
+func (a *IDMStoreAdapter) MoveItem(uid, newParentUID string) error {
+	todo := a.collection.FindItemByID(uid)
+	if todo == nil {
+		return fmt.Errorf("todo with UID %s not found", uid)
+	}
+
+	// Find the new parent (if not moving to root)
+	var newParent *models.Todo
+	var newParentID string
+	if newParentUID != RootScope {
+		newParent = a.collection.FindItemByID(newParentUID)
+		if newParent == nil {
+			return fmt.Errorf("new parent with UID %s not found", newParentUID)
+		}
+		newParentID = newParentUID
+	}
+
+	// Remove from old location
+	if todo.ParentID != "" {
+		oldParent := a.collection.FindItemByID(todo.ParentID)
+		if oldParent != nil {
+			for i, item := range oldParent.Items {
+				if item.ID == uid {
+					oldParent.Items = append(oldParent.Items[:i], oldParent.Items[i+1:]...)
+					break
+				}
+			}
+		}
+	} else {
+		// Remove from root todos
+		for i, item := range a.collection.Todos {
+			if item.ID == uid {
+				a.collection.Todos = append(a.collection.Todos[:i], a.collection.Todos[i+1:]...)
+				break
+			}
+		}
+	}
+
+	// Add to new location
+	todo.ParentID = newParentID
+	if newParent != nil {
+		newParent.Items = append(newParent.Items, todo)
+	} else {
+		a.collection.Todos = append(a.collection.Todos, todo)
+	}
+
+	// Reorder the collection to fix positions
+	a.collection.Reorder()
+
+	return nil
+}
+
+// SetStatus implements the idm.ManagedStoreAdapter interface. It changes the
+// status of an item (e.g., "active", "deleted").
+func (a *IDMStoreAdapter) SetStatus(uid, status string) error {
+	todo := a.collection.FindItemByID(uid)
+	if todo == nil {
+		return fmt.Errorf("todo with UID %s not found", uid)
+	}
+	
+	// Map IDM status constants to too status constants
+	switch status {
+	case idm.StatusActive:
+		todo.Status = models.StatusPending
+	case idm.StatusDeleted:
+		todo.Status = models.StatusDone
+	default:
+		return fmt.Errorf("unknown status: %s", status)
+	}
+	
+	return nil
+}
+
+// SetPinned implements the idm.ManagedStoreAdapter interface. It marks an
+// item as pinned or not. Note: too doesn't currently support pinned items,
+// so this is a no-op for now.
+func (a *IDMStoreAdapter) SetPinned(uid string, isPinned bool) error {
+	// too doesn't currently support pinned items, so this is a no-op
+	return nil
 }

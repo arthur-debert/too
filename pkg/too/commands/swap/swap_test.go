@@ -60,7 +60,9 @@ func TestSwapCommand(t *testing.T) {
 		collection, _ = store.Load()
 		assert.Len(t, collection.Todos, 3)
 		assert.Len(t, collection.Todos[0].Items, 0) // Old parent is now empty
-		assert.Equal(t, "Item to move", collection.Todos[2].Text)
+		// Moved item gets position=0 and is placed after existing active items
+		assert.Equal(t, "Item to move", collection.Todos[1].Text)
+		assert.Equal(t, "Parent 2", collection.Todos[2].Text)
 	})
 
 	t.Run("moves a deeply nested item between branches", func(t *testing.T) {
