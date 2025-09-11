@@ -65,6 +65,20 @@ func (r *Registry) ResolveHID(scope string, hid uint) (string, error) {
 	return uids[hid-1], nil
 }
 
+// GetHID returns the HID for a given UID within a scope, or 0 if not found.
+func (r *Registry) GetHID(scope, uid string) uint {
+	uids, ok := r.scopes[scope]
+	if !ok {
+		return 0
+	}
+	for i, id := range uids {
+		if id == uid {
+			return uint(i + 1) // HIDs are 1-based
+		}
+	}
+	return 0
+}
+
 // GetUIDs returns a concatenated list of UIDs from one or more scopes.
 // The order is preserved within each scope, and scopes are processed in the order they are provided.
 func (r *Registry) GetUIDs(scopes ...string) []string {
@@ -89,4 +103,32 @@ func (r *Registry) ResolvePositionPaths(startScope string, paths []string) (map[
 		results[path] = uid
 	}
 	return results, nil
+}
+
+// GetPositionPath returns the position path for a given UID by traversing up
+// the hierarchy to build the dot-notation path.
+func (r *Registry) GetPositionPath(startScope, targetUID string, adapter StoreAdapter) (string, error) {
+	// Check if targetUID is directly in the startScope
+	if hid := r.GetHID(startScope, targetUID); hid > 0 {
+		return fmt.Sprintf("%d", hid), nil
+	}
+
+	// Search all scopes for the targetUID and build path recursively
+	for scope := range r.scopes {
+		if hid := r.GetHID(scope, targetUID); hid > 0 {
+			// Found it in this scope, now build the path
+			if scope == startScope {
+				return fmt.Sprintf("%d", hid), nil
+			}
+			
+			// Get the path to the scope, then append this HID
+			parentPath, err := r.GetPositionPath(startScope, scope, adapter)
+			if err != nil {
+				continue // Try other scopes
+			}
+			return fmt.Sprintf("%s.%d", parentPath, hid), nil
+		}
+	}
+
+	return "", fmt.Errorf("UID '%s' not found in any scope accessible from '%s'", targetUID, startScope)
 }
