@@ -77,8 +77,8 @@ func TestWorkflowManager_BasicFunctionality(t *testing.T) {
 		
 		// Verify legacy status field was updated for backward compatibility
 		updatedTodo := wm.GetCollection().FindItemByID(todo1.ID)
-		if updatedTodo.Status != models.StatusDone {
-			t.Errorf("Expected legacy status to be 'done', got '%s'", updatedTodo.Status)
+		if updatedTodo.GetStatus() != models.StatusDone {
+			t.Errorf("Expected legacy status to be 'done', got '%s'", updatedTodo.GetStatus())
 		}
 	})
 	
@@ -132,7 +132,6 @@ func TestWorkflowManager_BackwardCompatibility(t *testing.T) {
 	todo := &models.Todo{
 		ID:       "test-id",
 		Text:     "Test todo",
-		Status:   models.StatusPending,
 		Statuses: nil, // Explicitly nil to simulate old data
 		Items:    []*models.Todo{},
 	}
@@ -169,8 +168,8 @@ func TestWorkflowManager_BackwardCompatibility(t *testing.T) {
 	
 	// Verify both workflow and legacy status are updated
 	updatedTodo := wm.GetCollection().FindItemByID(todo.ID)
-	if updatedTodo.Status != models.StatusDone {
-		t.Errorf("Expected legacy status 'done', got '%s'", updatedTodo.Status)
+	if updatedTodo.GetStatus() != models.StatusDone {
+		t.Errorf("Expected legacy status 'done', got '%s'", updatedTodo.GetStatus())
 	}
 	
 	if updatedTodo.Statuses == nil {

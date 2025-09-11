@@ -68,7 +68,7 @@ func removeFinishedTodosRecursive(todos []*models.Todo) []*models.Todo {
 	var activeTodos []*models.Todo
 
 	for _, todo := range todos {
-		if todo.Status != models.StatusDone {
+		if todo.GetStatus() != models.StatusDone {
 			// Keep this todo but recursively clean its children
 			todoCopy := *todo
 			todoCopy.Items = removeFinishedTodosRecursive(todo.Items)
@@ -84,7 +84,7 @@ func removeFinishedTodosRecursive(todos []*models.Todo) []*models.Todo {
 func countActiveTodos(todos []*models.Todo) int {
 	count := 0
 	for _, todo := range todos {
-		if todo.Status != models.StatusDone {
+		if todo.GetStatus() != models.StatusDone {
 			count++
 			count += countActiveTodos(todo.Items)
 		}

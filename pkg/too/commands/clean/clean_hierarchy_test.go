@@ -21,7 +21,7 @@ func TestClean_HierarchyAware(t *testing.T) {
 		err := s.Update(func(collection *models.Collection) error {
 			// Done parent with pending children
 			parent1, _ := collection.CreateTodo("Done parent", "")
-			parent1.Status = models.StatusDone
+			parent1.Statuses = map[string]string{"completion": string(models.StatusDone)}
 			child1, _ := collection.CreateTodo("Pending child 1", parent1.ID)
 			child2, _ := collection.CreateTodo("Pending child 2", parent1.ID)
 			_, _ = collection.CreateTodo("Grandchild 1", child1.ID)
@@ -47,7 +47,7 @@ func TestClean_HierarchyAware(t *testing.T) {
 		// Verify only done parent is reported as removed
 		assert.Equal(t, 1, len(result.RemovedTodos))
 		assert.Equal(t, "Done parent", result.RemovedTodos[0].Text)
-		assert.Equal(t, models.StatusDone, result.RemovedTodos[0].Status)
+		assert.Equal(t, models.StatusDone, result.RemovedTodos[0].GetStatus())
 
 		// Verify only pending parent remains
 		collection, err := s.Load()
@@ -67,12 +67,12 @@ func TestClean_HierarchyAware(t *testing.T) {
 
 			// Mix of done and pending children
 			child1, _ := collection.CreateTodo("Done child 1", parent.ID)
-			child1.Status = models.StatusDone
+			child1.Statuses = map[string]string{"completion": string(models.StatusDone)}
 
 			_, _ = collection.CreateTodo("Pending child", parent.ID)
 
 			child3, _ := collection.CreateTodo("Done child 2", parent.ID)
-			child3.Status = models.StatusDone
+			child3.Statuses = map[string]string{"completion": string(models.StatusDone)}
 
 			// Grandchildren of done child
 			_, _ = collection.CreateTodo("Grandchild of done", child1.ID)
@@ -111,7 +111,7 @@ func TestClean_HierarchyAware(t *testing.T) {
 			root, _ := collection.CreateTodo("Root", "")
 			level1, _ := collection.CreateTodo("Level 1", root.ID)
 			level2, _ := collection.CreateTodo("Level 2 (done)", level1.ID)
-			level2.Status = models.StatusDone
+			level2.Statuses = map[string]string{"completion": string(models.StatusDone)}
 			level3, _ := collection.CreateTodo("Level 3", level2.ID)
 			level4, _ := collection.CreateTodo("Level 4", level3.ID)
 			_, _ = collection.CreateTodo("Level 5", level4.ID)
@@ -151,8 +151,8 @@ func TestClean_HierarchyAware(t *testing.T) {
 
 		// Mark both top-level todos as done
 		err := s.Update(func(collection *models.Collection) error {
-			collection.Todos[0].Status = models.StatusDone
-			collection.Todos[1].Status = models.StatusDone
+			collection.Todos[0].Statuses = map[string]string{"completion": string(models.StatusDone)}
+			collection.Todos[1].Statuses = map[string]string{"completion": string(models.StatusDone)}
 			return nil
 		})
 		testutil.AssertNoError(t, err)
@@ -181,7 +181,7 @@ func TestClean_HierarchyAware(t *testing.T) {
 
 		err := s.Update(func(collection *models.Collection) error {
 			parent, _ := collection.CreateTodo("Done parent", "")
-			parent.Status = models.StatusDone
+			parent.Statuses = map[string]string{"completion": string(models.StatusDone)}
 			child1, _ := collection.CreateTodo("Child 1", parent.ID)
 			_, _ = collection.CreateTodo("Grandchild", child1.ID)
 			_, _ = collection.CreateTodo("Child 2", parent.ID)
@@ -220,13 +220,13 @@ func TestClean_HierarchyAware(t *testing.T) {
 		err := s.Update(func(collection *models.Collection) error {
 			// Done parent with mix of done and pending children
 			parent, _ := collection.CreateTodo("Done parent", "")
-			parent.Status = models.StatusDone
+			parent.Statuses = map[string]string{"completion": string(models.StatusDone)}
 
 			pending1, _ := collection.CreateTodo("Pending child 1", parent.ID)
 			_, _ = collection.CreateTodo("Pending grandchild", pending1.ID)
 
 			done1, _ := collection.CreateTodo("Done child", parent.ID)
-			done1.Status = models.StatusDone
+			done1.Statuses = map[string]string{"completion": string(models.StatusDone)}
 
 			_, _ = collection.CreateTodo("Pending child 2", parent.ID)
 
@@ -245,7 +245,7 @@ func TestClean_HierarchyAware(t *testing.T) {
 
 		// Verify reported items are only done ones
 		for _, todo := range result.RemovedTodos {
-			assert.Equal(t, models.StatusDone, todo.Status)
+			assert.Equal(t, models.StatusDone, todo.GetStatus())
 		}
 
 		// Verify all items were actually removed
@@ -263,16 +263,16 @@ func TestClean_HierarchyAware(t *testing.T) {
 			// Pending root with done children
 			root1, _ := collection.CreateTodo("Pending root 1", "")
 			done1, _ := collection.CreateTodo("Done child 1", root1.ID)
-			done1.Status = models.StatusDone
+			done1.Statuses = map[string]string{"completion": string(models.StatusDone)}
 			_, _ = collection.CreateTodo("Pending grandchild 1", done1.ID)
 
 			pending1, _ := collection.CreateTodo("Pending child 2", root1.ID)
 			done2, _ := collection.CreateTodo("Done grandchild", pending1.ID)
-			done2.Status = models.StatusDone
+			done2.Statuses = map[string]string{"completion": string(models.StatusDone)}
 
 			// Done root with pending children
 			root2, _ := collection.CreateTodo("Done root", "")
-			root2.Status = models.StatusDone
+			root2.Statuses = map[string]string{"completion": string(models.StatusDone)}
 			_, _ = collection.CreateTodo("Pending child under done", root2.ID)
 
 			// Another pending root
@@ -320,7 +320,7 @@ func TestClean_HierarchyAware(t *testing.T) {
 			// All children are done
 			for i := 1; i <= 3; i++ {
 				child, _ := collection.CreateTodo(fmt.Sprintf("Done child %d", i), parent.ID)
-				child.Status = models.StatusDone
+				child.Statuses = map[string]string{"completion": string(models.StatusDone)}
 
 				// Add some grandchildren
 				for j := 1; j <= 2; j++ {

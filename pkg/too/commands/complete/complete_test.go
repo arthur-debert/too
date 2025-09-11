@@ -24,7 +24,7 @@ func TestComplete(t *testing.T) {
 		assert.Equal(t, "Test todo 1", result.Todo.Text)
 		assert.Equal(t, "pending", result.OldStatus)
 		assert.Equal(t, "done", result.NewStatus)
-		assert.Equal(t, models.StatusDone, result.Todo.Status)
+		assert.Equal(t, models.StatusDone, result.Todo.GetStatus())
 
 		// Verify it was saved
 		collection, err := store.Load()
@@ -58,7 +58,7 @@ func TestComplete(t *testing.T) {
 		assert.Equal(t, "Sub-task 1.1", result.Todo.Text)
 		assert.Equal(t, "pending", result.OldStatus)
 		assert.Equal(t, "done", result.NewStatus)
-		assert.Equal(t, models.StatusDone, result.Todo.Status)
+		assert.Equal(t, models.StatusDone, result.Todo.GetStatus())
 
 		// Verify parent is still pending
 		collection, err := store.Load()
@@ -76,20 +76,20 @@ func TestComplete(t *testing.T) {
 		if parent == nil {
 			t.FailNow()
 		}
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 		assert.Equal(t, 2, len(parent.Items))
 
 		// Active sibling is now first in slice with position 1
 		sibling := parent.Items[0]
 		assert.Equal(t, "Sub-task 1.2", sibling.Text)
 		assert.Equal(t, 1, sibling.Position)
-		assert.Equal(t, models.StatusPending, sibling.Status)
+		assert.Equal(t, models.StatusPending, sibling.GetStatus())
 
 		// Completed child is now second in slice with position 0
 		completedChild := parent.Items[1]
 		assert.Equal(t, "Sub-task 1.1", completedChild.Text)
 		assert.Equal(t, 0, completedChild.Position)
-		assert.Equal(t, models.StatusDone, completedChild.Status)
+		assert.Equal(t, models.StatusDone, completedChild.GetStatus())
 	})
 
 	t.Run("complete grandchild todo", func(t *testing.T) {
@@ -135,15 +135,15 @@ func TestComplete(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, subtaskWithGrandchild)
-		assert.Equal(t, models.StatusPending, subtaskWithGrandchild.Status, "Parent at 1.2 should remain pending (no auto-completion)")
+		assert.Equal(t, models.StatusPending, subtaskWithGrandchild.GetStatus(), "Parent at 1.2 should remain pending (no auto-completion)")
 
 		// The grandchild should have been completed
 		assert.Equal(t, 1, len(subtaskWithGrandchild.Items))
 		assert.Equal(t, 0, subtaskWithGrandchild.Items[0].Position)
-		assert.Equal(t, models.StatusDone, subtaskWithGrandchild.Items[0].Status)
+		assert.Equal(t, models.StatusDone, subtaskWithGrandchild.Items[0].GetStatus())
 
 		// But top-level parent should remain pending (not all children complete)
-		assert.Equal(t, models.StatusPending, parent.Status, "Parent at 1 should remain pending (1.1 still pending)")
+		assert.Equal(t, models.StatusPending, parent.GetStatus(), "Parent at 1 should remain pending (1.1 still pending)")
 	})
 
 	t.Run("complete invalid position", func(t *testing.T) {

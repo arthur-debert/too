@@ -66,7 +66,7 @@ func (f *formatter) flattenTodos(todos []*models.Todo, parentPath string) [][]st
 			parentPath, // parent column for hierarchy
 			fmt.Sprintf("%d", todo.Position),
 			todo.Text,
-			string(todo.Status),
+			string(todo.GetStatus()),
 			todo.Modified.Format("2006-01-02T15:04:05"),
 		}
 		rows = append(rows, row)
@@ -96,7 +96,7 @@ func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
 		"",
 		fmt.Sprintf("%d", result.Todo.Position),
 		result.Todo.Text,
-		string(result.Todo.Status),
+		string(result.Todo.GetStatus()),
 		result.Todo.Modified.Format("2006-01-02T15:04:05"),
 		result.OldText,
 	}}
@@ -154,7 +154,7 @@ func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
 			"",
 			fmt.Sprintf("%d", todo.Position),
 			todo.Text,
-			string(todo.Status),
+			string(todo.GetStatus()),
 			todo.Modified.Format("2006-01-02T15:04:05"),
 			matched,
 		}
@@ -233,7 +233,7 @@ func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
 		result.Todo.Text,
 		result.OldPath,
 		result.NewPath,
-		string(result.Todo.Status),
+		string(result.Todo.GetStatus()),
 	}}
 	return f.writeCSV(w, headers, rows)
 }

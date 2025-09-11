@@ -49,8 +49,8 @@ func AssertTodoCount(t *testing.T, result *store.FindResult, expectedTotal, expe
 func AssertTodoHasStatus(t *testing.T, todo *models.Todo, expectedStatus models.TodoStatus) {
 	t.Helper()
 
-	if todo.Status != expectedStatus {
-		t.Errorf("expected todo %q to have status %q, got %q", todo.Text, expectedStatus, todo.Status)
+	if todo.GetStatus() != expectedStatus {
+		t.Errorf("expected todo %q to have status %q, got %q", todo.Text, expectedStatus, todo.GetStatus())
 	}
 }
 

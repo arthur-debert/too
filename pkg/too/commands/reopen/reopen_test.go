@@ -25,7 +25,7 @@ func TestReopen(t *testing.T) {
 		// Find the done todo
 		var doneTodo *models.Todo
 		for _, todo := range collection.Todos {
-			if todo.Status == models.StatusDone {
+			if todo.GetStatus() == models.StatusDone {
 				doneTodo = todo
 				break
 			}
@@ -42,7 +42,7 @@ func TestReopen(t *testing.T) {
 		assert.Equal(t, "Test todo 1", result.Todo.Text)
 		assert.Equal(t, "done", result.OldStatus)
 		assert.Equal(t, "pending", result.NewStatus)
-		assert.Equal(t, models.StatusPending, result.Todo.Status)
+		assert.Equal(t, models.StatusPending, result.Todo.GetStatus())
 
 		// Verify it was saved
 		collection, err = store.Load()
@@ -72,7 +72,7 @@ func TestReopen(t *testing.T) {
 		if child == nil {
 			t.FailNow()
 		}
-		child.Status = models.StatusDone
+		child.Statuses = map[string]string{"completion": string(models.StatusDone)}
 		collection.Reorder()
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
@@ -89,7 +89,7 @@ func TestReopen(t *testing.T) {
 		assert.Equal(t, "Sub-task 1.1", result.Todo.Text)
 		assert.Equal(t, "done", result.OldStatus)
 		assert.Equal(t, "pending", result.NewStatus)
-		assert.Equal(t, models.StatusPending, result.Todo.Status)
+		assert.Equal(t, models.StatusPending, result.Todo.GetStatus())
 
 		// Verify parent remains unchanged
 		collection, err = store.Load()
@@ -105,11 +105,11 @@ func TestReopen(t *testing.T) {
 		if parent == nil {
 			t.FailNow()
 		}
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 
 		// Verify only the specific child was reopened
 		child = parent.Items[0]
-		assert.Equal(t, models.StatusPending, child.Status)
+		assert.Equal(t, models.StatusPending, child.GetStatus())
 	})
 
 	t.Run("reopen grandchild todo", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestReopen(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, item)
-		item.Status = models.StatusDone
+		item.Statuses = map[string]string{"completion": string(models.StatusDone)}
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
@@ -154,7 +154,7 @@ func TestReopen(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, item)
-		assert.Equal(t, models.StatusPending, item.Status)
+		assert.Equal(t, models.StatusPending, item.GetStatus())
 
 		// Verify no propagation happened
 		var parent *models.Todo
@@ -169,8 +169,8 @@ func TestReopen(t *testing.T) {
 		if parent == nil {
 			t.FailNow()
 		}
-		assert.Equal(t, models.StatusPending, parent.Status)
-		assert.Equal(t, models.StatusPending, parent.Items[1].Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
+		assert.Equal(t, models.StatusPending, parent.Items[1].GetStatus())
 	})
 
 	t.Run("reopen invalid position", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestReopen(t *testing.T) {
 		assert.Equal(t, "Already pending", result.Todo.Text)
 		assert.Equal(t, "pending", result.OldStatus)
 		assert.Equal(t, "pending", result.NewStatus)
-		assert.Equal(t, models.StatusPending, result.Todo.Status)
+		assert.Equal(t, models.StatusPending, result.Todo.GetStatus())
 	})
 
 	t.Run("reopen with parent done", func(t *testing.T) {
@@ -218,9 +218,9 @@ func TestReopen(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, parent)
-		parent.Status = models.StatusDone
+		parent.Statuses = map[string]string{"completion": string(models.StatusDone)}
 		child := parent.Items[0]
-		child.Status = models.StatusDone
+		child.Statuses = map[string]string{"completion": string(models.StatusDone)}
 		err = store.Save(collection)
 		testutil.AssertNoError(t, err)
 
@@ -245,10 +245,10 @@ func TestReopen(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, parent)
-		assert.Equal(t, models.StatusDone, parent.Status)
+		assert.Equal(t, models.StatusDone, parent.GetStatus())
 
 		// Verify child is now pending
 		child = parent.Items[0]
-		assert.Equal(t, models.StatusPending, child.Status)
+		assert.Equal(t, models.StatusPending, child.GetStatus())
 	})
 }

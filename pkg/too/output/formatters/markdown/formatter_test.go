@@ -27,7 +27,8 @@ func TestMarkdownFormatter(t *testing.T) {
 			Todo: &models.Todo{
 				Position: 1,
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 
@@ -45,22 +46,24 @@ func TestMarkdownFormatter(t *testing.T) {
 				{
 					Position: 1,
 					Text:     "Parent todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items: []*models.Todo{
 						{
 							Position: 1,
 							Text:     "Child todo 1",
-							Status:   models.StatusDone,
+							Statuses: map[string]string{"completion": string(models.StatusDone)},
+							Items:    []*models.Todo{},
 						},
 						{
 							Position: 2,
 							Text:     "Child todo 2",
-							Status:   models.StatusPending,
+							Statuses: map[string]string{"completion": string(models.StatusPending)},
 							Items: []*models.Todo{
 								{
 									Position: 1,
 									Text:     "Grandchild todo",
-									Status:   models.StatusPending,
+									Statuses: map[string]string{"completion": string(models.StatusPending)},
+									Items:    []*models.Todo{},
 								},
 							},
 						},
@@ -69,7 +72,8 @@ func TestMarkdownFormatter(t *testing.T) {
 				{
 					Position: 2,
 					Text:     "Second parent",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
+					Items:    []*models.Todo{},
 				},
 			},
 			TotalCount: 5,
@@ -113,7 +117,8 @@ func TestMarkdownFormatter(t *testing.T) {
 				Todo: &models.Todo{
 					Position: 1,
 					Text:     "Completed todo",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
+					Items:    []*models.Todo{},
 				},
 			},
 		}
@@ -130,7 +135,8 @@ func TestMarkdownFormatter(t *testing.T) {
 				{
 					Position: 3,
 					Text:     "Matching todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 			},
 		}
@@ -205,22 +211,25 @@ func TestMarkdownFormatter(t *testing.T) {
 				{
 					Position: 1,
 					Text:     "Single line todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 				{
 					Position: 2,
 					Text:     "Multi-line todo\nSecond line\nThird line",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 				{
 					Position: 3,
 					Text:     "Nested parent",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items: []*models.Todo{
 						{
 							Position: 1,
 							Text:     "Nested child with\nmultiple lines",
-							Status:   models.StatusPending,
+							Statuses: map[string]string{"completion": string(models.StatusPending)},
+							Items:    []*models.Todo{},
 						},
 					},
 				},
@@ -255,7 +264,8 @@ func TestMarkdownFormatter(t *testing.T) {
 			Todo: &models.Todo{
 				Position: 1,
 				Text:     "New todo with\nmultiple lines",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 
@@ -286,7 +296,8 @@ func TestMarkdownFormatterBehavior(t *testing.T) {
 				{
 					Position: 1,
 					Text:     "Test todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 			},
 			TotalCount: 1,

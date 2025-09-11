@@ -109,7 +109,8 @@ func TestReorderTodos(t *testing.T) {
 			ID:       "test-id",
 			Position: 10,
 			Text:     "Test todo",
-			Status:   models.StatusPending,
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
+			Items:    []*models.Todo{},
 		}
 		todos := []*models.Todo{todo}
 
@@ -118,17 +119,17 @@ func TestReorderTodos(t *testing.T) {
 		assert.Equal(t, 1, todo.Position) // Only position changed
 		assert.Equal(t, "test-id", todo.ID)
 		assert.Equal(t, "Test todo", todo.Text)
-		assert.Equal(t, models.StatusPending, todo.Status)
+		assert.Equal(t, models.StatusPending, todo.GetStatus())
 	})
 	t.Run("recursively reorders nested todos", func(t *testing.T) {
 		// Create a nested structure with position gaps at each level
 		todos := []*models.Todo{
 			{ID: "1", Position: 5, Text: "Parent 1", Items: []*models.Todo{
-				{ID: "1.1", Position: 3, Text: "Child 1.1"},
-				{ID: "1.2", Position: 1, Text: "Child 1.2"},
+				{ID: "1.1", Position: 3, Text: "Child 1.1", Items: []*models.Todo{}},
+				{ID: "1.2", Position: 1, Text: "Child 1.2", Items: []*models.Todo{}},
 			}},
 			{ID: "2", Position: 2, Text: "Parent 2", Items: []*models.Todo{
-				{ID: "2.1", Position: 10, Text: "Child 2.1"},
+				{ID: "2.1", Position: 10, Text: "Child 2.1", Items: []*models.Todo{}},
 			}},
 		}
 
@@ -158,10 +159,10 @@ func TestCollectionReorder(t *testing.T) {
 	t.Run("reorders only active todos", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 5, Text: "First", Status: models.StatusDone},
-				{ID: "2", Position: 2, Text: "Second", Status: models.StatusPending},
-				{ID: "3", Position: 8, Text: "Third", Status: models.StatusPending},
-				{ID: "4", Position: 4, Text: "Fourth", Status: models.StatusDone},
+				{ID: "1", Position: 5, Text: "First", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "2", Position: 2, Text: "Second", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "3", Position: 8, Text: "Third", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "4", Position: 4, Text: "Fourth", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -183,9 +184,9 @@ func TestCollectionReorder(t *testing.T) {
 	t.Run("reorders all pending todos", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 5, Text: "First", Status: models.StatusPending},
-				{ID: "2", Position: 2, Text: "Second", Status: models.StatusPending},
-				{ID: "3", Position: 8, Text: "Third", Status: models.StatusPending},
+				{ID: "1", Position: 5, Text: "First", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "2", Position: 2, Text: "Second", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "3", Position: 8, Text: "Third", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -213,8 +214,8 @@ func TestCollectionReorder(t *testing.T) {
 	t.Run("handles all done todos", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "First", Status: models.StatusDone},
-				{ID: "2", Position: 2, Text: "Second", Status: models.StatusDone},
+				{ID: "1", Position: 1, Text: "First", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "2", Position: 2, Text: "Second", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 

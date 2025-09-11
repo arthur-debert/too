@@ -49,9 +49,10 @@ func LoadTodosWithMigration(data []byte) ([]*models.Todo, error) {
 		for i, mixed := range mixedTodos {
 			todo := &models.Todo{
 				Text:     mixed.Text,
-				Status:   mixed.Status,
+				Statuses: map[string]string{"completion": string(mixed.Status)},
 				Modified: mixed.Modified,
 				Position: mixed.Position,
+				Items:    []*models.Todo{},
 			}
 
 			// Handle different ID types
@@ -97,8 +98,9 @@ func LoadTodosWithMigration(data []byte) ([]*models.Todo, error) {
 			ID:       uuid.New().String(),
 			Position: int(legacy.ID), // Use old ID as position
 			Text:     legacy.Text,
-			Status:   legacy.Status,
+			Statuses: map[string]string{"completion": string(legacy.Status)},
 			Modified: legacy.Modified,
+			Items:    []*models.Todo{},
 		}
 		todos = append(todos, todo)
 	}

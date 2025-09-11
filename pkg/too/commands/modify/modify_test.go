@@ -168,7 +168,7 @@ func TestModifyCommand(t *testing.T) {
 		assert.Equal(t, "Active todo (modified)", result.NewText)
 
 		// Verify status and position are preserved
-		assert.Equal(t, models.StatusPending, result.Todo.Status)
+		assert.Equal(t, models.StatusPending, result.Todo.GetStatus())
 		// Note: In the test setup, done todos may not have position 0
 		// This is a limitation of the test setup, not the actual behavior
 
@@ -185,6 +185,6 @@ func TestModifyCommand(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, modifiedTodo)
-		assert.Equal(t, models.StatusPending, modifiedTodo.Status)
+		assert.Equal(t, models.StatusPending, modifiedTodo.GetStatus())
 	})
 }

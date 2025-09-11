@@ -209,11 +209,6 @@ func (a *WorkflowTodoAdapter) SetItemStatus(uid, dimension, value string) error 
 	// Set the status dimension
 	todo.Statuses[dimension] = value
 	
-	// For backward compatibility, update legacy status field if this is the completion dimension
-	if dimension == "completion" {
-		todo.Status = models.TodoStatus(value)
-	}
-	
 	// Update modified timestamp when status changes
 	todo.SetModified()
 	
@@ -240,11 +235,6 @@ func (a *WorkflowTodoAdapter) GetItemStatus(uid, dimension string) (string, erro
 		return value, nil
 	}
 	
-	// For backward compatibility, check legacy status field for completion dimension
-	if dimension == "completion" {
-		return string(todo.Status), nil
-	}
-	
 	return "", fmt.Errorf("dimension %s not found for todo %s", dimension, uid)
 }
 
@@ -264,9 +254,9 @@ func (a *WorkflowTodoAdapter) GetItemStatuses(uid string) (map[string]string, er
 		result[k] = v
 	}
 	
-	// Ensure completion dimension is always available for backward compatibility
+	// Ensure completion dimension is always available
 	if _, exists := result["completion"]; !exists {
-		result["completion"] = string(todo.Status)
+		result["completion"] = string(models.StatusPending)
 	}
 	
 	return result, nil
@@ -285,11 +275,6 @@ func (a *WorkflowTodoAdapter) SetMultipleStatuses(uid string, statuses map[strin
 	// Set all the status dimensions
 	for dimension, value := range statuses {
 		todo.Statuses[dimension] = value
-		
-		// For backward compatibility, update legacy status field if this is the completion dimension
-		if dimension == "completion" {
-			todo.Status = models.TodoStatus(value)
-		}
 	}
 	
 	return nil

@@ -135,7 +135,8 @@ func TestRendererMethods(t *testing.T) {
 			Todo: &models.Todo{
 				Position: 1,
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 		err := renderer.RenderAdd(result)
@@ -151,12 +152,14 @@ func TestRendererMethods(t *testing.T) {
 				{
 					Position: 1,
 					Text:     "First todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 				{
 					Position: 2,
 					Text:     "Second todo",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
+					Items:    []*models.Todo{},
 				},
 			},
 			TotalCount: 2,

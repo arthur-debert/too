@@ -9,6 +9,7 @@ import (
 )
 
 // TodoStatus represents the status of a todo item
+// DEPRECATED: Use workflow statuses instead
 type TodoStatus string
 
 const (
@@ -20,11 +21,10 @@ const (
 
 // Todo represents a single task in the to-do list.
 type Todo struct {
-	ID       string            `json:"id"`       // UUID for stable internal reference
-	ParentID string            `json:"parentId"` // UUID of parent item, empty for top-level items
-	Position int               `json:"position"` // Sequential position relative to siblings
+	ID       string            `json:"id"`                 // UUID for stable internal reference
+	ParentID string            `json:"parentId"`           // UUID of parent item, empty for top-level items
+	Position int               `json:"position,omitempty"` // Position managed by IDM
 	Text     string            `json:"text"`
-	Status   TodoStatus        `json:"status"`             // Legacy status field for backward compatibility
 	Statuses map[string]string `json:"statuses,omitempty"` // Multi-dimensional status for workflow features
 	Modified time.Time         `json:"modified"`
 	Items    []*Todo           `json:"items"` // Child todo items
@@ -49,7 +49,6 @@ func (c *Collection) CreateTodo(text string, parentID string) (*Todo, error) {
 		ID:       uuid.New().String(),
 		ParentID: parentID,
 		Text:     text,
-		Status:   StatusPending, // Keep for backward compatibility
 		Statuses: map[string]string{"completion": string(StatusPending)}, // Set workflow status
 		Modified: time.Now(),
 		Items:    []*Todo{},
@@ -90,9 +89,14 @@ func (t *Todo) Clone() *Todo {
 		ParentID: t.ParentID,
 		Position: t.Position,
 		Text:     t.Text,
-		Status:   t.Status,
+		Statuses: make(map[string]string),
 		Modified: t.Modified,
 		Items:    make([]*Todo, len(t.Items)),
+	}
+
+	// Clone statuses map
+	for k, v := range t.Statuses {
+		clone.Statuses[k] = v
 	}
 
 	// Deep clone child items
@@ -107,22 +111,17 @@ func (t *Todo) Clone() *Todo {
 func (t *Todo) EnsureStatuses() {
 	if t.Statuses == nil {
 		t.Statuses = make(map[string]string)
-		// Migrate legacy status to completion dimension for backward compatibility
-		t.Statuses["completion"] = string(t.Status)
+		// Default to pending status
+		t.Statuses["completion"] = string(StatusPending)
 	}
 }
 
-// GetWorkflowStatus gets a status dimension value, with fallback to legacy status for completion.
+// GetWorkflowStatus gets a status dimension value.
 func (t *Todo) GetWorkflowStatus(dimension string) (string, bool) {
 	t.EnsureStatuses()
 	
 	if value, exists := t.Statuses[dimension]; exists {
 		return value, true
-	}
-	
-	// Fallback for completion dimension to legacy status field
-	if dimension == "completion" {
-		return string(t.Status), true
 	}
 	
 	return "", false
@@ -134,14 +133,13 @@ func (t *Todo) SetModified() {
 }
 
 // GetStatus returns the todo's completion status from the workflow statuses.
-// This maintains backward compatibility by deriving status from the completion dimension.
 func (t *Todo) GetStatus() TodoStatus {
 	t.EnsureStatuses()
 	if status, exists := t.Statuses["completion"]; exists {
 		return TodoStatus(status)
 	}
-	// Fallback to legacy Status field if Statuses map doesn't have completion
-	return t.Status
+	// Default to pending if no status set
+	return StatusPending
 }
 
 // IsComplete returns true if the todo is marked as done.
@@ -319,9 +317,14 @@ func filterTodos(todos []*Todo, predicate func(*Todo) bool, recurseIntoDone bool
 				ParentID: todo.ParentID,
 				Position: todo.Position,
 				Text:     todo.Text,
-				Status:   todo.Status,
+				Statuses: make(map[string]string),
 				Modified: todo.Modified,
 				Items:    []*Todo{},
+			}
+
+			// Clone statuses map
+			for k, v := range todo.Statuses {
+				filteredTodo.Statuses[k] = v
 			}
 
 			// If this todo is done and we're not recursing into done items,

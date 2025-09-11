@@ -18,7 +18,7 @@ func TestLoadTodosWithMigration(t *testing.T) {
 				ID:       "550e8400-e29b-41d4-a716-446655440000",
 				Position: 1,
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Modified: time.Now(),
 			},
 		}
@@ -64,13 +64,13 @@ func TestLoadTodosWithMigration(t *testing.T) {
 		assert.NotEmpty(t, loaded[0].ID) // Should have UUID
 		assert.Equal(t, 1, loaded[0].Position)
 		assert.Equal(t, "First todo", loaded[0].Text)
-		assert.Equal(t, models.StatusPending, loaded[0].Status)
+		assert.Equal(t, models.StatusPending, loaded[0].GetStatus())
 
 		// Second todo
 		assert.NotEmpty(t, loaded[1].ID) // Should have UUID
 		assert.Equal(t, 5, loaded[1].Position)
 		assert.Equal(t, "Second todo", loaded[1].Text)
-		assert.Equal(t, models.StatusDone, loaded[1].Status)
+		assert.Equal(t, models.StatusDone, loaded[1].GetStatus())
 	})
 
 	t.Run("handles empty data", func(t *testing.T) {

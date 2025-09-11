@@ -39,7 +39,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err = s.Load()
 		testutil.AssertNoError(t, err)
 		parent = collection.Todos[0]
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 
 		// Complete the second child (now at position 1.1 after reordering)
 		result, err = complete.Execute("1.1", complete.Options{
@@ -52,7 +52,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err = s.Load()
 		testutil.AssertNoError(t, err)
 		parent = collection.Todos[0]
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 	})
 
 	t.Run("should not complete parent if it has no children", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		// Just verify it completes normally
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, models.StatusDone, collection.Todos[0].Status)
+		assert.Equal(t, models.StatusDone, collection.Todos[0].GetStatus())
 	})
 
 	t.Run("should handle multi-level completion without auto-completion", func(t *testing.T) {
@@ -110,10 +110,10 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, subTask2, "Sub-task 1.2 should exist")
-		assert.Equal(t, models.StatusPending, subTask2.Status)
+		assert.Equal(t, models.StatusPending, subTask2.GetStatus())
 
 		// And verify parent remains pending (no auto-completion)
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 	})
 
 	t.Run("should complete all children without affecting parent", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
 		parent := collection.Todos[0]
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 
 		// Complete the last child (now at position 1)
 		_, err = complete.Execute("1.1", complete.Options{
@@ -162,7 +162,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err = s.Load()
 		testutil.AssertNoError(t, err)
 		parent = collection.Todos[0]
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 	})
 
 	t.Run("should handle complex nested hierarchy without auto-completion", func(t *testing.T) {
@@ -209,10 +209,10 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, phase1)
-		assert.Equal(t, models.StatusPending, phase1.Status)
+		assert.Equal(t, models.StatusPending, phase1.GetStatus())
 
 		// Project should remain pending
-		assert.Equal(t, models.StatusPending, project.Status)
+		assert.Equal(t, models.StatusPending, project.GetStatus())
 
 		// Complete Task C
 		_, err = complete.Execute("1.2.1", complete.Options{CollectionPath: s.Path()})
@@ -222,9 +222,9 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err = s.Load()
 		testutil.AssertNoError(t, err)
 		project = collection.Todos[0]
-		assert.Equal(t, models.StatusPending, project.Status)
+		assert.Equal(t, models.StatusPending, project.GetStatus())
 		for _, item := range project.Items {
-			assert.Equal(t, models.StatusPending, item.Status)
+			assert.Equal(t, models.StatusPending, item.GetStatus())
 		}
 	})
 
@@ -261,7 +261,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err := s.Load()
 		testutil.AssertNoError(t, err)
 		parent := collection.Todos[0]
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 
 		// After completing childless child, the child with grandchildren is now at position 1
 		// Complete grandchildren
@@ -280,7 +280,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		collection, err = s.Load()
 		testutil.AssertNoError(t, err)
 		parent = collection.Todos[0]
-		assert.Equal(t, models.StatusPending, parent.Status)
+		assert.Equal(t, models.StatusPending, parent.GetStatus())
 
 		// Verify child statuses by text since positions may vary
 		var childlessChild, childWithGrandchildren *models.Todo
@@ -293,8 +293,8 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 		}
 		assert.NotNil(t, childlessChild)
 		assert.NotNil(t, childWithGrandchildren)
-		assert.Equal(t, models.StatusDone, childlessChild.Status)
-		assert.Equal(t, models.StatusPending, childWithGrandchildren.Status) // Parent of completed grandchildren remains pending
+		assert.Equal(t, models.StatusDone, childlessChild.GetStatus())
+		assert.Equal(t, models.StatusPending, childWithGrandchildren.GetStatus()) // Parent of completed grandchildren remains pending
 	})
 
 	t.Run("should handle root level items without panic", func(t *testing.T) {
@@ -349,7 +349,7 @@ func TestExecute_BottomUpCompletion(t *testing.T) {
 			}
 		}
 		assert.NotNil(t, rootWithChildren, "Root with children should exist")
-		assert.Equal(t, models.StatusPending, rootWithChildren.Status)
+		assert.Equal(t, models.StatusPending, rootWithChildren.GetStatus())
 		assert.Equal(t, "", rootWithChildren.ParentID) // Verify it's still at root
 	})
 }

@@ -11,6 +11,7 @@ func CreateTestTodo(position int, text string, status models.TodoStatus) *models
 		ID:       uuid.New().String(),
 		Position: position,
 		Text:     text,
-		Status:   status,
+		Statuses: map[string]string{"completion": string(status)},
+		Items:    []*models.Todo{},
 	}
 }

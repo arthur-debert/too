@@ -52,7 +52,8 @@ func CreateStoreWithSpecs(t *testing.T, specs []TodoSpec) store.Store {
 
 	for _, spec := range specs {
 		todo, _ := collection.CreateTodo(spec.Text, "")
-		todo.Status = spec.Status
+		todo.EnsureStatuses()
+		todo.Statuses["completion"] = string(spec.Status)
 	}
 
 	if err := s.Save(collection); err != nil {
@@ -92,10 +93,11 @@ func addTodoFromSpec(t *testing.T, collection *models.Collection, spec TodoSpec,
 		t.Fatalf("failed to create todo from spec: %v", err)
 	}
 	// Set status, defaulting to pending if not specified
+	todo.EnsureStatuses()
 	if spec.Status != "" {
-		todo.Status = spec.Status
+		todo.Statuses["completion"] = string(spec.Status)
 	} else {
-		todo.Status = models.StatusPending
+		todo.Statuses["completion"] = string(models.StatusPending)
 	}
 
 	for _, childSpec := range spec.Children {

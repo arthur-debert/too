@@ -25,7 +25,7 @@ func TestAddCommand(t *testing.T) {
 		assert.NotNil(t, result.Todo)
 		assert.Equal(t, "My first todo", result.Todo.Text)
 		assert.Equal(t, 1, result.Todo.Position)
-		assert.Equal(t, models.StatusPending, result.Todo.Status)
+		assert.Equal(t, models.StatusPending, result.Todo.GetStatus())
 
 		// Verify it was saved using testutil
 		collection, err := store.Load()
@@ -259,7 +259,7 @@ func TestAddCommand(t *testing.T) {
 		// Count active todos and verify positions
 		activeCount := 0
 		for _, todo := range collection.Todos {
-			if todo.Status == models.StatusPending {
+			if todo.GetStatus() == models.StatusPending {
 				activeCount++
 				assert.Greater(t, todo.Position, 0, "Active todo should have position > 0")
 			} else {
@@ -421,7 +421,7 @@ func TestAddCommandWithParent(t *testing.T) {
 		parent, _ := collection.CreateTodo("Parent", "")
 		_, _ = collection.CreateTodo("Active child", parent.ID)
 		child2, _ := collection.CreateTodo("Done child", parent.ID)
-		child2.Status = models.StatusDone
+		child2.Statuses = map[string]string{"completion": string(models.StatusDone)}
 		child2.Position = 0 // Done items have position 0
 		child3, _ := collection.CreateTodo("Another active", parent.ID)
 		child3.Position = 2 // Should be renumbered after done child
@@ -449,7 +449,7 @@ func TestAddCommandWithParent(t *testing.T) {
 
 		// Check positions
 		for _, child := range parent.Items {
-			if child.Status == models.StatusDone {
+			if child.GetStatus() == models.StatusDone {
 				assert.Equal(t, 0, child.Position, "Done child should have position 0")
 			} else {
 				assert.Greater(t, child.Position, 0, "Active child should have position > 0")

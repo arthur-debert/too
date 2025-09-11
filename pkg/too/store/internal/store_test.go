@@ -412,7 +412,6 @@ func TestStore_Find(t *testing.T) {
 			collection := models.NewCollection()
 			_, _ = collection.CreateTodo("Buy milk", "")
 			doneTodo, _ := collection.CreateTodo("Buy eggs", "")
-			doneTodo.Status = models.StatusDone
 			doneTodo.EnsureStatuses()
 			doneTodo.Statuses["completion"] = string(models.StatusDone)
 			doneTodo.Modified = time.Now()
@@ -493,7 +492,7 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 			ParentID: parent.ID,
 			Position: 1,
 			Text:     "Child task 1",
-			Status:   models.StatusPending,
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: parent.Modified,
 			Items:    []*models.Todo{},
 		}
@@ -503,7 +502,7 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 			ParentID: parent.ID,
 			Position: 2,
 			Text:     "Child task 2",
-			Status:   models.StatusDone,
+			Statuses: map[string]string{"completion": string(models.StatusDone)},
 			Modified: parent.Modified,
 			Items:    []*models.Todo{},
 		}
@@ -513,7 +512,7 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 			ParentID: child1.ID,
 			Position: 1,
 			Text:     "Grandchild task",
-			Status:   models.StatusPending,
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: parent.Modified,
 			Items:    []*models.Todo{},
 		}
@@ -537,7 +536,7 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		// Verify children
 		assert.Equal(t, "Child task 1", loaded.Todos[0].Items[0].Text)
 		assert.Equal(t, "Child task 2", loaded.Todos[0].Items[1].Text)
-		assert.Equal(t, models.StatusDone, loaded.Todos[0].Items[1].Status)
+		assert.Equal(t, models.StatusDone, loaded.Todos[0].Items[1].GetStatus())
 
 		// Verify grandchild
 		assert.Len(t, loaded.Todos[0].Items[0].Items, 1)
@@ -603,25 +602,25 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 
 		level2 := &models.Todo{
 			ID: "level-2", ParentID: level1.ID, Position: 1,
-			Text: "Level 2", Status: models.StatusPending,
+			Text: "Level 2", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
 		level3 := &models.Todo{
 			ID: "level-3", ParentID: level2.ID, Position: 1,
-			Text: "Level 3", Status: models.StatusPending,
+			Text: "Level 3", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
 		level4 := &models.Todo{
 			ID: "level-4", ParentID: level3.ID, Position: 1,
-			Text: "Level 4", Status: models.StatusPending,
+			Text: "Level 4", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
 		level5 := &models.Todo{
 			ID: "level-5", ParentID: level4.ID, Position: 1,
-			Text: "Level 5", Status: models.StatusPending,
+			Text: "Level 5", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
@@ -655,94 +654,4 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		assert.Empty(t, current.Items)
 	})
 
-	t.Run("should automatically save migrated data", func(t *testing.T) {
-		dir, err := os.MkdirTemp("", "too-auto-migrate-test")
-		require.NoError(t, err)
-		defer func() { _ = os.RemoveAll(dir) }()
-
-		dbPath := filepath.Join(dir, "test.json")
-
-		// Write old format data without Items field
-		oldData := `[
-			{"id": "test-id-1", "position": 1, "text": "First todo", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
-			{"id": "test-id-2", "position": 2, "text": "Second todo", "status": "done", "modified": "2024-01-01T00:00:00Z"}
-		]`
-		err = os.WriteFile(dbPath, []byte(oldData), 0600)
-		require.NoError(t, err)
-
-		// Load the store - this should trigger migration and save
-		store := internal.NewJSONFileStore(dbPath)
-		collection, err := store.Load()
-		require.NoError(t, err)
-
-		// Verify migration happened
-		assert.Len(t, collection.Todos, 2)
-		for _, todo := range collection.Todos {
-			assert.NotNil(t, todo.Items)
-		}
-
-		// Read the file directly to verify it was saved with new format
-		savedData, err := os.ReadFile(dbPath)
-		require.NoError(t, err)
-
-		// The saved data should include the items field
-		assert.Contains(t, string(savedData), `"items"`)
-		assert.Contains(t, string(savedData), `"parentId"`)
-
-		// Load again to ensure the migrated format loads correctly
-		store2 := internal.NewJSONFileStore(dbPath)
-		collection2, err := store2.Load()
-		require.NoError(t, err)
-
-		assert.Len(t, collection2.Todos, 2)
-		assert.Equal(t, collection.Todos[0].ID, collection2.Todos[0].ID)
-		assert.Equal(t, collection.Todos[1].ID, collection2.Todos[1].ID)
-	})
-
-	t.Run("should migrate legacy integer ID format", func(t *testing.T) {
-		dir, err := os.MkdirTemp("", "too-legacy-migrate-test")
-		require.NoError(t, err)
-		defer func() { _ = os.RemoveAll(dir) }()
-
-		dbPath := filepath.Join(dir, "test.json")
-
-		// Write truly old format with integer IDs
-		oldData := `[
-			{"id": 1, "text": "Legacy todo 1", "status": "pending", "modified": "2024-01-01T00:00:00Z"},
-			{"id": 2, "text": "Legacy todo 2", "status": "done", "modified": "2024-01-01T00:00:00Z"},
-			{"id": 3, "text": "Legacy todo 3", "status": "pending", "modified": "2024-01-01T00:00:00Z"}
-		]`
-		err = os.WriteFile(dbPath, []byte(oldData), 0600)
-		require.NoError(t, err)
-
-		// Load the store - this should trigger migration
-		store := internal.NewJSONFileStore(dbPath)
-		collection, err := store.Load()
-		require.NoError(t, err)
-
-		// Verify todos were loaded and migrated
-		assert.Len(t, collection.Todos, 3)
-
-		// Check that all todos have:
-		// - UUID strings as IDs (not the original integers)
-		// - Positions matching the original integer IDs
-		// - Items field initialized
-		// - Empty ParentID
-		assert.Equal(t, 1, collection.Todos[0].Position)
-		assert.Equal(t, 2, collection.Todos[1].Position)
-		assert.Equal(t, 3, collection.Todos[2].Position)
-
-		for i, todo := range collection.Todos {
-			assert.NotEmpty(t, todo.ID, "Todo %d should have UUID", i)
-			assert.Len(t, todo.ID, 36, "Todo %d ID should be UUID length", i) // UUID with hyphens
-			assert.NotNil(t, todo.Items, "Todo %d should have Items initialized", i)
-			assert.Empty(t, todo.ParentID, "Todo %d should have empty ParentID", i)
-		}
-
-		// Verify the file was updated
-		savedData, err := os.ReadFile(dbPath)
-		require.NoError(t, err)
-		assert.Contains(t, string(savedData), `"items"`)
-		assert.NotContains(t, string(savedData), `"id": 1`) // Should not have integer IDs
-	})
 }

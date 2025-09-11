@@ -29,7 +29,8 @@ func TestCSVFormatter(t *testing.T) {
 				ID:       "123",
 				Position: 1,
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 
@@ -61,13 +62,15 @@ func TestCSVFormatter(t *testing.T) {
 					ID:       "1",
 					Position: 1,
 					Text:     "First todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 				{
 					ID:       "2",
 					Position: 2,
 					Text:     "Second todo, with comma",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
+					Items:    []*models.Todo{},
 				},
 			},
 			TotalCount: 2,
@@ -151,19 +154,20 @@ func TestCSVFormatter(t *testing.T) {
 					ID:       "1",
 					Position: 1,
 					Text:     "Parent todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items: []*models.Todo{
 						{
 							ID:       "1.1",
 							Position: 1,
 							Text:     "Child todo",
-							Status:   models.StatusPending,
+							Statuses: map[string]string{"completion": string(models.StatusPending)},
 							Items: []*models.Todo{
 								{
 									ID:       "1.1.1",
 									Position: 1,
 									Text:     "Grandchild todo",
-									Status:   models.StatusPending,
+									Statuses: map[string]string{"completion": string(models.StatusPending)},
+									Items:    []*models.Todo{},
 								},
 							},
 						},
@@ -198,7 +202,8 @@ func TestCSVFormatter(t *testing.T) {
 				ID:       "123",
 				Position: 1,
 				Text:     "Todo with\nnewline",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 
@@ -221,7 +226,8 @@ func TestCSVFormatter(t *testing.T) {
 				ID:       "123",
 				Position: 1,
 				Text:     `Todo with "quotes", commas, and 'apostrophes'`,
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 
@@ -244,7 +250,8 @@ func TestCSVFormatter(t *testing.T) {
 				ID:       "123",
 				Position: 3,
 				Text:     "Moved todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 			OldPath: "1",
 			NewPath: "3",

@@ -23,7 +23,8 @@ func TestJSONFormatterBehavior(t *testing.T) {
 			Todo: &models.Todo{
 				Position: 1,
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 

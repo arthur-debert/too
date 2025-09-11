@@ -27,7 +27,8 @@ func TestJSONFormatter(t *testing.T) {
 			Todo: &models.Todo{
 				Position: 1,
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
+				Items:    []*models.Todo{},
 			},
 		}
 
@@ -49,12 +50,14 @@ func TestJSONFormatter(t *testing.T) {
 				{
 					Position: 1,
 					Text:     "First todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					Items:    []*models.Todo{},
 				},
 				{
 					Position: 2,
 					Text:     "Second todo",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
+					Items:    []*models.Todo{},
 				},
 			},
 			TotalCount: 2,
@@ -94,7 +97,8 @@ func TestJSONFormatter(t *testing.T) {
 				Todo: &models.Todo{
 					Position: 1,
 					Text:     "Completed todo",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
+					Items:    []*models.Todo{},
 				},
 			},
 		}
@@ -142,12 +146,13 @@ func TestJSONFormatter(t *testing.T) {
 				{
 					Position: 1,
 					Text:     "Parent todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items: []*models.Todo{
 						{
 							Position: 1,
 							Text:     "Child todo",
-							Status:   models.StatusPending,
+							Statuses: map[string]string{"completion": string(models.StatusPending)},
+							Items:    []*models.Todo{},
 						},
 					},
 				},

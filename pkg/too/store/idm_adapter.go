@@ -220,10 +220,8 @@ func (a *IDMStoreAdapter) SetStatus(uid, status string) error {
 	switch status {
 	case idm.StatusActive:
 		todo.Statuses["completion"] = string(models.StatusPending)
-		todo.Status = models.StatusPending // Backward compatibility
 	case idm.StatusDeleted:
 		todo.Statuses["completion"] = string(models.StatusDone)
-		todo.Status = models.StatusDone // Backward compatibility
 	default:
 		return fmt.Errorf("unknown status: %s", status)
 	}
