@@ -2,6 +2,8 @@
 
 This document provides a reference for the public API of the `idm` package, separated into its two main components: the Core Registry and the Convenience Manager.
 
+> **API Stability**: All methods documented here are production-stable and maintain backward compatibility.
+
 ---
 
 ## 1. Core IDM API
@@ -45,14 +47,16 @@ func (r *Registry) Remove(scope, uid string)
 func (r *Registry) ResolveHID(scope string, hid uint) (string, error)
 
 // Resolves a dot-notation path (e.g., "1.2.1") into a UID by traversing nested scopes.
-// Note: This method is on the Resolver, not the Registry itself.
-func (resolver *Resolver) Resolve(startScope, path string) (string, error)
+// This is the most commonly used method for user input resolution.
+func (r *Registry) ResolvePositionPath(startScope, path string) (string, error)
 
-// Translates multiple dot-notation paths into UIDs.
+// Translates multiple dot-notation paths into UIDs in a single operation.
 func (r *Registry) ResolvePositionPaths(startScope string, paths []string) (map[string]string, error)
 ```
 
-### `idm.Resolver`
+### `idm.Resolver` (Legacy)
+
+> **Note**: The separate Resolver is now legacy. Use `Registry.ResolvePositionPath()` directly for better performance and simpler API.
 
 A helper for resolving hierarchical, dot-notation paths.
 
@@ -63,6 +67,8 @@ func NewResolver(registry *Registry) *Resolver
 // Resolves a full path like "1.2.1" starting from a given scope.
 func (resolver *Resolver) Resolve(startScope, path string) (string, error)
 ```
+
+**Migration**: Replace `NewResolver(reg).Resolve(scope, path)` with `reg.ResolvePositionPath(scope, path)`.
 
 ---
 
@@ -130,3 +136,48 @@ func (m *Manager) Pin(uid string) error
 // Removes an item from the "pinned" scope.
 func (m *Manager) Unpin(uid string) error
 ```
+
+### Status Constants
+
+```go
+const (
+    // StatusActive is the status for items that are currently active.
+    StatusActive = "active"
+    // StatusDeleted is the status for items that have been soft-deleted.
+    StatusDeleted = "deleted"
+)
+
+const (
+    // ScopePinned is the special scope name for items that are pinned.
+    ScopePinned = "pinned"
+)
+```
+
+## 3. Implementation Notes
+
+### Adapter Implementation Guidelines
+
+**Status Mapping**: Your adapter's `SetStatus` method should map IDM status constants to your application's status model:
+```go
+func (a *MyAdapter) SetStatus(uid, status string) error {
+    switch status {
+    case idm.StatusActive:
+        return a.setAppStatus(uid, "pending") // or your app's active status
+    case idm.StatusDeleted:
+        return a.setAppStatus(uid, "done")    // or your app's completed status
+    default:
+        return fmt.Errorf("unknown status: %s", status)
+    }
+}
+```
+
+**Visibility Model**: The `GetChildren` method should only return items that are "active" in your application's context. Soft-deleted items should be filtered out.
+
+**Transaction Safety**: When implementing `ManagedStoreAdapter`, ensure all methods work correctly within database transactions. Consider creating adapters that accept transaction objects.
+
+### Performance Characteristics
+
+- **Registry population**: O(n) where n is the total number of items
+- **Path resolution**: O(d) where d is the depth of the path (e.g., "1.2.3" has depth 3)
+- **Manager operations**: O(1) for the registry update, plus the cost of your adapter implementation
+- **Memory usage**: Approximately 50-100 bytes per item in the registry (varies by UID length)

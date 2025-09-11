@@ -2,6 +2,8 @@
 
 This guide provides a detailed walkthrough of how to integrate and use the `idm` library, covering both the core components and the high-level `Manager`.
 
+> **Note**: This guide reflects real-world usage patterns discovered during large-scale production integration. Examples are based on successful production deployments.
+
 ## 1. Core IDM: The Registry
 
 The core of `idm` is the `Registry`, a stateless component designed for one primary purpose: resolving Human-friendly IDs (HIDs) to stable Unique Identifiers (UIDs). It is ideal for applications that need fast, in-memory lookups and prefer to handle their own data persistence logic.
@@ -58,26 +60,41 @@ func handleRequest(userInput string) { // e.g., userInput is "1.2"
 
     // Get all scopes (e.g., "root", "parent_uid_1", "parent_uid_5")
     scopes, err := myAdapter.GetScopes()
-    // ... handle error
+    if err != nil {
+        log.Printf("Failed to get scopes: %v", err)
+        return
+    }
 
     // Populate the registry by rebuilding each scope
     for _, scope := range scopes {
         err := reg.RebuildScope(myAdapter, scope)
-        // ... handle error
+        if err != nil {
+            log.Printf("Failed to rebuild scope %s: %v", scope, err)
+            return
+        }
     }
 
-    // Now, resolve the user's input
-    // The resolver is used for path-based lookups (e.g., "1.2.3")
-    resolver := idm.NewResolver(reg)
-    uid, err := resolver.Resolve("root", userInput)
+    // Now, resolve the user's input using the Registry directly
+    // Note: ResolvePositionPath is available directly on Registry (no separate resolver needed)
+    uid, err := reg.ResolvePositionPath("root", userInput)
     if err != nil {
-        // Handle "not found" error
+        log.Printf("Position path %s not found: %v", userInput, err)
+        return
     }
 
     // Use the stable UID to perform actions in your application
     fmt.Printf("User wants to act on item with stable UID: %s\n", uid)
 }
 ```
+
+### Important Registry Usage Notes
+
+**Performance Tip**: Registry creation and population is fast but not free. In high-performance scenarios, consider:
+- Creating one Registry per request/transaction scope
+- Avoiding repeated rebuilds of the same scope within a single operation
+- Using the Manager layer for long-lived operations
+
+**Error Handling**: Always handle `ResolvePositionPath` errors - they indicate invalid user input or stale data.
 
 ---
 
@@ -131,10 +148,13 @@ func (a *MyAppManagedAdapter) RemoveItem(uid string) error {
 
 #### Step 2: Initialize and Use the Manager
 
-The `Manager` is intended to be a long-lived object that you initialize once when your application starts.
+The `Manager` can be used in two ways:
+1. **Long-lived Manager**: Created once at startup for simple applications
+2. **Transaction-aware Manager**: Created per transaction for database consistency
 
+**Long-lived Manager Example:**
 ```go
-// main.go
+// main.go - Simple applications
 func main() {
     myAdapter := &MyAppManagedAdapter{...}
 
@@ -148,6 +168,45 @@ func main() {
     handleAddItem(manager, "root")
     handleMoveItem(manager, "uid3", "uid1", "uid2")
 }
+```
+
+**Transaction-aware Manager Example (Recommended for databases):**
+```go
+// For applications using database transactions
+func executeInTransaction(db *sql.DB, operation func(*idm.Manager) error) error {
+    tx, err := db.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback() // Safe to call even after commit
+
+    // Create adapter that works with this specific transaction
+    adapter := &MyTransactionAdapter{tx: tx}
+    
+    // Create Manager for this transaction scope
+    manager, err := idm.NewManager(adapter)
+    if err != nil {
+        return fmt.Errorf("failed to create transaction manager: %w", err)
+    }
+
+    // Perform operations within the transaction
+    if err := operation(manager); err != nil {
+        return err
+    }
+
+    return tx.Commit()
+}
+
+// Usage:
+err := executeInTransaction(db, func(manager *idm.Manager) error {
+    newUID, _, err := manager.Add("parent-uid")
+    if err != nil {
+        return err
+    }
+    
+    return manager.Move("another-uid", "old-parent", newUID)
+})
+```
 
 // ---
 
@@ -173,7 +232,73 @@ func handleSoftDelete(manager *idm.Manager, uid, parentUID string) {
 
 // To resolve IDs, access the manager's internal registry
 func resolvePath(manager *idm.Manager, path string) {
-    uid, err := idm.NewResolver(manager.Registry()).Resolve("root", path)
-    // ...
+    // Use Registry's ResolvePositionPath directly (no separate resolver needed)
+    uid, err := manager.Registry().ResolvePositionPath("root", path)
+    if err != nil {
+        log.Printf("Failed to resolve path %s: %v", path, err)
+        return
+    }
+    fmt.Printf("Path %s resolves to UID: %s\n", path, uid)
 }
+```
+
+## 3. Integration Patterns & Best Practices
+
+Based on production usage, here are proven patterns for successful IDM integration:
+
+### Pattern 1: Command-Based Architecture
+```go
+// Excellent for CLI applications or command-based systems
+type Command struct {
+    manager *idm.Manager
+}
+
+func (c *Command) Execute(userPath string) error {
+    // Resolve user input to stable UID
+    uid, err := c.manager.Registry().ResolvePositionPath("root", userPath)
+    if err != nil {
+        return fmt.Errorf("invalid position: %s", userPath)
+    }
+    
+    // Perform business logic with stable UID
+    return c.performOperation(uid)
+}
+```
+
+### Pattern 2: Hybrid Approach for Status Management
+```go
+// For applications with complex visibility rules
+func completeItem(manager *idm.Manager, path string) error {
+    // Use Manager for ID resolution
+    uid, err := manager.Registry().ResolvePositionPath("root", path)
+    if err != nil {
+        return err
+    }
+    
+    // Use traditional methods for status changes if they have
+    // different visibility requirements than IDM's soft-delete model
+    return setItemStatus(uid, "completed")
+}
+```
+
+### Pattern 3: Scope-based Organization
+```go
+// Leverage scopes for different views of the same data
+func listActiveItems(manager *idm.Manager) []string {
+    // Regular scope shows active items
+    return getItemsInScope(manager, "root")
+}
+
+func listPinnedItems(manager *idm.Manager) []string {
+    // Special scope for pinned items
+    return getItemsInScope(manager, idm.ScopePinned)
+}
+```
+
+### Common Pitfalls to Avoid
+
+1. **Don't mix Manager instances**: Create one Manager per transaction/operation scope
+2. **Handle position path errors**: Invalid paths are common with user input
+3. **Understand soft-delete semantics**: Items marked as "deleted" won't appear in active scopes
+4. **Test with realistic data**: Nested hierarchies reveal edge cases not visible in simple tests
 ```
