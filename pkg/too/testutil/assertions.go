@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too/models"
-	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // AssertTodoInList checks if a todo with the given text exists in the list.
@@ -32,18 +31,6 @@ func AssertTodoNotInList(t *testing.T, todos []*models.Todo, unexpectedText stri
 	}
 }
 
-// AssertTodoCount checks the total and done counts from a FindResult.
-func AssertTodoCount(t *testing.T, result *store.FindResult, expectedTotal, expectedDone int) {
-	t.Helper()
-
-	if result.TotalCount != expectedTotal {
-		t.Errorf("expected total count %d, got %d", expectedTotal, result.TotalCount)
-	}
-
-	if result.DoneCount != expectedDone {
-		t.Errorf("expected done count %d, got %d", expectedDone, result.DoneCount)
-	}
-}
 
 // AssertTodoHasStatus checks that a todo has the expected status.
 func AssertTodoHasStatus(t *testing.T, todo *models.Todo, expectedStatus models.TodoStatus) {

@@ -19,67 +19,26 @@ type IDMStore interface {
 	Path() string
 }
 
-// IDMStoreWrapper wraps a traditional Store to provide IDM interface compatibility.
-// This enables gradual migration from hierarchical to flat data models.
-type IDMStoreWrapper struct {
-	store Store
+// idmStore is a concrete implementation using the internal IDMJSONFileStore.
+type idmStore struct {
+	*internal.IDMJSONFileStore
 }
 
-// NewIDMStoreWrapper creates an IDM store wrapper around a traditional store.
-func NewIDMStoreWrapper(store Store) IDMStore {
-	return &IDMStoreWrapper{store: store}
-}
-
-// LoadIDM loads the collection and converts it to the flat IDM format.
-func (w *IDMStoreWrapper) LoadIDM() (*models.IDMCollection, error) {
-	collection, err := w.store.Load()
-	if err != nil {
-		return nil, err
+// NewIDMStore creates a new IDM store with the given path.
+func NewIDMStore(path string) IDMStore {
+	return &idmStore{
+		IDMJSONFileStore: internal.NewIDMJSONFileStore(path),
 	}
-	
-	// Convert hierarchical to flat IDM structure
-	return models.MigrateToIDM(collection), nil
-}
-
-// SaveIDM converts the flat IDM collection to hierarchical format and saves it.
-func (w *IDMStoreWrapper) SaveIDM(idmCollection *models.IDMCollection) error {
-	// Convert flat IDM structure back to hierarchical for storage
-	collection := models.MigrateFromIDM(idmCollection)
-	return w.store.Save(collection)
-}
-
-// Exists checks if the underlying store exists.
-func (w *IDMStoreWrapper) Exists() bool {
-	return w.store.Exists()
-}
-
-// UpdateIDM performs an atomic update operation on the IDM collection.
-func (w *IDMStoreWrapper) UpdateIDM(updateFn func(collection *models.IDMCollection) error) error {
-	return w.store.Update(func(collection *models.Collection) error {
-		// Convert to IDM format
-		idmCollection := models.MigrateToIDM(collection)
-		
-		// Apply the update function
-		if err := updateFn(idmCollection); err != nil {
-			return err
-		}
-		
-		// Convert back and update the original collection in-place
-		updatedCollection := models.MigrateFromIDM(idmCollection)
-		collection.Todos = updatedCollection.Todos
-		
-		return nil
-	})
 }
 
 // FindItemByUID finds a todo item by its UID.
-func (w *IDMStoreWrapper) FindItemByUID(uid string) (*models.IDMTodo, error) {
-	idmCollection, err := w.LoadIDM()
+func (s *idmStore) FindItemByUID(uid string) (*models.IDMTodo, error) {
+	collection, err := s.LoadIDM()
 	if err != nil {
 		return nil, err
 	}
 	
-	item := idmCollection.FindByUID(uid)
+	item := collection.FindByUID(uid)
 	if item == nil {
 		return nil, fmt.Errorf("todo with UID %s not found", uid)
 	}
@@ -88,8 +47,8 @@ func (w *IDMStoreWrapper) FindItemByUID(uid string) (*models.IDMTodo, error) {
 }
 
 // FindItemByShortID finds a todo item by its short ID.
-func (w *IDMStoreWrapper) FindItemByShortID(shortID string) (*models.IDMTodo, error) {
-	idmCollection, err := w.LoadIDM()
+func (s *idmStore) FindItemByShortID(shortID string) (*models.IDMTodo, error) {
+	collection, err := s.LoadIDM()
 	if err != nil {
 		return nil, err
 	}
@@ -97,29 +56,19 @@ func (w *IDMStoreWrapper) FindItemByShortID(shortID string) (*models.IDMTodo, er
 	var found *models.IDMTodo
 	var count int
 	
-	for _, item := range idmCollection.Items {
+	for _, item := range collection.Items {
 		if len(item.UID) >= len(shortID) && item.UID[:len(shortID)] == shortID {
 			found = item
 			count++
+			if count > 1 {
+				return nil, fmt.Errorf("short ID '%s' is ambiguous", shortID)
+			}
 		}
 	}
 	
-	if count == 0 {
-		return nil, fmt.Errorf("no todo found with reference '%s'", shortID)
-	}
-	if count > 1 {
-		return nil, fmt.Errorf("multiple todos found with ambiguous reference '%s'", shortID)
+	if found == nil {
+		return nil, fmt.Errorf("no todo found with short ID '%s'", shortID)
 	}
 	
 	return found, nil
-}
-
-// Path returns the path where the store persists data.
-func (w *IDMStoreWrapper) Path() string {
-	return w.store.Path()
-}
-
-// NewIDMStore creates a new IDM store using the pure IDM JSON file store implementation.
-func NewIDMStore(path string) IDMStore {
-	return internal.NewIDMJSONFileStore(path)
 }

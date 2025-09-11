@@ -1,7 +1,10 @@
 package list
 
 import (
+	"fmt"
+
 	"github.com/arthur-debert/too/pkg/too/models"
+	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // Options contains options for listing todos
@@ -18,17 +21,51 @@ type Result struct {
 	DoneCount  int
 }
 
-// Execute returns todos from the collection using the appropriate manager.
-// This function automatically detects the storage format and uses the correct
-// implementation while maintaining backward compatibility.
+// Execute returns todos from the collection using pure IDM.
 func Execute(opts Options) (*Result, error) {
-	// Use unified implementation that auto-detects storage format
-	unifiedResult, err := ExecuteUnified(opts)
+	// Create IDM store and manager
+	idmStore := store.NewIDMStore(opts.CollectionPath)
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
-	return ConvertUnifiedToResult(unifiedResult), nil
+	// Get todos based on options
+	var idmTodos []*models.IDMTodo
+	if opts.ShowAll {
+		idmTodos = manager.ListAll()
+	} else if opts.ShowDone {
+		idmTodos = manager.ListArchived()
+	} else {
+		idmTodos = manager.ListActive()
+	}
+
+	// Convert IDMTodos to Todos for API compatibility
+	todos := make([]*models.Todo, len(idmTodos))
+	for i, idmTodo := range idmTodos {
+		todos[i] = &models.Todo{
+			ID:       idmTodo.UID,
+			ParentID: idmTodo.ParentID,
+			Text:     idmTodo.Text,
+			Modified: idmTodo.Modified,
+			Items:    []*models.Todo{},
+		}
+		if idmTodo.Statuses != nil {
+			todos[i].Statuses = make(map[string]string)
+			for k, v := range idmTodo.Statuses {
+				todos[i].Statuses[k] = v
+			}
+		}
+	}
+
+	// Get counts
+	totalCount, doneCount := manager.CountTodos()
+
+	return &Result{
+		Todos:      todos,
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
+	}, nil
 }
 
 // countTodos recursively counts total and done todos

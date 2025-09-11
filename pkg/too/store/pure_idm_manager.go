@@ -5,7 +5,6 @@ import (
 
 	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/idm/workflow"
-	"github.com/arthur-debert/too/pkg/too/config"
 	"github.com/arthur-debert/too/pkg/too/models"
 )
 
@@ -49,17 +48,8 @@ func NewPureIDMManager(store IDMStore, collectionPath string) (*PureIDMManager, 
 		}
 	}
 
-	// Load workflow configuration
-	workflowConfigPath := config.GetWorkflowConfigPath(collectionPath)
-	workflowConfig, err := config.LoadWorkflowConfig(workflowConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load workflow config: %w", err)
-	}
-
-	effectiveConfig, err := workflowConfig.GetWorkflowConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get effective workflow config: %w", err)
-	}
+	// Use todo workflow configuration
+	effectiveConfig := workflow.TodoWorkflow
 
 	// Create workflow adapter
 	workflowAdapter := &pureIDMWorkflowAdapter{collection: collection}
@@ -198,7 +188,7 @@ func (m *PureIDMManager) GetPositionPath(scope, uid string) (string, error) {
 }
 
 // ListActive returns only active (pending) todos using IDM ordering.
-func (m *PureIDMManager) ListActive() interface{} {
+func (m *PureIDMManager) ListActive() []*models.IDMTodo {
 	// Get all UIDs from root scope (IDM maintains proper ordering)
 	uids := m.registry.GetUIDs(RootScope)
 	
@@ -214,7 +204,7 @@ func (m *PureIDMManager) ListActive() interface{} {
 }
 
 // ListArchived returns only archived (done) todos.
-func (m *PureIDMManager) ListArchived() interface{} {
+func (m *PureIDMManager) ListArchived() []*models.IDMTodo {
 	var archivedTodos []*models.IDMTodo
 	for _, todo := range m.collection.Items {
 		if todo.GetStatus() == models.StatusDone {
@@ -225,7 +215,7 @@ func (m *PureIDMManager) ListArchived() interface{} {
 }
 
 // ListAll returns all todos regardless of status.
-func (m *PureIDMManager) ListAll() interface{} {
+func (m *PureIDMManager) ListAll() []*models.IDMTodo {
 	var allTodos []*models.IDMTodo
 	for _, todo := range m.collection.Items {
 		allTodos = append(allTodos, todo.Clone())
@@ -239,12 +229,12 @@ func (m *PureIDMManager) GetTodoByUID(uid string) *models.IDMTodo {
 }
 
 // GetTodoByID finds a todo by its UID (alias for GetTodoByUID for interface compatibility).
-func (m *PureIDMManager) GetTodoByID(uid string) interface{} {
+func (m *PureIDMManager) GetTodoByID(uid string) *models.IDMTodo {
 	return m.collection.FindByUID(uid)
 }
 
 // GetTodoByShortID finds a todo by its short ID.
-func (m *PureIDMManager) GetTodoByShortID(shortID string) (interface{}, error) {
+func (m *PureIDMManager) GetTodoByShortID(shortID string) (*models.IDMTodo, error) {
 	return m.store.FindItemByShortID(shortID)
 }
 
@@ -260,7 +250,7 @@ func (m *PureIDMManager) CountTodos() (totalCount, doneCount int) {
 }
 
 // CleanFinishedTodos removes all done todos and their descendants from the collection and IDM.
-func (m *PureIDMManager) CleanFinishedTodos() (interface{}, int, error) {
+func (m *PureIDMManager) CleanFinishedTodos() ([]*models.IDMTodo, int, error) {
 	var removedTodos []*models.IDMTodo
 	var remainingItems []*models.IDMTodo
 	
