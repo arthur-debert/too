@@ -147,7 +147,8 @@ type mockItem struct {
 	uid      string
 	parentID string
 	children []string
-	status   string // Added for soft delete tests
+	status   string // For soft delete tests
+	isPinned bool   // For pinned items tests
 }
 
 func newMockManagedStoreAdapter() *mockManagedStoreAdapter {
@@ -167,6 +168,17 @@ func (m *mockManagedStoreAdapter) newUID() string {
 // --- Read Methods ---
 
 func (m *mockManagedStoreAdapter) GetChildren(parentUID string) ([]string, error) {
+	// Handle the special "pinned" scope
+	if parentUID == ScopePinned {
+		pinnedUIDs := []string{}
+		for uid, item := range m.items {
+			if item.isPinned {
+				pinnedUIDs = append(pinnedUIDs, uid)
+			}
+		}
+		return pinnedUIDs, nil
+	}
+
 	var childrenSource []string
 	if parentUID == "root" {
 		childrenSource = m.rootUIDs
@@ -189,7 +201,7 @@ func (m *mockManagedStoreAdapter) GetChildren(parentUID string) ([]string, error
 }
 
 func (m *mockManagedStoreAdapter) GetScopes() ([]string, error) {
-	scopes := []string{"root"}
+	scopes := []string{"root", ScopePinned}
 	for uid, item := range m.items {
 		if len(item.children) > 0 {
 			scopes = append(scopes, uid)
@@ -305,7 +317,15 @@ func (m *mockManagedStoreAdapter) SetStatus(uid, status string) error {
 	item.status = status
 	return nil
 }
-func (m *mockManagedStoreAdapter) SetPinned(uid string, isPinned bool) error { return nil } // No-op for now
+
+func (m *mockManagedStoreAdapter) SetPinned(uid string, isPinned bool) error {
+	item, ok := m.items[uid]
+	if !ok {
+		return fmt.Errorf("item %s not found", uid)
+	}
+	item.isPinned = isPinned
+	return nil
+}
 
 // --- Tests ---
 
@@ -475,6 +495,47 @@ func TestManager_Purge(t *testing.T) {
 	// Verify item is gone from adapter
 	if _, ok := adapter.items["uid1"]; ok {
 		t.Error("Item should have been removed from the adapter after purge")
+	}
+}
+
+func TestManager_Pin(t *testing.T) {
+	adapter := newMockManagedStoreAdapter()
+	_, _ = adapter.AddItem("root") // uid1
+	_, _ = adapter.AddItem("root") // uid2
+
+	manager, err := NewManager(adapter)
+	if err != nil {
+		t.Fatalf("NewManager() failed: %v", err)
+	}
+
+	// Pin uid2
+	err = manager.Pin("uid2")
+	if err != nil {
+		t.Fatalf("Pin failed: %v", err)
+	}
+
+	// Verify uid2 is in the pinned scope
+	resolvedUID, err := manager.Registry().ResolveHID(ScopePinned, 1)
+	if err != nil || resolvedUID != "uid2" {
+		t.Errorf("Expected uid2 to be at HID 1 in pinned scope, but got %s", resolvedUID)
+	}
+
+	// Verify it's still in its original scope
+	resolvedUID, err = manager.Registry().ResolveHID("root", 2)
+	if err != nil || resolvedUID != "uid2" {
+		t.Errorf("Expected uid2 to still be at HID 2 in root scope, but got %s", resolvedUID)
+	}
+
+	// Unpin uid2
+	err = manager.Unpin("uid2")
+	if err != nil {
+		t.Fatalf("Unpin failed: %v", err)
+	}
+
+	// Verify pinned scope is now empty
+	_, err = manager.Registry().ResolveHID(ScopePinned, 1)
+	if err == nil {
+		t.Error("Expected pinned scope to be empty after unpinning")
 	}
 }
 

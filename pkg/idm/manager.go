@@ -125,3 +125,40 @@ func (m *Manager) Purge(uid string) error {
 	}
 	return nil
 }
+
+// --- Pinned Items Methods ---
+
+const (
+	// ScopePinned is the special scope name for items that are pinned.
+	ScopePinned = "pinned"
+)
+
+// Pin adds an item's UID to the pinned scope.
+// It tells the adapter to mark the item as pinned and then rebuilds the
+// special "pinned" scope in the registry.
+func (m *Manager) Pin(uid string) error {
+	// 1. Tell the adapter to mark the item as pinned.
+	if err := m.adapter.SetPinned(uid, true); err != nil {
+		return fmt.Errorf("adapter failed to set pinned status to true: %w", err)
+	}
+
+	// 2. Rebuild the special "pinned" scope in the registry.
+	if err := m.reg.RebuildScope(m.adapter, ScopePinned); err != nil {
+		return fmt.Errorf("failed to rebuild pinned scope after pinning: %w", err)
+	}
+	return nil
+}
+
+// Unpin removes an item's UID from the pinned scope.
+func (m *Manager) Unpin(uid string) error {
+	// 1. Tell the adapter to mark the item as unpinned.
+	if err := m.adapter.SetPinned(uid, false); err != nil {
+		return fmt.Errorf("adapter failed to set pinned status to false: %w", err)
+	}
+
+	// 2. Rebuild the special "pinned" scope in the registry.
+	if err := m.reg.RebuildScope(m.adapter, ScopePinned); err != nil {
+		return fmt.Errorf("failed to rebuild pinned scope after unpinning: %w", err)
+	}
+	return nil
+}
