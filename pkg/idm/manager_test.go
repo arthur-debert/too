@@ -196,6 +196,25 @@ func (m *mockManagedStoreAdapter) SetPinned(uid string, isPinned bool) error {
 	return nil
 }
 
+func (m *mockManagedStoreAdapter) GetParent(uid string) (string, error) {
+	// Handle root scope specially
+	if uid == "root" {
+		return "", nil // Root has no parent
+	}
+	
+	item, ok := m.items[uid]
+	if !ok {
+		return "", fmt.Errorf("item %s not found", uid)
+	}
+	
+	// If ParentID is empty, this item is a direct child of root
+	if item.parentID == "" {
+		return "root", nil
+	}
+	
+	return item.parentID, nil
+}
+
 // --- Tests ---
 
 func TestManager_Add(t *testing.T) {

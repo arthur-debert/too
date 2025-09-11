@@ -364,11 +364,11 @@ func (m *MockWorkflowAdapter) GetChildrenInContext(parentUID, context string, vi
 			continue // Skip items with errors
 		}
 		
-		// Check if this item is visible in the context
-		visible := false
+		// Check if this item is visible in the context (AND logic - all rules must match)
+		visible := true
 		for _, rule := range visibilityRules {
-			if rule.Matches(context, statuses) {
-				visible = true
+			if !rule.Matches(context, statuses) {
+				visible = false
 				break
 			}
 		}
@@ -390,11 +390,11 @@ func (m *MockWorkflowAdapter) GetAllItemsInContext(context string, visibilityRul
 			continue
 		}
 		
-		// Check if this item is visible in the context
-		visible := false
+		// Check if this item is visible in the context (AND logic - all rules must match)
+		visible := true
 		for _, rule := range visibilityRules {
-			if rule.Matches(context, statuses) {
-				visible = true
+			if !rule.Matches(context, statuses) {
+				visible = false
 				break
 			}
 		}

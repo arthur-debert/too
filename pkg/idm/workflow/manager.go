@@ -255,16 +255,17 @@ func (sm *StatusManager) IsVisibleInContext(uid, context string) (bool, error) {
 		return true, nil
 	}
 	
-	// Item is visible if it matches any rule for this context
+	// Item is visible if it matches all rules for this context (AND logic)
 	for _, rule := range rules {
-		if rule.Matches(context, statuses) {
-			sm.cacheVisibility(context, uid, true)
-			return true, nil
+		if !rule.Matches(context, statuses) {
+			sm.cacheVisibility(context, uid, false)
+			return false, nil
 		}
 	}
 	
-	sm.cacheVisibility(context, uid, false)
-	return false, nil
+	// All rules matched
+	sm.cacheVisibility(context, uid, true)
+	return true, nil
 }
 
 // GetChildrenInContext returns children of a parent that are visible in the given context.

@@ -149,10 +149,10 @@ func TestTodoWithPriorityWorkflow_ExtendedFeatures(t *testing.T) {
 			"priority":   "high",
 		}
 
-		visible := false
+		visible := true
 		for _, rule := range rules {
-			if rule.Matches("high_priority", matchingStatuses) {
-				visible = true
+			if !rule.Matches("high_priority", matchingStatuses) {
+				visible = false
 				break
 			}
 		}
@@ -166,10 +166,10 @@ func TestTodoWithPriorityWorkflow_ExtendedFeatures(t *testing.T) {
 			"priority":   "high",
 		}
 
-		visible = false
+		visible = true
 		for _, rule := range rules {
-			if rule.Matches("high_priority", nonMatchingStatuses) {
-				visible = true
+			if !rule.Matches("high_priority", nonMatchingStatuses) {
+				visible = false
 				break
 			}
 		}
@@ -277,10 +277,10 @@ func TestIssueTrackerWorkflow_StateTransitions(t *testing.T) {
 			"priority": "critical",
 		}
 
-		visible := false
+		visible := true
 		for _, rule := range rules {
-			if rule.Matches("critical_issues", criticalStatuses) {
-				visible = true
+			if !rule.Matches("critical_issues", criticalStatuses) {
+				visible = false
 				break
 			}
 		}
@@ -294,10 +294,10 @@ func TestIssueTrackerWorkflow_StateTransitions(t *testing.T) {
 			"priority": "minor",
 		}
 
-		visible = false
+		visible = true
 		for _, rule := range rules {
-			if rule.Matches("critical_issues", minorStatuses) {
-				visible = true
+			if !rule.Matches("critical_issues", minorStatuses) {
+				visible = false
 				break
 			}
 		}
