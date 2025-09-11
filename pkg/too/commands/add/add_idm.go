@@ -66,7 +66,7 @@ func RunIDM(idmStore store.IDMStore, text string, opts Options) (*IDMResult, err
 
 	// If in long mode, get additional data using manager's IDM-aware methods
 	if opts.Mode == "long" {
-		result.AllTodos = manager.ListActive()
+		result.AllTodos = manager.ListActive().([]*models.IDMTodo)
 		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 

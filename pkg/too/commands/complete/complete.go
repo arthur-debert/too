@@ -21,17 +21,17 @@ type Result struct {
 	DoneCount  int            // Done count for long mode
 }
 
-// Execute marks a todo as complete using the pure IDM data model.
-// This function now uses IDM internally but maintains backward compatibility 
-// by returning the traditional Result format.
+// Execute marks a todo as complete using the appropriate manager.
+// This function automatically detects the storage format and uses the correct
+// implementation while maintaining backward compatibility.
 func Execute(positionPath string, opts Options) (*Result, error) {
-	// Use IDM implementation and convert result for backward compatibility
-	idmResult, err := ExecuteIDM(positionPath, opts)
+	// Use unified implementation that auto-detects storage format
+	unifiedResult, err := ExecuteUnified(positionPath, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return ConvertIDMResultToResult(idmResult), nil
+	return ConvertUnifiedToResult(unifiedResult), nil
 }
 
 

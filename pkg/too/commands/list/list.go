@@ -18,17 +18,17 @@ type Result struct {
 	DoneCount  int
 }
 
-// Execute returns todos from the collection using the pure IDM data model.
-// This function now uses IDM internally but maintains backward compatibility 
-// by returning the traditional Result format.
+// Execute returns todos from the collection using the appropriate manager.
+// This function automatically detects the storage format and uses the correct
+// implementation while maintaining backward compatibility.
 func Execute(opts Options) (*Result, error) {
-	// Use IDM implementation and convert result for backward compatibility
-	idmResult, err := ExecuteIDM(opts)
+	// Use unified implementation that auto-detects storage format
+	unifiedResult, err := ExecuteUnified(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return ConvertIDMResultToResult(idmResult), nil
+	return ConvertUnifiedToResult(unifiedResult), nil
 }
 
 // countTodos recursively counts total and done todos

@@ -583,7 +583,7 @@ func (a *directWorkflowAdapter) SetStatusesBulk(updates map[string]map[string]st
 
 // ListActive returns only active (pending) todos using IDM ordering.
 // This replaces collection.ListActive() with IDM-aware filtering.
-func (m *DirectWorkflowManager) ListActive() []*models.Todo {
+func (m *DirectWorkflowManager) ListActive() interface{} {
 	// Get all UIDs from root scope (IDM maintains proper ordering)
 	uids := m.registry.GetUIDs(RootScope)
 	
@@ -604,7 +604,7 @@ func (m *DirectWorkflowManager) ListActive() []*models.Todo {
 // ListArchived returns only archived (done) todos using collection traversal
 // since done todos are not registered in IDM (only active todos get HIDs).
 // This replaces collection.ListArchived() with proper behavioral propagation.
-func (m *DirectWorkflowManager) ListArchived() []*models.Todo {
+func (m *DirectWorkflowManager) ListArchived() interface{} {
 	return m.filterTodos(m.collection.Todos, func(t *models.Todo) bool {
 		return t.GetStatus() == models.StatusDone
 	}, false) // Don't recurse into done items (behavioral propagation)
@@ -613,7 +613,7 @@ func (m *DirectWorkflowManager) ListArchived() []*models.Todo {
 // ListAll returns all todos regardless of status using collection traversal.
 // This preserves the complete tree structure including any inconsistent states.
 // This replaces collection.ListAll() with the same behavior.
-func (m *DirectWorkflowManager) ListAll() []*models.Todo {
+func (m *DirectWorkflowManager) ListAll() interface{} {
 	return m.cloneTodos(m.collection.Todos)
 }
 
@@ -628,13 +628,13 @@ func (m *DirectWorkflowManager) cloneTodos(todos []*models.Todo) []*models.Todo 
 
 // GetTodoByID finds a todo by its ID without exposing the collection.
 // This replaces direct collection.FindItemByID() calls.
-func (m *DirectWorkflowManager) GetTodoByID(uid string) *models.Todo {
+func (m *DirectWorkflowManager) GetTodoByID(uid string) interface{} {
 	return m.collection.FindItemByID(uid)
 }
 
 // GetTodoByShortID finds a todo by its short ID without exposing the collection.
 // This replaces direct collection.FindItemByShortID() calls.
-func (m *DirectWorkflowManager) GetTodoByShortID(shortID string) (*models.Todo, error) {
+func (m *DirectWorkflowManager) GetTodoByShortID(shortID string) (interface{}, error) {
 	return m.collection.FindItemByShortID(shortID)
 }
 
@@ -676,7 +676,7 @@ func (m *DirectWorkflowManager) getActiveChildren(parent *models.Todo) []*models
 
 // CleanFinishedTodos removes all done todos and their descendants from the collection and IDM.
 // Returns the removed todos for reporting purposes.
-func (m *DirectWorkflowManager) CleanFinishedTodos() ([]*models.Todo, int, error) {
+func (m *DirectWorkflowManager) CleanFinishedTodos() (interface{}, int, error) {
 	// Find all done items before removing them
 	removedTodos := m.findDoneItems(m.collection.Todos)
 	
@@ -782,4 +782,9 @@ func (m *DirectWorkflowManager) filterTodos(todos []*models.Todo, predicate func
 	}
 
 	return filtered
+}
+
+// IsPureIDM returns false for DirectWorkflowManager
+func (m *DirectWorkflowManager) IsPureIDM() bool {
+	return false
 }

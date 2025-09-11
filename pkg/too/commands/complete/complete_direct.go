@@ -31,10 +31,11 @@ func ExecuteDirect(positionPath string, opts Options) (*Result, error) {
 	}
 
 	// Get the todo using DirectWorkflowManager method
-	todo := manager.GetTodoByID(uid)
-	if todo == nil {
+	todoInterface := manager.GetTodoByID(uid)
+	if todoInterface == nil {
 		return nil, fmt.Errorf("todo with ID '%s' not found", uid)
 	}
+	todo := todoInterface.(*models.Todo)
 
 	// Capture old status
 	oldStatus, err := manager.GetStatus(uid, "completion")
@@ -70,7 +71,7 @@ func ExecuteDirect(positionPath string, opts Options) (*Result, error) {
 
 	// Add long mode data if requested using manager's IDM-aware methods
 	if opts.Mode == "long" {
-		result.AllTodos = manager.ListActive()
+		result.AllTodos = manager.ListActive().([]*models.Todo)
 		if result.AllTodos == nil {
 			result.AllTodos = []*models.Todo{}
 		}

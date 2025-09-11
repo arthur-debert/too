@@ -4,6 +4,7 @@ import (
 	"fmt"
 	
 	"github.com/arthur-debert/too/pkg/too/models"
+	"github.com/arthur-debert/too/pkg/too/store/internal"
 )
 
 // IDMStore defines the interface for persistence operations using the pure IDM data model.
@@ -118,8 +119,7 @@ func (w *IDMStoreWrapper) Path() string {
 	return w.store.Path()
 }
 
-// NewIDMStore creates a new IDM store using the default JSON file store implementation.
+// NewIDMStore creates a new IDM store using the pure IDM JSON file store implementation.
 func NewIDMStore(path string) IDMStore {
-	traditionalStore := NewStore(path)
-	return NewIDMStoreWrapper(traditionalStore)
+	return internal.NewIDMJSONFileStore(path)
 }

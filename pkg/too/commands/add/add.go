@@ -23,21 +23,21 @@ type Result struct {
 	DoneCount    int            // Done count for long mode
 }
 
-// Execute adds a new todo to the collection using the pure IDM data model.
-// This function now uses IDM internally but maintains backward compatibility 
-// by returning the traditional Result format.
+// Execute adds a new todo to the collection using the appropriate manager.
+// This function automatically detects the storage format and uses the correct
+// implementation while maintaining backward compatibility.
 func Execute(text string, opts Options) (*Result, error) {
 	if text == "" {
 		return nil, fmt.Errorf("todo text cannot be empty")
 	}
 
-	// Use IDM implementation and convert result for backward compatibility
-	idmResult, err := ExecuteIDM(text, opts)
+	// Use unified implementation that auto-detects storage format
+	unifiedResult, err := ExecuteUnified(text, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return ConvertIDMResultToResult(idmResult), nil
+	return ConvertUnifiedToResult(unifiedResult), nil
 }
 
 // countTodos recursively counts total and done todos

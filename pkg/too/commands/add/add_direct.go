@@ -3,6 +3,7 @@ package add
 import (
 	"fmt"
 
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
 )
 
@@ -36,10 +37,11 @@ func RunDirect(s store.Store, text string, opts Options) (*Result, error) {
 	}
 
 	// Get the created todo using DirectWorkflowManager method
-	todo := manager.GetTodoByID(newUID)
-	if todo == nil {
+	todoInterface := manager.GetTodoByID(newUID)
+	if todoInterface == nil {
 		return nil, fmt.Errorf("todo with ID %s not found after creation", newUID)
 	}
+	todo := todoInterface.(*models.Todo)
 
 	// Get the position path of the newly created todo
 	positionPath, err := manager.GetPositionPath(store.RootScope, newUID)
@@ -55,7 +57,7 @@ func RunDirect(s store.Store, text string, opts Options) (*Result, error) {
 
 	// If in long mode, get additional data using manager's IDM-aware methods
 	if opts.Mode == "long" {
-		result.AllTodos = manager.ListActive()
+		result.AllTodos = manager.ListActive().([]*models.Todo)
 		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 

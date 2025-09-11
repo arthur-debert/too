@@ -198,7 +198,7 @@ func (m *PureIDMManager) GetPositionPath(scope, uid string) (string, error) {
 }
 
 // ListActive returns only active (pending) todos using IDM ordering.
-func (m *PureIDMManager) ListActive() []*models.IDMTodo {
+func (m *PureIDMManager) ListActive() interface{} {
 	// Get all UIDs from root scope (IDM maintains proper ordering)
 	uids := m.registry.GetUIDs(RootScope)
 	
@@ -214,7 +214,7 @@ func (m *PureIDMManager) ListActive() []*models.IDMTodo {
 }
 
 // ListArchived returns only archived (done) todos.
-func (m *PureIDMManager) ListArchived() []*models.IDMTodo {
+func (m *PureIDMManager) ListArchived() interface{} {
 	var archivedTodos []*models.IDMTodo
 	for _, todo := range m.collection.Items {
 		if todo.GetStatus() == models.StatusDone {
@@ -225,7 +225,7 @@ func (m *PureIDMManager) ListArchived() []*models.IDMTodo {
 }
 
 // ListAll returns all todos regardless of status.
-func (m *PureIDMManager) ListAll() []*models.IDMTodo {
+func (m *PureIDMManager) ListAll() interface{} {
 	var allTodos []*models.IDMTodo
 	for _, todo := range m.collection.Items {
 		allTodos = append(allTodos, todo.Clone())
@@ -238,8 +238,13 @@ func (m *PureIDMManager) GetTodoByUID(uid string) *models.IDMTodo {
 	return m.collection.FindByUID(uid)
 }
 
+// GetTodoByID finds a todo by its UID (alias for GetTodoByUID for interface compatibility).
+func (m *PureIDMManager) GetTodoByID(uid string) interface{} {
+	return m.collection.FindByUID(uid)
+}
+
 // GetTodoByShortID finds a todo by its short ID.
-func (m *PureIDMManager) GetTodoByShortID(shortID string) (*models.IDMTodo, error) {
+func (m *PureIDMManager) GetTodoByShortID(shortID string) (interface{}, error) {
 	return m.store.FindItemByShortID(shortID)
 }
 
@@ -255,7 +260,7 @@ func (m *PureIDMManager) CountTodos() (totalCount, doneCount int) {
 }
 
 // CleanFinishedTodos removes all done todos and their descendants from the collection and IDM.
-func (m *PureIDMManager) CleanFinishedTodos() ([]*models.IDMTodo, int, error) {
+func (m *PureIDMManager) CleanFinishedTodos() (interface{}, int, error) {
 	var removedTodos []*models.IDMTodo
 	var remainingItems []*models.IDMTodo
 	
@@ -662,4 +667,9 @@ func (a *pureIDMWorkflowAdapter) SetStatusesBulk(updates map[string]map[string]s
 		}
 	}
 	return nil
+}
+
+// IsPureIDM returns true for PureIDMManager
+func (m *PureIDMManager) IsPureIDM() bool {
+	return true
 }

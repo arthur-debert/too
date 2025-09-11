@@ -79,7 +79,7 @@ func ExecuteIDM(positionPath string, opts Options) (*IDMResult, error) {
 
 	// Add long mode data if requested using manager's IDM-aware methods
 	if opts.Mode == "long" {
-		result.AllTodos = manager.ListActive()
+		result.AllTodos = manager.ListActive().([]*models.IDMTodo)
 		if result.AllTodos == nil {
 			result.AllTodos = []*models.IDMTodo{}
 		}

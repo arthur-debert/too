@@ -35,11 +35,11 @@ func ExecuteIDM(opts Options) (*IDMResult, error) {
 	// Use PureIDMManager's IDM-aware filtering methods
 	var filteredTodos []*models.IDMTodo
 	if opts.ShowAll {
-		filteredTodos = manager.ListAll()
+		filteredTodos = manager.ListAll().([]*models.IDMTodo)
 	} else if opts.ShowDone {
-		filteredTodos = manager.ListArchived()
+		filteredTodos = manager.ListArchived().([]*models.IDMTodo)
 	} else {
-		filteredTodos = manager.ListActive()
+		filteredTodos = manager.ListActive().([]*models.IDMTodo)
 	}
 
 	// Count all todos for statistics
