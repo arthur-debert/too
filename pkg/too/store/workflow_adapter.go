@@ -397,6 +397,11 @@ func (a *WorkflowTodoAdapter) OnStatusChange(uid, dimension, oldValue, newValue 
 
 // ValidateStatusChange validates a status change before it's applied.
 func (a *WorkflowTodoAdapter) ValidateStatusChange(uid, dimension, oldValue, newValue string) error {
+	// Skip validation for root scope as it's not a real todo
+	if uid == RootScope {
+		return nil
+	}
+	
 	// Basic validation - ensure the todo exists
 	todo := a.collection.FindItemByID(uid)
 	if todo == nil {
