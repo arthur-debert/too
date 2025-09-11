@@ -38,8 +38,8 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 	s := store.NewStore(opts.CollectionPath)
 	err := s.Update(func(collection *models.Collection) error {
-		// Resolve the position path to a UID
-		manager, err := store.NewManagerFromStore(s)
+		// Create manager from collection for transaction-aware operations
+		manager, err := store.NewManagerFromCollection(collection)
 		if err != nil {
 			return fmt.Errorf("failed to create idm manager: %w", err)
 		}
@@ -57,8 +57,9 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 		// Capture old status
 		oldStatus := string(todo.Status)
 
-		// Mark the todo as complete using the new method
-		// Skip reorder for now since we may need to handle bottom-up completion
+		// Mark the todo as complete using the traditional method
+		// The IDM Manager's SoftDelete approach filters items from scopes,
+		// but too expects completed items to remain visible in parent Items
 		todo.MarkComplete(collection, true)
 
 		logger.Debug().

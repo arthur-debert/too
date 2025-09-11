@@ -33,25 +33,36 @@ func Execute(text string, opts Options) (*Result, error) {
 	var todo *models.Todo
 
 	err := s.Update(func(collection *models.Collection) error {
-		var parentID string
+		manager, err := store.NewManagerFromCollection(collection)
+		if err != nil {
+			return fmt.Errorf("failed to create idm manager: %w", err)
+		}
+
+		var parentUID string = store.RootScope
 
 		// If parent path is specified, resolve it to a UID
 		if opts.ParentPath != "" {
-			manager, err := store.NewManagerFromStore(s)
-			if err != nil {
-				return fmt.Errorf("failed to create idm manager: %w", err)
-			}
-
 			uid, err := manager.Registry().ResolvePositionPath(store.RootScope, opts.ParentPath)
 			if err != nil {
 				return fmt.Errorf("parent todo not found: %w", err)
 			}
-			parentID = uid
+			parentUID = uid
 		}
 
-		var err error
-		todo, err = collection.CreateTodo(text, parentID)
-		return err
+		// Use Manager to create the todo structure
+		newUID, _, err := manager.Add(parentUID)
+		if err != nil {
+			return fmt.Errorf("failed to add todo via manager: %w", err)
+		}
+
+		// Set the todo text
+		todo = collection.FindItemByID(newUID)
+		if todo == nil {
+			return fmt.Errorf("todo with ID %s not found after creation", newUID)
+		}
+		todo.Text = text
+
+		return nil
 	})
 
 	if err != nil {

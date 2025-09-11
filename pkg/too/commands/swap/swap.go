@@ -35,8 +35,7 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 	var result *Result
 
 	err := s.Update(func(collection *models.Collection) error {
-		// Set up the IDM registry
-		manager, err := store.NewManagerFromStore(s)
+		manager, err := store.NewManagerFromCollection(collection)
 		if err != nil {
 			return fmt.Errorf("failed to create idm manager: %w", err)
 		}
@@ -51,85 +50,41 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 			return fmt.Errorf("todo with ID '%s' not found", sourceUID)
 		}
 
-		// Find the destination parent (empty string means root)
-		var destParent *models.Todo
+		// Determine the destination parent UID
+		var destParentUID string = store.RootScope
 		if destParentPath != "" {
-			destParentUID, err := manager.Registry().ResolvePositionPath(store.RootScope, destParentPath)
+			uid, err := manager.Registry().ResolvePositionPath(store.RootScope, destParentPath)
 			if err != nil {
 				return fmt.Errorf("destination parent not found at position: %s", destParentPath)
 			}
-			destParent = collection.FindItemByID(destParentUID)
-			if destParent == nil {
-				return fmt.Errorf("destination parent with ID '%s' not found", destParentUID)
-			}
+			destParentUID = uid
 		}
 
 		// Check for circular reference (can't move a parent into its own child)
-		if destParent != nil && isDescendantOf(destParent, sourceTodo) {
-			logger.Error().
-				Str("sourcePath", sourcePath).
-				Str("destParentPath", destParentPath).
-				Msg("attempted to move parent into its own descendant")
-			return fmt.Errorf("cannot move a parent into its own descendant")
-		}
-
-		// Find the old parent
-		var oldParent *models.Todo
-		oldParentID := sourceTodo.ParentID
-		if oldParentID != "" {
-			oldParent = collection.FindItemByID(oldParentID)
+		if destParentUID != store.RootScope {
+			destParent := collection.FindItemByID(destParentUID)
+			if destParent != nil && isDescendantOf(destParent, sourceTodo) {
+				logger.Error().
+					Str("sourcePath", sourcePath).
+					Str("destParentPath", destParentPath).
+					Msg("attempted to move parent into its own descendant")
+				return fmt.Errorf("cannot move a parent into its own descendant")
+			}
 		}
 
 		// Store old path for result
 		oldPath := sourcePath
 
-		// Remove from old location
-		if oldParent != nil {
-			// Remove from parent's Items slice
-			for i, item := range oldParent.Items {
-				if item.ID == sourceTodo.ID {
-					oldParent.Items = append(oldParent.Items[:i], oldParent.Items[i+1:]...)
-					break
-				}
-			}
-		} else {
-			// Remove from root todos
-			for i, item := range collection.Todos {
-				if item.ID == sourceTodo.ID {
-					collection.Todos = append(collection.Todos[:i], collection.Todos[i+1:]...)
-					break
-				}
-			}
+		// Get the old parent UID for the Manager.Move() call
+		oldParentUID := store.RootScope
+		if sourceTodo.ParentID != "" {
+			oldParentUID = sourceTodo.ParentID
 		}
 
-		// Update parent ID
-		if destParent != nil {
-			sourceTodo.ParentID = destParent.ID
-		} else {
-			sourceTodo.ParentID = ""
-		}
-
-		// Add to new location
-		if destParent != nil {
-			// Set a high position to ensure it's placed at the end before reordering
-			sourceTodo.Position = len(destParent.Items) + 1
-			destParent.Items = append(destParent.Items, sourceTodo)
-		} else {
-			sourceTodo.Position = len(collection.Todos) + 1
-			collection.Todos = append(collection.Todos, sourceTodo)
-		}
-
-		// Reset positions at both source and destination
-		if oldParentID != "" {
-			collection.ResetSiblingPositions(oldParentID)
-		} else {
-			collection.ResetRootPositions()
-		}
-
-		if destParent != nil {
-			collection.ResetSiblingPositions(destParent.ID)
-		} else if oldParentID != "" {
-			collection.ResetRootPositions()
+		// Use Manager to handle the move operation
+		err = manager.Move(sourceUID, oldParentUID, destParentUID)
+		if err != nil {
+			return fmt.Errorf("failed to move todo: %w", err)
 		}
 
 		// Get new path after reordering
@@ -145,12 +100,23 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 			return fmt.Errorf("failed to determine new position path")
 		}
 
+		// Get parent references for the result
+		var oldParent *models.Todo
+		if oldParentUID != store.RootScope {
+			oldParent = collection.FindItemByID(oldParentUID)
+		}
+		
+		var newParent *models.Todo
+		if destParentUID != store.RootScope {
+			newParent = collection.FindItemByID(destParentUID)
+		}
+
 		result = &Result{
 			Todo:      sourceTodo,
 			OldPath:   oldPath,
 			NewPath:   newPath,
 			OldParent: oldParent,
-			NewParent: destParent,
+			NewParent: newParent,
 		}
 
 		logger.Debug().

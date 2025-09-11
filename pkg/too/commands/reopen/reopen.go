@@ -38,8 +38,8 @@ func Execute(ref string, opts Options) (*Result, error) {
 		var err error
 
 		if parser.IsPositionPath(ref) {
-			// Resolve the position path to a UID
-			manager, err := store.NewManagerFromStore(s)
+			// Resolve the position path to a UID using transaction-aware manager
+			manager, err := store.NewManagerFromCollection(collection)
 			if err != nil {
 				return fmt.Errorf("failed to create idm manager: %w", err)
 			}
