@@ -198,6 +198,11 @@ func (a *WorkflowTodoAdapter) GetParent(uid string) (string, error) {
 
 // SetItemStatus sets a status dimension for a todo item.
 func (a *WorkflowTodoAdapter) SetItemStatus(uid, dimension, value string) error {
+	// Skip setting status on root scope as it's not a real todo
+	if uid == RootScope {
+		return nil
+	}
+	
 	todo := a.collection.FindItemByID(uid)
 	if todo == nil {
 		return fmt.Errorf("todo with ID %s not found", uid)
@@ -219,6 +224,11 @@ func (a *WorkflowTodoAdapter) SetItemStatus(uid, dimension, value string) error 
 
 // GetItemStatus gets a status dimension for a todo item.
 func (a *WorkflowTodoAdapter) GetItemStatus(uid, dimension string) (string, error) {
+	// Root scope doesn't have status - return empty
+	if uid == RootScope {
+		return "", nil
+	}
+	
 	todo := a.collection.FindItemByID(uid)
 	if todo == nil {
 		return "", fmt.Errorf("todo with ID %s not found", uid)

@@ -19,8 +19,8 @@ type WorkflowConfig struct {
 // DefaultWorkflowConfig returns the default workflow configuration.
 func DefaultWorkflowConfig() *WorkflowConfig {
 	return &WorkflowConfig{
-		Enabled:    false, // Disabled by default for backward compatibility
-		PresetName: "todo", // Default to basic todo workflow when enabled
+		Enabled:    true, // Enabled by default - too already has workflow features
+		PresetName: "todo", // Default to basic todo workflow
 	}
 }
 

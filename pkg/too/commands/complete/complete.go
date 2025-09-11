@@ -6,7 +6,6 @@ import (
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
-	"github.com/rs/zerolog"
 )
 
 // Options contains options for the complete command
@@ -26,7 +25,7 @@ type Result struct {
 	DoneCount  int            // Done count for long mode
 }
 
-// Execute marks a todo as complete
+// Execute marks a todo as complete using the WorkflowManager
 func Execute(positionPath string, opts Options) (*Result, error) {
 	logger := logging.GetLogger("too.commands.complete")
 	logger.Debug().
@@ -38,58 +37,57 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 	s := store.NewStore(opts.CollectionPath)
 	err := s.Update(func(collection *models.Collection) error {
-		// Create manager from collection for transaction-aware operations
-		manager, err := store.NewManagerFromCollection(collection)
+		// Create workflow manager for this collection
+		wm, err := store.NewWorkflowManager(collection, opts.CollectionPath)
 		if err != nil {
-			return fmt.Errorf("failed to create idm manager: %w", err)
+			return fmt.Errorf("failed to create workflow manager: %w", err)
 		}
 
-		uid, err := manager.Registry().ResolvePositionPath(store.RootScope, positionPath)
+		// Resolve position path to UID using workflow manager
+		uid, err := wm.ResolvePositionPathInContext(store.RootScope, positionPath, "active")
 		if err != nil {
 			return fmt.Errorf("todo not found: %w", err)
 		}
 
+		// Get the todo for logging and validation
 		todo := collection.FindItemByID(uid)
 		if todo == nil {
 			return fmt.Errorf("todo with ID '%s' not found", uid)
 		}
 
-		// Capture old status
-		oldStatus := string(todo.Status)
+		// Capture old status for result
+		oldStatus, err := wm.GetStatus(uid, "completion")
+		if err != nil {
+			return fmt.Errorf("failed to get current status: %w", err)
+		}
 
-		// Mark the todo as complete using the traditional method
-		// The IDM Manager's SoftDelete approach filters items from scopes,
-		// but too expects completed items to remain visible in parent Items
-		todo.MarkComplete(collection, true)
+		// Set status to "done" - this will trigger auto-transitions including bottom-up completion
+		err = wm.SetStatus(uid, "completion", "done")
+		if err != nil {
+			return fmt.Errorf("failed to set completion status: %w", err)
+		}
 
 		logger.Debug().
-			Str("todoID", todo.ID).
+			Str("todoID", uid).
 			Str("oldStatus", oldStatus).
-			Str("newStatus", string(todo.Status)).
-			Msg("marked todo as complete")
+			Str("newStatus", "done").
+			Msg("marked todo as complete using workflow manager")
 
-		// Bottom-Up Completion: Check if all siblings are complete and propagate up
-		if todo.ParentID != "" {
-			logger.Debug().
-				Str("parentID", todo.ParentID).
-				Msg("checking bottom-up completion for parent")
-
-			checkAndCompleteParent(collection, todo.ParentID, logger)
+		// Build result using workflow manager
+		wfResult, err := wm.BuildResult(uid, opts.Mode, oldStatus)
+		if err != nil {
+			return fmt.Errorf("failed to build result: %w", err)
 		}
 
-		// Now trigger position reset at the appropriate level
-		if todo.ParentID != "" {
-			collection.ResetSiblingPositions(todo.ParentID)
-		} else {
-			collection.ResetRootPositions()
-		}
-
-		// Capture result
+		// Convert to command-specific result structure
 		result = &Result{
-			Todo:      todo,
-			OldStatus: oldStatus,
-			NewStatus: string(todo.Status),
-			Mode:      opts.Mode,
+			Todo:       wfResult.Todo,
+			OldStatus:  wfResult.OldStatus,
+			NewStatus:  wfResult.NewStatus,
+			Mode:       opts.Mode,
+			AllTodos:   wfResult.AllTodos,
+			TotalCount: wfResult.TotalCount,
+			DoneCount:  wfResult.DoneCount,
 		}
 
 		return nil
@@ -97,18 +95,6 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 	if err != nil {
 		return nil, err
-	}
-
-	// If in long mode, get all active todos
-	if opts.Mode == "long" {
-		collection, err := s.Load()
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to load collection for long mode")
-			return nil, fmt.Errorf("failed to load collection for long mode: %w", err)
-		}
-
-		result.AllTodos = collection.ListActive()
-		result.TotalCount, result.DoneCount = countTodos(collection.Todos)
 	}
 
 	logger.Info().
@@ -119,67 +105,3 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	return result, nil
 }
 
-// countTodos recursively counts total and done todos
-func countTodos(todos []*models.Todo) (total int, done int) {
-	for _, todo := range todos {
-		total++
-		if todo.Status == models.StatusDone {
-			done++
-		}
-		// Recursively count children
-		childTotal, childDone := countTodos(todo.Items)
-		total += childTotal
-		done += childDone
-	}
-	return total, done
-}
-
-// checkAndCompleteParent recursively checks if all children of a parent are complete,
-// and if so, marks the parent as complete and continues up the hierarchy
-func checkAndCompleteParent(collection *models.Collection, parentID string, logger zerolog.Logger) {
-	// Find the parent todo
-	parent := collection.FindItemByID(parentID)
-	if parent == nil {
-		logger.Error().
-			Str("parentID", parentID).
-			Msg("parent not found during bottom-up completion")
-		return
-	}
-
-	// Check if all children are complete
-	allChildrenComplete := true
-	for _, child := range parent.Items {
-		if child.Status != models.StatusDone {
-			allChildrenComplete = false
-			break
-		}
-	}
-
-	// If all children are complete, mark parent as complete
-	// Only mark parent as complete if it actually has children to check
-	// This prevents childless parents from being auto-completed
-	if allChildrenComplete && len(parent.Items) > 0 {
-		logger.Debug().
-			Str("parentID", parentID).
-			Int("childCount", len(parent.Items)).
-			Msg("all children complete, marking parent as complete")
-
-		// Use the new method which handles status, position, and timestamp
-		parent.MarkComplete(collection, true) // Skip reorder during recursion
-
-		// Continue up the hierarchy
-		if parent.ParentID != "" {
-			logger.Debug().
-				Str("grandparentID", parent.ParentID).
-				Msg("checking grandparent for bottom-up completion")
-
-			checkAndCompleteParent(collection, parent.ParentID, logger)
-		}
-	} else {
-		logger.Debug().
-			Str("parentID", parentID).
-			Bool("allChildrenComplete", allChildrenComplete).
-			Int("childCount", len(parent.Items)).
-			Msg("parent not marked complete")
-	}
-}
