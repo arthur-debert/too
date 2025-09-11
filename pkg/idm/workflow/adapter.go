@@ -46,8 +46,18 @@ type WorkflowStoreAdapter interface {
 	
 	// Lifecycle and validation hooks
 	
-	// OnStatusChange is called after a status change, allowing for side effects.
-	// This can be used to trigger auto-transitions or other workflow logic.
+	// OnStatusChange is called after a status change has been successfully applied,
+	// allowing for side effects outside of the core workflow system.
+	// 
+	// This hook is intended for:
+	// - Sending notifications (email, webhooks, etc.)
+	// - Logging audit trails for compliance
+	// - Triggering external integrations
+	// - Updating derived data or caches
+	// - Publishing events to message queues
+	//
+	// Note: Auto-transitions are handled separately by the StatusManager.
+	// This hook should NOT be used for workflow logic that affects other items' statuses.
 	OnStatusChange(uid, dimension, oldValue, newValue string) error
 	
 	// ValidateStatusChange is called before a status change to validate the operation.
@@ -419,7 +429,11 @@ func (m *MockWorkflowAdapter) SetStatusesBulk(updates map[string]map[string]stri
 }
 
 func (m *MockWorkflowAdapter) OnStatusChange(uid, dimension, oldValue, newValue string) error {
-	// Mock implementation - could be used for logging or triggering side effects
+	// Mock implementation - in a real implementation, this could:
+	// - Log audit trail: fmt.Printf("Item %s: %s changed from %s to %s\n", uid, dimension, oldValue, newValue)
+	// - Send notifications: emailService.NotifyStatusChange(uid, dimension, newValue)
+	// - Update search indexes: searchIndex.UpdateItem(uid, map[string]string{dimension: newValue})
+	// - Publish events: eventBus.Publish("status.changed", StatusChangeEvent{...})
 	return nil
 }
 
