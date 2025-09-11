@@ -15,13 +15,13 @@ type Options struct {
 
 // Result contains the result of the complete command
 type Result struct {
-	Todo       *models.Todo
+	Todo       *models.IDMTodo
 	OldStatus  string
 	NewStatus  string
-	Mode       string         // Output mode passed from options
-	AllTodos   []*models.Todo // All todos for long mode
-	TotalCount int            // Total count for long mode
-	DoneCount  int            // Done count for long mode
+	Mode       string           // Output mode passed from options
+	AllTodos   []*models.IDMTodo // All todos for long mode
+	TotalCount int              // Total count for long mode
+	DoneCount  int              // Done count for long mode
 }
 
 // Execute marks a todo as complete using pure IDM.
@@ -64,45 +64,15 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 
 	// Build result
 	result := &Result{
-		Todo: &models.Todo{
-			ID:       idmTodo.UID,
-			ParentID: idmTodo.ParentID,
-			Text:     idmTodo.Text,
-			Modified: idmTodo.Modified,
-			Items:    []*models.Todo{},
-		},
+		Todo:      idmTodo,
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 		Mode:      opts.Mode,
 	}
 
-	// Copy statuses
-	if idmTodo.Statuses != nil {
-		result.Todo.Statuses = make(map[string]string)
-		for k, v := range idmTodo.Statuses {
-			result.Todo.Statuses[k] = v
-		}
-	}
-
 	// Add long mode data if requested
 	if opts.Mode == "long" {
-		allTodos := manager.ListActive()
-		result.AllTodos = make([]*models.Todo, len(allTodos))
-		for i, todo := range allTodos {
-			result.AllTodos[i] = &models.Todo{
-				ID:       todo.UID,
-				ParentID: todo.ParentID,
-				Text:     todo.Text,
-				Modified: todo.Modified,
-				Items:    []*models.Todo{},
-			}
-			if todo.Statuses != nil {
-				result.AllTodos[i].Statuses = make(map[string]string)
-				for k, v := range todo.Statuses {
-					result.AllTodos[i].Statuses[k] = v
-				}
-			}
-		}
+		result.AllTodos = manager.ListActive()
 		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 

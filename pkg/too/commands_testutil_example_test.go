@@ -26,12 +26,12 @@ func TestAddCommand_WithTestutil(t *testing.T) {
 	}
 
 	// Load and verify it was saved
-	collection, err := store.Load()
+	collection, err := store.LoadIDM()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertCollectionSize(t, collection, 1)
-	testutil.AssertTodoInList(t, collection.Todos, "My first todo")
-	testutil.AssertTodoHasStatus(t, collection.Todos[0], models.StatusPending)
+	testutil.AssertTodoInList(t, collection.Items, "My first todo")
+	testutil.AssertTodoHasStatus(t, collection.Items[0], models.StatusPending)
 }
 
 // Example: TestSearchCommand using testutil
@@ -98,8 +98,8 @@ func TestCleanCommand_WithTestutil(t *testing.T) {
 	testutil.AssertTodoInList(t, result.RemovedTodos, "Done task 3")
 
 	// Load collection and verify only pending tasks remain
-	collection, _ := store.Load()
+	collection, _ := store.LoadIDM()
 	testutil.AssertCollectionSize(t, collection, 2)
-	testutil.AssertTodoInList(t, collection.Todos, "Pending task 1")
-	testutil.AssertTodoInList(t, collection.Todos, "Pending task 2")
+	testutil.AssertTodoInList(t, collection.Items, "Pending task 1")
+	testutil.AssertTodoInList(t, collection.Items, "Pending task 2")
 }

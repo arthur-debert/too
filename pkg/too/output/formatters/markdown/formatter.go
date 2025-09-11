@@ -51,7 +51,14 @@ func formatMultilineMarkdown(text string, indentStr string) string {
 }
 
 // renderTodos renders a list of todos as nested numbered lists
-func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
+func (f *formatter) renderTodos(todos []*models.IDMTodo, indent int) string {
+	// Build hierarchical structure
+	hierarchical := output.BuildHierarchy(todos)
+	return f.renderHierarchicalTodos(hierarchical, indent)
+}
+
+// renderHierarchicalTodos renders hierarchical todos
+func (f *formatter) renderHierarchicalTodos(todos []*output.HierarchicalTodo, indent int) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("   ", indent) // 3 spaces per indent level
 
@@ -67,8 +74,8 @@ func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
 		result.WriteString(fmt.Sprintf("%s%d. %s %s\n", indentStr, i+1, checkbox, formattedText))
 
 		// Render nested todos
-		if len(todo.Items) > 0 {
-			result.WriteString(f.renderTodos(todo.Items, indent+1))
+		if len(todo.Children) > 0 {
+			result.WriteString(f.renderHierarchicalTodos(todo.Children, indent+1))
 		}
 	}
 

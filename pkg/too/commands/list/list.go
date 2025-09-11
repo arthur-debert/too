@@ -16,7 +16,7 @@ type Options struct {
 
 // Result contains the result of listing todos
 type Result struct {
-	Todos      []*models.Todo
+	Todos      []*models.IDMTodo
 	TotalCount int
 	DoneCount  int
 }
@@ -40,26 +40,17 @@ func Execute(opts Options) (*Result, error) {
 		idmTodos = manager.ListActive()
 	}
 
-	// Convert IDMTodos to Todos for API compatibility
-	todos := make([]*models.Todo, len(idmTodos))
-	for i, idmTodo := range idmTodos {
-		todos[i] = &models.Todo{
-			ID:       idmTodo.UID,
-			ParentID: idmTodo.ParentID,
-			Text:     idmTodo.Text,
-			Modified: idmTodo.Modified,
-			Items:    []*models.Todo{},
-		}
-		if idmTodo.Statuses != nil {
-			todos[i].Statuses = make(map[string]string)
-			for k, v := range idmTodo.Statuses {
-				todos[i].Statuses[k] = v
-			}
-		}
-	}
-
 	// Get counts
 	totalCount, doneCount := manager.CountTodos()
+
+	// Build hierarchical structure for display compatibility
+	// Convert IDMTodos to display format with hierarchy
+	todos := make([]*models.IDMTodo, 0)
+	if len(idmTodos) > 0 {
+		// For now, just return flat structure
+		// The display layer will handle hierarchy building if needed
+		todos = idmTodos
+	}
 
 	return &Result{
 		Todos:      todos,
@@ -68,17 +59,3 @@ func Execute(opts Options) (*Result, error) {
 	}, nil
 }
 
-// countTodos recursively counts total and done todos
-func countTodos(todos []*models.Todo) (total int, done int) {
-	for _, todo := range todos {
-		total++
-		if todo.GetStatus() == models.StatusDone {
-			done++
-		}
-		// Recursively count children
-		childTotal, childDone := countTodos(todo.Items)
-		total += childTotal
-		done += childDone
-	}
-	return total, done
-}

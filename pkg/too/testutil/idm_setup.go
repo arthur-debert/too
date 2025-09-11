@@ -144,3 +144,64 @@ func CreateTestIDMCollection(texts ...string) *models.IDMCollection {
 
 	return collection
 }
+
+// Legacy compatibility functions for tests
+func CreateStoreWithSpecs(t *testing.T, specs []TodoSpec) store.IDMStore {
+	return CreateIDMStoreWithStatuses(t, specs)
+}
+
+func CreatePopulatedStore(t *testing.T, texts ...string) store.IDMStore {
+	return CreateIDMStore(t, texts...)
+}
+
+func CreateStoreWithNestedSpecs(t *testing.T, specs []TodoSpec) store.IDMStore {
+	t.Helper()
+
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.json")
+	idmStore := store.NewIDMStore(dbPath)
+
+	// Create manager
+	manager, err := store.NewPureIDMManager(idmStore, dbPath)
+	if err != nil {
+		t.Fatalf("failed to create manager: %v", err)
+	}
+
+	// Helper function to create todos recursively
+	var createTodos func([]TodoSpec, string)
+	createTodos = func(specs []TodoSpec, parentUID string) {
+		for _, spec := range specs {
+			// Add the todo
+			uid, err := manager.Add(parentUID, spec.Text)
+			if err != nil {
+				t.Fatalf("failed to add todo '%s': %v", spec.Text, err)
+			}
+
+			// Set status if specified
+			if spec.Status != "" {
+				if err := manager.SetStatus(uid, "completion", string(spec.Status)); err != nil {
+					t.Fatalf("failed to set status for '%s': %v", spec.Text, err)
+				}
+			}
+
+			// Create children recursively
+			if len(spec.Children) > 0 {
+				createTodos(spec.Children, uid)
+			}
+		}
+	}
+
+	// Create all todos starting from root scope
+	createTodos(specs, store.RootScope)
+
+	// Save
+	if err := manager.Save(); err != nil {
+		t.Fatalf("failed to save: %v", err)
+	}
+
+	return idmStore
+}
+
+func CreateNestedStore(t *testing.T) store.IDMStore {
+	return CreateNestedIDMStore(t)
+}

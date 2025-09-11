@@ -6,6 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// TodoStatus represents the status of a todo item
+type TodoStatus string
+
+const (
+	// StatusPending indicates the todo is not yet completed
+	StatusPending TodoStatus = "pending"
+	// StatusDone indicates the todo has been completed
+	StatusDone TodoStatus = "done"
+)
+
 // IDMTodo represents a todo item in the pure IDM data model.
 // This eliminates the hierarchical Items field in favor of IDM-managed parent-child relationships.
 // The IDM Registry maintains all positional and hierarchical information separately.

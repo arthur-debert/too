@@ -175,9 +175,21 @@ func TestListCommand(t *testing.T) {
 		result, err := list.Execute(opts)
 
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, 1, len(result.Todos), "Should show the top-level parent")
-		assert.Equal(t, "Done Parent", result.Todos[0].Text)
-		assert.Equal(t, 1, len(result.Todos[0].Items), "Should reveal the child")
-		assert.Equal(t, "Pending Child", result.Todos[0].Items[0].Text)
+		// With flat IDM structure, we expect both parent and child to be in the list
+		assert.Equal(t, 2, len(result.Todos), "Should show both parent and child")
+		
+		// Find todos by text
+		var parent, child *models.IDMTodo
+		for _, todo := range result.Todos {
+			if todo.Text == "Done Parent" {
+				parent = todo
+			} else if todo.Text == "Pending Child" {
+				child = todo
+			}
+		}
+		
+		assert.NotNil(t, parent, "Should have parent todo")
+		assert.NotNil(t, child, "Should have child todo")
+		assert.Equal(t, parent.UID, child.ParentID, "Child should have parent ID")
 	})
 }

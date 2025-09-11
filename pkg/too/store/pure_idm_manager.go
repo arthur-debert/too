@@ -417,15 +417,14 @@ type pureIDMWorkflowAdapter struct {
 }
 
 func (a *pureIDMWorkflowAdapter) GetChildren(parentUID string) ([]string, error) {
-	// Map RootScope to empty string for the data model
-	var parentID string
+	// Prevent infinite recursion for root scope in auto-transitions
 	if parentUID == RootScope {
-		parentID = ""
-	} else {
-		parentID = parentUID
+		// Root scope has no parent to check - return no children to prevent recursion
+		return []string{}, nil
 	}
 	
-	children := a.collection.GetChildren(parentID)
+	// Map parentUID to parentID for data model
+	children := a.collection.GetChildren(parentUID)
 	var childUIDs []string
 	for _, child := range children {
 		childUIDs = append(childUIDs, child.UID)
@@ -445,6 +444,11 @@ func (a *pureIDMWorkflowAdapter) GetParent(uid string) (string, error) {
 }
 
 func (a *pureIDMWorkflowAdapter) SetItemStatus(uid, dimension, value string) error {
+	// Handle root scope gracefully - no-op for virtual root
+	if uid == RootScope {
+		return nil
+	}
+	
 	todo := a.collection.FindByUID(uid)
 	if todo == nil {
 		return fmt.Errorf("todo with UID %s not found", uid)

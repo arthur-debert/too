@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -68,125 +67,6 @@ func TestIDMCollectionOperations(t *testing.T) {
 	}
 }
 
-func TestMigrationToIDM(t *testing.T) {
-	// Create a hierarchical collection
-	collection := NewCollection()
-	
-	// Add root level todo
-	rootTodo, err := collection.CreateTodo("Root task", "")
-	if err != nil {
-		t.Fatalf("Failed to create root todo: %v", err)
-	}
-	
-	// Add child todo
-	childTodo, err := collection.CreateTodo("Child task", rootTodo.ID)
-	if err != nil {
-		t.Fatalf("Failed to create child todo: %v", err)
-	}
-	
-	// Add grandchild todo
-	grandchildTodo, err := collection.CreateTodo("Grandchild task", childTodo.ID)
-	if err != nil {
-		t.Fatalf("Failed to create grandchild todo: %v", err)
-	}
-	
-	// Migrate to IDM
-	idmCollection := MigrateToIDM(collection)
-	
-	// Verify all items are present in flat structure
-	if idmCollection.Count() != 3 {
-		t.Errorf("Expected 3 items in IDM collection, got %d", idmCollection.Count())
-	}
-	
-	// Verify root item
-	idmRoot := idmCollection.FindByUID(rootTodo.ID)
-	if idmRoot == nil {
-		t.Error("Root todo not found in IDM collection")
-	} else {
-		if idmRoot.Text != "Root task" {
-			t.Errorf("Expected root text 'Root task', got '%s'", idmRoot.Text)
-		}
-		if idmRoot.ParentID != "" {
-			t.Errorf("Expected empty parent ID for root, got '%s'", idmRoot.ParentID)
-		}
-	}
-	
-	// Verify child item
-	idmChild := idmCollection.FindByUID(childTodo.ID)
-	if idmChild == nil {
-		t.Error("Child todo not found in IDM collection")
-	} else {
-		if idmChild.ParentID != rootTodo.ID {
-			t.Errorf("Expected child parent ID '%s', got '%s'", rootTodo.ID, idmChild.ParentID)
-		}
-	}
-	
-	// Verify grandchild item
-	idmGrandchild := idmCollection.FindByUID(grandchildTodo.ID)
-	if idmGrandchild == nil {
-		t.Error("Grandchild todo not found in IDM collection")
-	} else {
-		if idmGrandchild.ParentID != childTodo.ID {
-			t.Errorf("Expected grandchild parent ID '%s', got '%s'", childTodo.ID, idmGrandchild.ParentID)
-		}
-	}
-	
-	// Test hierarchy retrieval
-	children := idmCollection.GetChildren(rootTodo.ID)
-	if len(children) != 1 {
-		t.Errorf("Expected 1 child of root, got %d", len(children))
-	}
-	
-	descendants := idmCollection.GetDescendants(rootTodo.ID)
-	if len(descendants) != 2 {
-		t.Errorf("Expected 2 descendants of root, got %d", len(descendants))
-	}
-}
-
-func TestMigrationFromIDM(t *testing.T) {
-	// Create a flat IDM collection
-	idmCollection := NewIDMCollection()
-	
-	root := NewIDMTodo("Root task", "")
-	child := NewIDMTodo("Child task", root.UID)
-	grandchild := NewIDMTodo("Grandchild task", child.UID)
-	
-	idmCollection.AddItem(root)
-	idmCollection.AddItem(child)
-	idmCollection.AddItem(grandchild)
-	
-	// Migrate back to hierarchical
-	collection := MigrateFromIDM(idmCollection)
-	
-	// Verify hierarchical structure is restored
-	if len(collection.Todos) != 1 {
-		t.Errorf("Expected 1 root todo, got %d", len(collection.Todos))
-	}
-	
-	rootTodo := collection.Todos[0]
-	if rootTodo.Text != "Root task" {
-		t.Errorf("Expected root text 'Root task', got '%s'", rootTodo.Text)
-	}
-	
-	if len(rootTodo.Items) != 1 {
-		t.Errorf("Expected 1 child of root, got %d", len(rootTodo.Items))
-	}
-	
-	childTodo := rootTodo.Items[0]
-	if childTodo.Text != "Child task" {
-		t.Errorf("Expected child text 'Child task', got '%s'", childTodo.Text)
-	}
-	
-	if len(childTodo.Items) != 1 {
-		t.Errorf("Expected 1 grandchild, got %d", len(childTodo.Items))
-	}
-	
-	grandchildTodo := childTodo.Items[0]
-	if grandchildTodo.Text != "Grandchild task" {
-		t.Errorf("Expected grandchild text 'Grandchild task', got '%s'", grandchildTodo.Text)
-	}
-}
-
 func TestIDMTodoClone(t *testing.T) {
 	original := NewIDMTodo("Original task", "parent123")
 	original.Statuses["priority"] = "high"
@@ -225,50 +105,75 @@ func TestIDMTodoClone(t *testing.T) {
 	}
 }
 
-func TestValidateIDMCollection(t *testing.T) {
+func TestIDMTodoStatusMethods(t *testing.T) {
+	todo := NewIDMTodo("Test task", "")
+	
+	// Test initial status
+	if !todo.IsPending() {
+		t.Error("New todo should be pending")
+	}
+	if todo.IsComplete() {
+		t.Error("New todo should not be complete")
+	}
+	
+	// Test setting to done
+	todo.Statuses["completion"] = string(StatusDone)
+	
+	if todo.IsPending() {
+		t.Error("Todo should not be pending after setting to done")
+	}
+	if !todo.IsComplete() {
+		t.Error("Todo should be complete after setting to done")
+	}
+}
+
+func TestIDMTodoShortID(t *testing.T) {
+	todo := NewIDMTodo("Test", "")
+	
+	shortID := todo.GetShortID()
+	if len(shortID) != 7 {
+		t.Errorf("Expected short ID length of 7, got %d", len(shortID))
+	}
+	
+	// Test with manually set short UID
+	todo.UID = "abc"
+	shortID = todo.GetShortID()
+	if shortID != "abc" {
+		t.Errorf("Expected short ID 'abc', got '%s'", shortID)
+	}
+}
+
+func TestIDMCollectionGetDescendants(t *testing.T) {
 	collection := NewIDMCollection()
 	
-	// Add valid items
-	todo1 := NewIDMTodo("Task 1", "")
-	todo2 := NewIDMTodo("Task 2", todo1.UID)
+	// Create a hierarchy
+	root := NewIDMTodo("Root", "")
+	child1 := NewIDMTodo("Child 1", root.UID)
+	child2 := NewIDMTodo("Child 2", root.UID)
+	grandchild1 := NewIDMTodo("Grandchild 1", child1.UID)
+	grandchild2 := NewIDMTodo("Grandchild 2", child1.UID)
 	
-	collection.AddItem(todo1)
-	collection.AddItem(todo2)
+	collection.AddItem(root)
+	collection.AddItem(child1)
+	collection.AddItem(child2)
+	collection.AddItem(grandchild1)
+	collection.AddItem(grandchild2)
 	
-	// Should have no validation errors
-	errors := ValidateIDMCollection(collection)
-	if len(errors) != 0 {
-		t.Errorf("Expected no validation errors, got %d: %v", len(errors), errors)
+	// Test getting all descendants
+	descendants := collection.GetDescendants(root.UID)
+	if len(descendants) != 4 {
+		t.Errorf("Expected 4 descendants of root, got %d", len(descendants))
 	}
 	
-	// Add item with invalid parent reference
-	todo3 := NewIDMTodo("Task 3", "nonexistent-parent")
-	collection.AddItem(todo3)
-	
-	errors = ValidateIDMCollection(collection)
-	if len(errors) == 0 {
-		t.Error("Expected validation errors for invalid parent reference")
+	// Test getting descendants of child1
+	child1Descendants := collection.GetDescendants(child1.UID)
+	if len(child1Descendants) != 2 {
+		t.Errorf("Expected 2 descendants of child1, got %d", len(child1Descendants))
 	}
 	
-	// Test duplicate UID (manually create to test validation)
-	todo4 := &IDMTodo{
-		UID:      todo1.UID, // Duplicate UID
-		ParentID: "",
-		Text:     "Duplicate",
-		Statuses: map[string]string{"completion": "pending"},
-		Modified: time.Now(),
-	}
-	collection.AddItem(todo4)
-	
-	errors = ValidateIDMCollection(collection)
-	foundDuplicateError := false
-	for _, err := range errors {
-		if err.Error() == fmt.Sprintf("duplicate UID found: %s", todo1.UID) {
-			foundDuplicateError = true
-			break
-		}
-	}
-	if !foundDuplicateError {
-		t.Error("Expected validation error for duplicate UID")
+	// Test getting descendants of leaf node
+	leafDescendants := collection.GetDescendants(grandchild1.UID)
+	if len(leafDescendants) != 0 {
+		t.Errorf("Expected 0 descendants of leaf node, got %d", len(leafDescendants))
 	}
 }

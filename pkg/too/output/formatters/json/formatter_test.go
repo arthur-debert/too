@@ -24,10 +24,9 @@ func TestJSONFormatter(t *testing.T) {
 	t.Run("RenderAdd", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.AddResult{
-			Todo: &models.Todo{
+			Todo: &models.IDMTodo{
 				Text:     "Test todo",
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
-				Items:    []*models.Todo{},
 			},
 		}
 
@@ -44,16 +43,14 @@ func TestJSONFormatter(t *testing.T) {
 	t.Run("RenderList", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.ListResult{
-			Todos: []*models.Todo{
+			Todos: []*models.IDMTodo{
 				{
 					Text:     "First todo",
 					Statuses: map[string]string{"completion": string(models.StatusPending)},
-					Items:    []*models.Todo{},
 				},
 				{
 					Text:     "Second todo",
 					Statuses: map[string]string{"completion": string(models.StatusDone)},
-					Items:    []*models.Todo{},
 				},
 			},
 			TotalCount: 2,
@@ -90,10 +87,9 @@ func TestJSONFormatter(t *testing.T) {
 		var buf bytes.Buffer
 		results := []*too.CompleteResult{
 			{
-				Todo: &models.Todo{
+				Todo: &models.IDMTodo{
 					Text:     "Completed todo",
 					Statuses: map[string]string{"completion": string(models.StatusDone)},
-					Items:    []*models.Todo{},
 				},
 			},
 		}
@@ -137,17 +133,16 @@ func TestJSONFormatter(t *testing.T) {
 	t.Run("Nested todos", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.ListResult{
-			Todos: []*models.Todo{
+			Todos: []*models.IDMTodo{
 				{
 					Text:     "Parent todo",
 					Statuses: map[string]string{"completion": string(models.StatusPending)},
-					Items: []*models.Todo{
-						{
-							Text:     "Child todo",
-							Statuses: map[string]string{"completion": string(models.StatusPending)},
-							Items:    []*models.Todo{},
-						},
-					},
+					ParentID: "",
+				},
+				{
+					Text:     "Child todo",
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					ParentID: "parent-uid",
 				},
 			},
 			TotalCount: 2,
@@ -161,8 +156,18 @@ func TestJSONFormatter(t *testing.T) {
 		var decoded too.ListResult
 		err = json.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
-		assert.Len(t, decoded.Todos, 1)
-		assert.Len(t, decoded.Todos[0].Items, 1)
-		assert.Equal(t, "Child todo", decoded.Todos[0].Items[0].Text)
+		// With flat structure, we have both parent and child
+		assert.Len(t, decoded.Todos, 2)
+		// Verify we have both parent and child todos
+		var parentFound, childFound bool
+		for _, todo := range decoded.Todos {
+			if todo.Text == "Parent todo" {
+				parentFound = true
+			} else if todo.Text == "Child todo" {
+				childFound = true
+			}
+		}
+		assert.True(t, parentFound, "Should have parent todo")
+		assert.True(t, childFound, "Should have child todo")
 	})
 }

@@ -7,7 +7,7 @@ import (
 )
 
 // AssertTodoInList checks if a todo with the given text exists in the list.
-func AssertTodoInList(t *testing.T, todos []*models.Todo, expectedText string) {
+func AssertTodoInList(t *testing.T, todos []*models.IDMTodo, expectedText string) {
 	t.Helper()
 
 	for _, todo := range todos {
@@ -20,7 +20,7 @@ func AssertTodoInList(t *testing.T, todos []*models.Todo, expectedText string) {
 }
 
 // AssertTodoNotInList checks that a todo with the given text does not exist in the list.
-func AssertTodoNotInList(t *testing.T, todos []*models.Todo, unexpectedText string) {
+func AssertTodoNotInList(t *testing.T, todos []*models.IDMTodo, unexpectedText string) {
 	t.Helper()
 
 	for _, todo := range todos {
@@ -33,7 +33,7 @@ func AssertTodoNotInList(t *testing.T, todos []*models.Todo, unexpectedText stri
 
 
 // AssertTodoHasStatus checks that a todo has the expected status.
-func AssertTodoHasStatus(t *testing.T, todo *models.Todo, expectedStatus models.TodoStatus) {
+func AssertTodoHasStatus(t *testing.T, todo *models.IDMTodo, expectedStatus models.TodoStatus) {
 	t.Helper()
 
 	if todo.GetStatus() != expectedStatus {
@@ -42,10 +42,10 @@ func AssertTodoHasStatus(t *testing.T, todo *models.Todo, expectedStatus models.
 }
 
 // AssertCollectionSize checks that a collection has the expected number of todos.
-func AssertCollectionSize(t *testing.T, collection *models.Collection, expectedSize int) {
+func AssertCollectionSize(t *testing.T, collection *models.IDMCollection, expectedSize int) {
 	t.Helper()
 
-	actualSize := len(collection.Todos)
+	actualSize := len(collection.Items)
 	if actualSize != expectedSize {
 		t.Errorf("expected collection to have %d todos, got %d", expectedSize, actualSize)
 	}
@@ -53,11 +53,11 @@ func AssertCollectionSize(t *testing.T, collection *models.Collection, expectedS
 
 // AssertTodoByID finds a todo by ID and verifies it exists.
 // Returns the todo if found, allowing further assertions.
-func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo {
+func AssertTodoByID(t *testing.T, todos []*models.IDMTodo, id string) *models.IDMTodo {
 	t.Helper()
 
 	for _, todo := range todos {
-		if todo.ID == id {
+		if todo.UID == id {
 			return todo
 		}
 	}
@@ -69,7 +69,7 @@ func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo 
 // AssertTodoByPosition finds a todo by position and verifies it exists.
 // Returns the todo if found, allowing further assertions.
 // DEPRECATED: Position field has been removed. Use AssertTodoByIndex instead.
-func AssertTodoByPosition(t *testing.T, todos []*models.Todo, position int) *models.Todo {
+func AssertTodoByPosition(t *testing.T, todos []*models.IDMTodo, position int) *models.IDMTodo {
 	t.Helper()
 	// Since Position field is removed, we'll use array index as a fallback
 	// This maintains backward compatibility while tests are migrated

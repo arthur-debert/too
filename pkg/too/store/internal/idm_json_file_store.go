@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/arthur-debert/too/pkg/too/models"
 )
@@ -13,6 +14,51 @@ import (
 // This store saves and loads IDMCollection directly without any hierarchical conversion.
 type IDMJSONFileStore struct {
 	PathValue string
+}
+
+// legacyTodo represents the old hierarchical todo format
+type legacyTodo struct {
+	ID       string            `json:"id"`
+	ParentID string            `json:"parentId"`
+	Text     string            `json:"text"`
+	Statuses map[string]string `json:"statuses"`
+	Modified time.Time         `json:"modified"`
+	Items    []legacyTodo      `json:"items"`
+}
+
+// legacyFormat represents the old collection format
+type legacyFormat struct {
+	Todos []legacyTodo `json:"todos"`
+}
+
+// migrateFromLegacy converts legacy hierarchical format to flat IDM format
+func migrateFromLegacy(legacy legacyFormat) models.IDMCollection {
+	collection := models.IDMCollection{
+		Items: []*models.IDMTodo{},
+	}
+	
+	// Recursively flatten the hierarchy
+	var flatten func(todos []legacyTodo)
+	flatten = func(todos []legacyTodo) {
+		for _, todo := range todos {
+			idmTodo := &models.IDMTodo{
+				UID:      todo.ID,
+				ParentID: todo.ParentID,
+				Text:     todo.Text,
+				Statuses: todo.Statuses,
+				Modified: todo.Modified,
+			}
+			collection.Items = append(collection.Items, idmTodo)
+			
+			// Process children
+			if len(todo.Items) > 0 {
+				flatten(todo.Items)
+			}
+		}
+	}
+	
+	flatten(legacy.Todos)
+	return collection
 }
 
 // NewIDMJSONFileStore creates a new IDM JSON file store.
@@ -39,28 +85,27 @@ func (s *IDMJSONFileStore) LoadIDM() (*models.IDMCollection, error) {
 		return models.NewIDMCollection(), nil
 	}
 
-	// Check if data contains legacy "todos" field
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err == nil {
-		if _, hasTotos := raw["todos"]; hasTotos {
-			// This is legacy format - unmarshal and migrate
-			var legacyCollection models.Collection
-			if err := json.Unmarshal(data, &legacyCollection); err == nil {
-				// Migrate from legacy format
-				idmCollection := models.MigrateToIDM(&legacyCollection)
-				// Save in new format immediately after migration
-				if saveErr := s.SaveIDM(idmCollection); saveErr == nil {
-					return idmCollection, nil
-				}
-				return idmCollection, nil
-			}
-		}
-	}
-
-	// Try to unmarshal as IDMCollection
+	// Try to unmarshal as IDMCollection directly
 	var collection models.IDMCollection
 	if err := json.Unmarshal(data, &collection); err != nil {
-		return nil, fmt.Errorf("failed to decode JSON from %s: %w", s.PathValue, err)
+		// Try legacy format with hierarchical todos
+		var legacyData legacyFormat
+		if legacyErr := json.Unmarshal(data, &legacyData); legacyErr != nil {
+			return nil, fmt.Errorf("failed to decode JSON from %s: %w (original error: %v)", s.PathValue, legacyErr, err)
+		}
+		// Migrate from legacy format
+		collection = migrateFromLegacy(legacyData)
+	} else {
+		// Check if the collection has the old "todos" field instead of "items"
+		// This indicates legacy format even if JSON unmarshal didn't fail
+		if len(collection.Items) == 0 {
+			// Try legacy format
+			var legacyData legacyFormat
+			if legacyErr := json.Unmarshal(data, &legacyData); legacyErr == nil && len(legacyData.Todos) > 0 {
+				// Migrate from legacy format
+				collection = migrateFromLegacy(legacyData)
+			}
+		}
 	}
 
 	// Ensure Items is not nil
@@ -94,7 +139,7 @@ func (s *IDMJSONFileStore) SaveIDM(collection *models.IDMCollection) error {
 	// Rename temporary file to actual file (atomic operation)
 	if err := os.Rename(tempFile, s.PathValue); err != nil {
 		// Clean up temp file if rename fails
-		os.Remove(tempFile)
+		_ = os.Remove(tempFile) // Ignore error on cleanup
 		return fmt.Errorf("failed to save file: %w", err)
 	}
 

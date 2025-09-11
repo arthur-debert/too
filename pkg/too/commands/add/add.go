@@ -16,12 +16,12 @@ type Options struct {
 
 // Result contains the result of the add command
 type Result struct {
-	Todo         *models.Todo
-	PositionPath string         // Position path of the newly created todo (e.g., "1", "1.2")
-	Mode         string         // Output mode passed from options
-	AllTodos     []*models.Todo // All todos for long mode
-	TotalCount   int            // Total count for long mode
-	DoneCount    int            // Done count for long mode
+	Todo         *models.IDMTodo
+	PositionPath string           // Position path of the newly created todo (e.g., "1", "1.2")
+	Mode         string           // Output mode passed from options
+	AllTodos     []*models.IDMTodo // All todos for long mode
+	TotalCount   int              // Total count for long mode
+	DoneCount    int              // Done count for long mode
 }
 
 // Execute adds a new todo to the collection using pure IDM.
@@ -38,7 +38,7 @@ func Execute(text string, opts Options) (*Result, error) {
 	}
 
 	// Resolve parent if specified
-	var parentUID string = store.RootScope
+	var parentUID = store.RootScope
 	if opts.ParentPath != "" {
 		uid, err := manager.ResolvePositionPath(store.RootScope, opts.ParentPath)
 		if err != nil {
@@ -70,63 +70,19 @@ func Execute(text string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to get position path: %w", err)
 	}
 
-	// Build result (converting IDMTodo to Todo for API compatibility)
+	// Build result
 	result := &Result{
-		Todo: &models.Todo{
-			ID:       todo.UID,
-			ParentID: todo.ParentID,
-			Text:     todo.Text,
-			Modified: todo.Modified,
-			Items:    []*models.Todo{},
-		},
+		Todo:         todo,
 		PositionPath: positionPath,
 		Mode:         opts.Mode,
 	}
 
-	// Copy statuses
-	if todo.Statuses != nil {
-		result.Todo.Statuses = make(map[string]string)
-		for k, v := range todo.Statuses {
-			result.Todo.Statuses[k] = v
-		}
-	}
-
 	// Add long mode data if requested
 	if opts.Mode == "long" {
-		allTodos := manager.ListActive()
-		result.AllTodos = make([]*models.Todo, len(allTodos))
-		for i, idmTodo := range allTodos {
-			result.AllTodos[i] = &models.Todo{
-				ID:       idmTodo.UID,
-				ParentID: idmTodo.ParentID,
-				Text:     idmTodo.Text,
-				Modified: idmTodo.Modified,
-				Items:    []*models.Todo{},
-			}
-			if idmTodo.Statuses != nil {
-				result.AllTodos[i].Statuses = make(map[string]string)
-				for k, v := range idmTodo.Statuses {
-					result.AllTodos[i].Statuses[k] = v
-				}
-			}
-		}
+		result.AllTodos = manager.ListActive()
 		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 
 	return result, nil
 }
 
-// countTodos recursively counts total and done todos
-func countTodos(todos []*models.Todo) (total int, done int) {
-	for _, todo := range todos {
-		total++
-		if todo.GetStatus() == models.StatusDone {
-			done++
-		}
-		// Recursively count children
-		childTotal, childDone := countTodos(todo.Items)
-		total += childTotal
-		done += childDone
-	}
-	return total, done
-}

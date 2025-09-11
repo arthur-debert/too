@@ -41,11 +41,11 @@ func Execute(opts Options) (*Result, error) {
 		storePath = ".todos"
 	}
 
-	s := store.NewStore(storePath)
+	s := store.NewIDMStore(storePath)
 
 	if !s.Exists() {
-		// Create an empty collection to initialize the file
-		if err := s.Save(models.NewCollection()); err != nil {
+		// Create an empty IDM collection to initialize the file
+		if err := s.SaveIDM(models.NewIDMCollection()); err != nil {
 			return nil, fmt.Errorf("failed to create store file: %w", err)
 		}
 		return &Result{

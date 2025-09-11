@@ -1,7 +1,11 @@
 package clean
 
 import (
+	"fmt"
+
+	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
+	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // Options contains options for the clean command
@@ -12,20 +16,46 @@ type Options struct {
 // Result contains the result of the clean command
 type Result struct {
 	RemovedCount int
-	RemovedTodos []*models.Todo
+	RemovedTodos []*models.IDMTodo
 	ActiveCount  int
 }
 
-// Execute removes finished todos from the collection using the pure IDM data model.
-// This function now uses IDM internally but maintains backward compatibility 
-// by returning the traditional Result format.
+// Execute removes finished todos from the collection using the pure IDM manager.
 func Execute(opts Options) (*Result, error) {
-	// Use IDM implementation and convert result for backward compatibility
-	idmResult, err := ExecuteIDM(opts)
+	logger := logging.GetLogger("too.commands.clean")
+	logger.Debug().
+		Str("collectionPath", opts.CollectionPath).
+		Msg("executing clean command with pure IDM manager")
+
+	idmStore := store.NewIDMStore(opts.CollectionPath)
+
+	// Create pure IDM workflow manager
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create pure IDM manager: %w", err)
 	}
 
-	return ConvertIDMResultToResult(idmResult), nil
-}
+	// Use the manager's integrated clean operation
+	removedTodos, activeCount, err := manager.CleanFinishedTodos()
+	if err != nil {
+		return nil, fmt.Errorf("failed to clean finished todos: %w", err)
+	}
 
+	// Save the updated collection
+	if err := manager.Save(); err != nil {
+		return nil, fmt.Errorf("failed to save collection after clean: %w", err)
+	}
+
+	result := &Result{
+		RemovedCount: len(removedTodos),
+		RemovedTodos: removedTodos,
+		ActiveCount:  activeCount,
+	}
+
+	logger.Info().
+		Int("removedCount", len(removedTodos)).
+		Int("activeCount", activeCount).
+		Msg("clean command completed with pure IDM manager")
+
+	return result, nil
+}
