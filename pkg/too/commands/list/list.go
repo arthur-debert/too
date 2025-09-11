@@ -2,7 +2,6 @@ package list
 
 import (
 	"github.com/arthur-debert/too/pkg/too/models"
-	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // Options contains options for listing todos
@@ -19,35 +18,17 @@ type Result struct {
 	DoneCount  int
 }
 
-// Execute returns todos from the collection with optional filtering
+// Execute returns todos from the collection using the pure IDM data model.
+// This function now uses IDM internally but maintains backward compatibility 
+// by returning the traditional Result format.
 func Execute(opts Options) (*Result, error) {
-	s := store.NewStore(opts.CollectionPath)
-
-	// Create direct workflow manager instead of loading collection directly
-	manager, err := store.NewDirectWorkflowManager(s, opts.CollectionPath)
+	// Use IDM implementation and convert result for backward compatibility
+	idmResult, err := ExecuteIDM(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	// Use DirectWorkflowManager's IDM-aware filtering methods
-	var filteredTodos []*models.Todo
-	if opts.ShowAll {
-		filteredTodos = manager.ListAll()
-	} else if opts.ShowDone {
-		filteredTodos = manager.ListArchived()
-	} else {
-		filteredTodos = manager.ListActive()
-	}
-
-	// Count totals from the original collection
-	collection := manager.GetCollection()
-	totalCount, doneCount := countTodos(collection.Todos)
-
-	return &Result{
-		Todos:      filteredTodos,
-		TotalCount: totalCount,
-		DoneCount:  doneCount,
-	}, nil
+	return ConvertIDMResultToResult(idmResult), nil
 }
 
 // countTodos recursively counts total and done todos

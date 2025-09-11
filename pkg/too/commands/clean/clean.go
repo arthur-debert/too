@@ -2,7 +2,6 @@ package clean
 
 import (
 	"github.com/arthur-debert/too/pkg/too/models"
-	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // Options contains options for the clean command
@@ -17,32 +16,16 @@ type Result struct {
 	ActiveCount  int
 }
 
-// Execute removes finished todos from the collection
+// Execute removes finished todos from the collection using the pure IDM data model.
+// This function now uses IDM internally but maintains backward compatibility 
+// by returning the traditional Result format.
 func Execute(opts Options) (*Result, error) {
-	s := store.NewStore(opts.CollectionPath)
-
-	// Create direct workflow manager instead of using store.Update
-	manager, err := store.NewDirectWorkflowManager(s, opts.CollectionPath)
+	// Use IDM implementation and convert result for backward compatibility
+	idmResult, err := ExecuteIDM(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	// Use the manager's integrated clean operation
-	removedTodos, activeCount, err := manager.CleanFinishedTodos()
-	if err != nil {
-		return nil, err
-	}
-
-	// Save the changes through the manager
-	err = manager.Save()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Result{
-		RemovedCount: len(removedTodos),
-		RemovedTodos: removedTodos,
-		ActiveCount:  activeCount,
-	}, nil
+	return ConvertIDMResultToResult(idmResult), nil
 }
 

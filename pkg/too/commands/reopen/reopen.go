@@ -16,9 +16,15 @@ type Result struct {
 	NewStatus string
 }
 
-// Execute marks a todo as pending by finding it via a user-provided reference,
-// which can be either a position path (e.g., "1.2") or a short ID.
-// Uses WorkflowManager for status management.
+// Execute marks a todo as pending using the pure IDM data model.
+// This function now uses IDM internally but maintains backward compatibility 
+// by returning the traditional Result format.
 func Execute(ref string, opts Options) (*Result, error) {
-	return ExecuteDirect(ref, opts)
+	// Use IDM implementation and convert result for backward compatibility
+	idmResult, err := ExecuteIDM(ref, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return ConvertIDMResultToResult(idmResult), nil
 }

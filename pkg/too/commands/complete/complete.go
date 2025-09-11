@@ -21,9 +21,17 @@ type Result struct {
 	DoneCount  int            // Done count for long mode
 }
 
-// Execute marks a todo as complete using the WorkflowManager
+// Execute marks a todo as complete using the pure IDM data model.
+// This function now uses IDM internally but maintains backward compatibility 
+// by returning the traditional Result format.
 func Execute(positionPath string, opts Options) (*Result, error) {
-	return ExecuteDirect(positionPath, opts)
+	// Use IDM implementation and convert result for backward compatibility
+	idmResult, err := ExecuteIDM(positionPath, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return ConvertIDMResultToResult(idmResult), nil
 }
 
 

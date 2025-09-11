@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/arthur-debert/too/pkg/too/models"
-	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // Options contains options for the add command
@@ -24,14 +23,21 @@ type Result struct {
 	DoneCount    int            // Done count for long mode
 }
 
-// Execute adds a new todo to the collection
+// Execute adds a new todo to the collection using the pure IDM data model.
+// This function now uses IDM internally but maintains backward compatibility 
+// by returning the traditional Result format.
 func Execute(text string, opts Options) (*Result, error) {
 	if text == "" {
 		return nil, fmt.Errorf("todo text cannot be empty")
 	}
 
-	s := store.NewStore(opts.CollectionPath)
-	return RunDirect(s, text, opts)
+	// Use IDM implementation and convert result for backward compatibility
+	idmResult, err := ExecuteIDM(text, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return ConvertIDMResultToResult(idmResult), nil
 }
 
 // countTodos recursively counts total and done todos

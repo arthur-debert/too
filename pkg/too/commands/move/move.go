@@ -18,9 +18,17 @@ type Result struct {
 	NewParent *models.Todo
 }
 
-// Execute moves a todo from one parent to another
+// Execute moves a todo from one parent to another using the pure IDM data model.
+// This function now uses IDM internally but maintains backward compatibility 
+// by returning the traditional Result format.
 func Execute(sourcePath string, destParentPath string, opts Options) (*Result, error) {
-	return ExecuteDirect(sourcePath, destParentPath, opts)
+	// Use IDM implementation and convert result for backward compatibility
+	idmResult, err := ExecuteIDM(sourcePath, destParentPath, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return ConvertIDMResultToResult(idmResult), nil
 }
 
 func isDescendantOf(child, parent *models.Todo) bool {
