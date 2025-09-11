@@ -26,18 +26,19 @@ func Execute(positionStr string, newText string, opts Options) (*Result, error) 
 	}
 
 	s := store.NewStore(opts.CollectionPath)
-	manager, err := store.NewManagerFromStore(s)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create idm manager: %w", err)
-	}
-
-	uid, err := manager.Registry().ResolvePositionPath(store.RootScope, positionStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve todo position '%s': %w", positionStr, err)
-	}
-
+	
 	var result *Result
-	err = s.Update(func(collection *models.Collection) error {
+	err := s.Update(func(collection *models.Collection) error {
+		// Create manager from collection for transaction-aware operations
+		manager, err := store.NewManagerFromCollection(collection)
+		if err != nil {
+			return fmt.Errorf("failed to create idm manager: %w", err)
+		}
+
+		uid, err := manager.Registry().ResolvePositionPath(store.RootScope, positionStr)
+		if err != nil {
+			return fmt.Errorf("failed to resolve todo position '%s': %w", positionStr, err)
+		}
 		todo := collection.FindItemByID(uid)
 		if todo == nil {
 			return fmt.Errorf("todo with ID '%s' not found", uid)

@@ -15,7 +15,6 @@ import (
 	cmdMove "github.com/arthur-debert/too/pkg/too/commands/move"
 	cmdReopen "github.com/arthur-debert/too/pkg/too/commands/reopen"
 	cmdSearch "github.com/arthur-debert/too/pkg/too/commands/search"
-	cmdSwap "github.com/arthur-debert/too/pkg/too/commands/swap"
 )
 
 // Re-export command option types for backward compatibility
@@ -29,7 +28,7 @@ type (
 	SearchOptions       = cmdSearch.Options
 	ListOptions         = cmdList.Options
 	MoveOptions         = cmdMove.Options
-	SwapOptions         = cmdSwap.Options
+	SwapOptions         = cmdMove.Options
 	ShowDataPathOptions = cmdDataPath.Options
 	ListFormatsOptions  = cmdFormats.Options
 )
@@ -45,7 +44,7 @@ type (
 	SearchResult       = cmdSearch.Result
 	ListResult         = cmdList.Result
 	MoveResult         = cmdMove.Result
-	SwapResult         = cmdSwap.Result
+	SwapResult         = cmdMove.Result
 	ShowDataPathResult = cmdDataPath.Result
 	ListFormatsResult  = cmdFormats.Result
 )
@@ -95,9 +94,9 @@ func Move(sourcePath string, destParentPath string, opts MoveOptions) (*MoveResu
 	return cmdMove.Execute(sourcePath, destParentPath, opts)
 }
 
-// Swap swaps a todo from one parent to another
+// Swap moves a todo from one parent to another (alias for Move)
 func Swap(sourcePath string, destParentPath string, opts SwapOptions) (*SwapResult, error) {
-	return cmdSwap.Execute(sourcePath, destParentPath, opts)
+	return cmdMove.Execute(sourcePath, destParentPath, opts)
 }
 
 // ShowDataPath shows the path to the data file

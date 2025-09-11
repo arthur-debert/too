@@ -29,7 +29,6 @@ func (m *mockFormatter) RenderList(w io.Writer, result *too.ListResult) error   
 func (m *mockFormatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error  { return nil }
 func (m *mockFormatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error      { return nil }
 func (m *mockFormatter) RenderMove(w io.Writer, result *too.MoveResult) error             { return nil }
-func (m *mockFormatter) RenderSwap(w io.Writer, result *too.SwapResult) error             { return nil }
 func (m *mockFormatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error { return nil }
 func (m *mockFormatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error   { return nil }
 func (m *mockFormatter) RenderError(w io.Writer, err error) error                         { return nil }

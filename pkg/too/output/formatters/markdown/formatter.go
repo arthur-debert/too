@@ -173,10 +173,6 @@ func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
 }
 
 // RenderSwap renders the swap command result as Markdown
-func (f *formatter) RenderSwap(w io.Writer, result *too.SwapResult) error {
-	_, err := fmt.Fprintf(w, "Swapped todo from %s to %s\n", result.OldPath, result.NewPath)
-	return err
-}
 
 // RenderDataPath renders the datapath command result as Markdown
 func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
