@@ -79,9 +79,6 @@ func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
 }
 
 // RenderSwap renders the swap command result as YAML
-func (f *formatter) RenderSwap(w io.Writer, result *too.SwapResult) error {
-	return f.encode(w, result)
-}
 
 // RenderDataPath renders the datapath command result as YAML
 func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {

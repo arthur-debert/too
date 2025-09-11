@@ -23,7 +23,6 @@ type Formatter interface {
 	RenderComplete(w io.Writer, results []*too.CompleteResult) error
 	RenderReopen(w io.Writer, results []*too.ReopenResult) error
 	RenderMove(w io.Writer, result *too.MoveResult) error
-	RenderSwap(w io.Writer, result *too.SwapResult) error
 	RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error
 	RenderFormats(w io.Writer, result *too.ListFormatsResult) error
 	RenderError(w io.Writer, err error) error

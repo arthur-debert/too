@@ -379,16 +379,6 @@ func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
 	return err
 }
 
-// RenderSwap renders the swap command result using lipbalm
-func (r *LipbamlRenderer) RenderSwap(result *too.SwapResult) error {
-	output, err := r.renderTemplate("swap_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render swap result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
-
 // RenderDataPath renders the datapath command result using lipbalm
 func (r *LipbamlRenderer) RenderDataPath(result *too.ShowDataPathResult) error {
 	output, err := r.renderTemplate("datapath_result", result)

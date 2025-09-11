@@ -41,7 +41,7 @@ Examples:
 		if err != nil {
 			return err
 		}
-		return renderer.RenderSwap(result)
+		return renderer.RenderMove(result)
 	},
 }
 

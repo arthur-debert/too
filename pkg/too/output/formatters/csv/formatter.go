@@ -238,19 +238,6 @@ func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
 	return f.writeCSV(w, headers, rows)
 }
 
-// RenderSwap renders the swap command result as CSV
-func (f *formatter) RenderSwap(w io.Writer, result *too.SwapResult) error {
-	headers := []string{"id", "text", "old_path", "new_path", "status"}
-	rows := [][]string{{
-		result.Todo.ID,
-		result.Todo.Text,
-		result.OldPath,
-		result.NewPath,
-		string(result.Todo.Status),
-	}}
-	return f.writeCSV(w, headers, rows)
-}
-
 // RenderDataPath renders the datapath command result as CSV
 func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
 	headers := []string{"data_path"}

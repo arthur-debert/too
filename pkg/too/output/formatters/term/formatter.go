@@ -105,12 +105,6 @@ func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
 	return f.renderer.RenderMove(result)
 }
 
-// RenderSwap renders the swap command result
-func (f *formatter) RenderSwap(w io.Writer, result *too.SwapResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderSwap(result)
-}
-
 // RenderDataPath renders the datapath command result
 func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
 	f.renderer.Writer = w

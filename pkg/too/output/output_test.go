@@ -63,10 +63,6 @@ func (f *mockTermFormatter) RenderMove(w io.Writer, result *too.MoveResult) erro
 	return err
 }
 
-func (f *mockTermFormatter) RenderSwap(w io.Writer, result *too.SwapResult) error {
-	_, err := w.Write([]byte("mock swap output"))
-	return err
-}
 
 func (f *mockTermFormatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
 	_, err := w.Write([]byte("mock datapath output"))

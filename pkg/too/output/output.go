@@ -93,11 +93,6 @@ func (r *Renderer) RenderMove(result *too.MoveResult) error {
 	return r.formatter.RenderMove(r.writer, result)
 }
 
-// RenderSwap renders the swap command result
-func (r *Renderer) RenderSwap(result *too.SwapResult) error {
-	return r.formatter.RenderSwap(r.writer, result)
-}
-
 // RenderDataPath renders the datapath command result
 func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
 	return r.formatter.RenderDataPath(r.writer, result)
