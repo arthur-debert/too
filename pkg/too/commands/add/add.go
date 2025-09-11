@@ -30,63 +30,7 @@ func Execute(text string, opts Options) (*Result, error) {
 	}
 
 	s := store.NewStore(opts.CollectionPath)
-	var todo *models.Todo
-
-	err := s.Update(func(collection *models.Collection) error {
-		manager, err := store.NewManagerFromCollection(collection)
-		if err != nil {
-			return fmt.Errorf("failed to create idm manager: %w", err)
-		}
-
-		var parentUID string = store.RootScope
-
-		// If parent path is specified, resolve it to a UID
-		if opts.ParentPath != "" {
-			uid, err := manager.Registry().ResolvePositionPath(store.RootScope, opts.ParentPath)
-			if err != nil {
-				return fmt.Errorf("parent todo not found: %w", err)
-			}
-			parentUID = uid
-		}
-
-		// Use Manager to create the todo structure
-		newUID, _, err := manager.Add(parentUID)
-		if err != nil {
-			return fmt.Errorf("failed to add todo via manager: %w", err)
-		}
-
-		// Set the todo text
-		todo = collection.FindItemByID(newUID)
-		if todo == nil {
-			return fmt.Errorf("todo with ID %s not found after creation", newUID)
-		}
-		todo.Text = text
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to add todo: %w", err)
-	}
-
-	result := &Result{
-		Todo: todo,
-		Mode: opts.Mode,
-	}
-
-	// If in long mode, get all active todos
-	if opts.Mode == "long" {
-		// Reload to get the fresh state including the newly added todo
-		collection, err := s.Load()
-		if err != nil {
-			return nil, fmt.Errorf("failed to load collection for long mode: %w", err)
-		}
-
-		result.AllTodos = collection.ListActive()
-		result.TotalCount, result.DoneCount = countTodos(collection.Todos)
-	}
-
-	return result, nil
+	return RunDirect(s, text, opts)
 }
 
 // countTodos recursively counts total and done todos

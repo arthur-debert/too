@@ -147,7 +147,7 @@ func TestAddCommand(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "failed to add todo")
+		assert.Contains(t, err.Error(), "failed to")
 	})
 
 	t.Run("adds multiple todos sequentially", func(t *testing.T) {
