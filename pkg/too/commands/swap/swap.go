@@ -3,7 +3,6 @@ package swap
 import (
 	"fmt"
 
-	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
@@ -37,23 +36,13 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 
 	err := s.Update(func(collection *models.Collection) error {
 		// Set up the IDM registry
-		adapter, err := store.NewIDMStoreAdapter(s)
+		manager, err := store.NewManagerFromStore(s)
 		if err != nil {
-			return fmt.Errorf("failed to create idm adapter: %w", err)
-		}
-		reg := idm.NewRegistry()
-		scopes, err := adapter.GetScopes()
-		if err != nil {
-			return fmt.Errorf("failed to get scopes: %w", err)
-		}
-		for _, scope := range scopes {
-			if err := reg.RebuildScope(adapter, scope); err != nil {
-				return fmt.Errorf("failed to build idm scope '%s': %w", scope, err)
-			}
+			return fmt.Errorf("failed to create idm manager: %w", err)
 		}
 
 		// Find the source todo
-		sourceUID, err := reg.ResolvePositionPath(store.RootScope, sourcePath)
+		sourceUID, err := manager.Registry().ResolvePositionPath(store.RootScope, sourcePath)
 		if err != nil {
 			return fmt.Errorf("todo not found at position: %s", sourcePath)
 		}
@@ -65,7 +54,7 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 		// Find the destination parent (empty string means root)
 		var destParent *models.Todo
 		if destParentPath != "" {
-			destParentUID, err := reg.ResolvePositionPath(store.RootScope, destParentPath)
+			destParentUID, err := manager.Registry().ResolvePositionPath(store.RootScope, destParentPath)
 			if err != nil {
 				return fmt.Errorf("destination parent not found at position: %s", destParentPath)
 			}
