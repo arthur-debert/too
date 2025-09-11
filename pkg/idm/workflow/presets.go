@@ -48,11 +48,11 @@ var TodoWorkflow = WorkflowConfig{
 	},
 	AutoTransitions: []AutoTransitionRule{
 		{
-			Trigger:         "status_change",
-			Condition:       "all_children_status_equals",
+			Trigger:         TriggerStatusChange,
+			Condition:       ConditionAllChildrenStatusEquals,
 			ConditionValue:  "done",
 			TargetDimension: "completion",
-			Action:          "set_status",
+			Action:          ActionSetStatus,
 			ActionValue:     "done",
 		},
 	},
@@ -134,11 +134,11 @@ var TodoWithPriorityWorkflow = WorkflowConfig{
 	},
 	AutoTransitions: []AutoTransitionRule{
 		{
-			Trigger:         "status_change",
-			Condition:       "all_children_status_equals",
+			Trigger:         TriggerStatusChange,
+			Condition:       ConditionAllChildrenStatusEquals,
 			ConditionValue:  "done",
 			TargetDimension: "completion",
-			Action:          "set_status",
+			Action:          ActionSetStatus,
 			ActionValue:     "done",
 		},
 	},
@@ -383,11 +383,11 @@ var IssueTrackerWorkflow = WorkflowConfig{
 	AutoTransitions: []AutoTransitionRule{
 		// Auto-close issues when all subtasks are resolved
 		{
-			Trigger:         "status_change",
-			Condition:       "all_children_status_equals",
+			Trigger:         TriggerStatusChange,
+			Condition:       ConditionAllChildrenStatusEquals,
 			ConditionValue:  "resolved",
 			TargetDimension: "state",
-			Action:          "set_status",
+			Action:          ActionSetStatus,
 			ActionValue:     "resolved",
 		},
 	},

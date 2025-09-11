@@ -120,6 +120,29 @@ type AutoTransitionRule struct {
 	ActionValue    string // Value for the action (e.g., "done")
 }
 
+// Auto-transition trigger constants
+const (
+	TriggerStatusChange      = "status_change"
+	TriggerChildStatusChange = "child_status_change"
+	TriggerItemAdded         = "item_added"
+	TriggerItemRemoved       = "item_removed"
+)
+
+// Auto-transition condition constants  
+const (
+	ConditionAllChildrenStatusEquals = "all_children_status_equals"
+	ConditionAnyChildStatusEquals    = "any_child_status_equals"
+	ConditionNoChildren              = "no_children"
+	ConditionChildCountEquals        = "child_count_equals"
+)
+
+// Auto-transition action constants
+const (
+	ActionSetStatus  = "set_status"
+	ActionRemoveItem = "remove_item"
+	ActionNotify     = "notify"
+)
+
 // WorkflowConfig contains the complete configuration for a workflow system.
 type WorkflowConfig struct {
 	Dimensions      []StatusDimension             // Available status dimensions
@@ -179,9 +202,34 @@ func (c WorkflowConfig) Validate() error {
 	}
 	
 	// Validate auto-transition rules
-	for _, rule := range c.AutoTransitions {
+	for i, rule := range c.AutoTransitions {
+		// Validate trigger
+		if !isValidTrigger(rule.Trigger) {
+			return fmt.Errorf("auto-transition rule %d has unsupported trigger '%s'", i, rule.Trigger)
+		}
+		
+		// Validate condition
+		if !isValidCondition(rule.Condition) {
+			return fmt.Errorf("auto-transition rule %d has unsupported condition '%s'", i, rule.Condition)
+		}
+		
+		// Validate action
+		if !isValidAction(rule.Action) {
+			return fmt.Errorf("auto-transition rule %d has unsupported action '%s'", i, rule.Action)
+		}
+		
+		// Validate target dimension exists
 		if rule.TargetDimension != "" && !dimensionNames[rule.TargetDimension] {
-			return fmt.Errorf("auto-transition rule references unknown dimension '%s'", rule.TargetDimension)
+			return fmt.Errorf("auto-transition rule %d references unknown dimension '%s'", i, rule.TargetDimension)
+		}
+		
+		// Additional validations based on action type
+		if rule.Action == ActionSetStatus && rule.TargetDimension == "" {
+			return fmt.Errorf("auto-transition rule %d with 'set_status' action must specify TargetDimension", i)
+		}
+		
+		if rule.Action == ActionSetStatus && rule.ActionValue == "" {
+			return fmt.Errorf("auto-transition rule %d with 'set_status' action must specify ActionValue", i)
 		}
 	}
 	
@@ -196,6 +244,36 @@ func (c WorkflowConfig) GetDimension(name string) *StatusDimension {
 		}
 	}
 	return nil
+}
+
+// isValidTrigger checks if the given trigger is supported.
+func isValidTrigger(trigger string) bool {
+	switch trigger {
+	case TriggerStatusChange, TriggerChildStatusChange, TriggerItemAdded, TriggerItemRemoved:
+		return true
+	default:
+		return false
+	}
+}
+
+// isValidCondition checks if the given condition is supported.
+func isValidCondition(condition string) bool {
+	switch condition {
+	case ConditionAllChildrenStatusEquals, ConditionAnyChildStatusEquals, ConditionNoChildren, ConditionChildCountEquals:
+		return true
+	default:
+		return false
+	}
+}
+
+// isValidAction checks if the given action is supported.
+func isValidAction(action string) bool {
+	switch action {
+	case ActionSetStatus, ActionRemoveItem, ActionNotify:
+		return true
+	default:
+		return false
+	}
 }
 
 // StatusMetrics provides aggregated information about items and their statuses.

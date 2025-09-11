@@ -102,7 +102,7 @@ func (sm *StatusManager) SetStatus(uid, dimension, value string) error {
 	}
 	
 	// Trigger auto-transitions on this item and its parent
-	if err := sm.TriggerAutoTransitions("status_change", uid); err != nil {
+	if err := sm.TriggerAutoTransitions(TriggerStatusChange, uid); err != nil {
 		return fmt.Errorf("auto-transitions failed: %w", err)
 	}
 	
@@ -162,7 +162,7 @@ func (sm *StatusManager) SetMultipleStatuses(uid string, statuses map[string]str
 	}
 	
 	// Trigger auto-transitions on this item and its parent
-	if err := sm.TriggerAutoTransitions("status_change", uid); err != nil {
+	if err := sm.TriggerAutoTransitions(TriggerStatusChange, uid); err != nil {
 		return fmt.Errorf("auto-transitions failed: %w", err)
 	}
 	
@@ -354,7 +354,7 @@ func (sm *StatusManager) GetPositionPathInContext(startScope, targetUID, context
 // TriggerAutoTransitions executes automatic status transitions based on the trigger type.
 func (sm *StatusManager) TriggerAutoTransitions(triggerType, targetUID string) error {
 	for _, rule := range sm.config.AutoTransitions {
-		if rule.Trigger == triggerType || (rule.Trigger == "status_change" && triggerType == "child_status_change") {
+		if rule.Trigger == triggerType || (rule.Trigger == TriggerStatusChange && triggerType == TriggerChildStatusChange) {
 			if err := sm.executeAutoTransition(rule, targetUID); err != nil {
 				return fmt.Errorf("failed to execute auto-transition rule: %w", err)
 			}
@@ -366,7 +366,7 @@ func (sm *StatusManager) TriggerAutoTransitions(triggerType, targetUID string) e
 // executeAutoTransition executes a single auto-transition rule.
 func (sm *StatusManager) executeAutoTransition(rule AutoTransitionRule, targetUID string) error {
 	switch rule.Condition {
-	case "all_children_status_equals":
+	case ConditionAllChildrenStatusEquals:
 		return sm.executeAllChildrenStatusEquals(rule, targetUID)
 	default:
 		// Unknown condition type, skip silently
@@ -409,7 +409,7 @@ func (sm *StatusManager) executeAllChildrenStatusEquals(rule AutoTransitionRule,
 	
 	// All children match the condition, execute the action
 	switch rule.Action {
-	case "set_status":
+	case ActionSetStatus:
 		return sm.SetStatus(targetUID, rule.TargetDimension, rule.ActionValue)
 	default:
 		// Unknown action type, skip silently
@@ -555,5 +555,5 @@ func (sm *StatusManager) triggerParentAutoTransitions(uid string) error {
 	}
 	
 	// Trigger auto-transitions on the parent
-	return sm.TriggerAutoTransitions("child_status_change", parentUID)
+	return sm.TriggerAutoTransitions(TriggerChildStatusChange, parentUID)
 }

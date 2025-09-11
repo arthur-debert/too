@@ -341,6 +341,120 @@ func TestWorkflowConfig_Validate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "auto-transition with invalid trigger",
+			config: WorkflowConfig{
+				Dimensions: []StatusDimension{
+					{Name: "completion", Values: []string{"pending", "done"}},
+				},
+				AutoTransitions: []AutoTransitionRule{
+					{
+						Trigger:         "invalid_trigger",
+						Condition:       ConditionAllChildrenStatusEquals,
+						ConditionValue:  "done",
+						TargetDimension: "completion",
+						Action:          ActionSetStatus,
+						ActionValue:     "done",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "auto-transition with invalid condition",
+			config: WorkflowConfig{
+				Dimensions: []StatusDimension{
+					{Name: "completion", Values: []string{"pending", "done"}},
+				},
+				AutoTransitions: []AutoTransitionRule{
+					{
+						Trigger:         TriggerStatusChange,
+						Condition:       "invalid_condition",
+						ConditionValue:  "done",
+						TargetDimension: "completion",
+						Action:          ActionSetStatus,
+						ActionValue:     "done",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "auto-transition with invalid action",
+			config: WorkflowConfig{
+				Dimensions: []StatusDimension{
+					{Name: "completion", Values: []string{"pending", "done"}},
+				},
+				AutoTransitions: []AutoTransitionRule{
+					{
+						Trigger:         TriggerStatusChange,
+						Condition:       ConditionAllChildrenStatusEquals,
+						ConditionValue:  "done",
+						TargetDimension: "completion",
+						Action:          "invalid_action",
+						ActionValue:     "done",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "auto-transition set_status without target dimension",
+			config: WorkflowConfig{
+				Dimensions: []StatusDimension{
+					{Name: "completion", Values: []string{"pending", "done"}},
+				},
+				AutoTransitions: []AutoTransitionRule{
+					{
+						Trigger:        TriggerStatusChange,
+						Condition:      ConditionAllChildrenStatusEquals,
+						ConditionValue: "done",
+						Action:         ActionSetStatus,
+						ActionValue:    "done",
+						// Missing TargetDimension
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "auto-transition set_status without action value",
+			config: WorkflowConfig{
+				Dimensions: []StatusDimension{
+					{Name: "completion", Values: []string{"pending", "done"}},
+				},
+				AutoTransitions: []AutoTransitionRule{
+					{
+						Trigger:         TriggerStatusChange,
+						Condition:       ConditionAllChildrenStatusEquals,
+						ConditionValue:  "done",
+						TargetDimension: "completion",
+						Action:          ActionSetStatus,
+						// Missing ActionValue
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid auto-transition configuration",
+			config: WorkflowConfig{
+				Dimensions: []StatusDimension{
+					{Name: "completion", Values: []string{"pending", "done"}},
+				},
+				AutoTransitions: []AutoTransitionRule{
+					{
+						Trigger:         TriggerStatusChange,
+						Condition:       ConditionAllChildrenStatusEquals,
+						ConditionValue:  "done",
+						TargetDimension: "completion",
+						Action:          ActionSetStatus,
+						ActionValue:     "done",
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
