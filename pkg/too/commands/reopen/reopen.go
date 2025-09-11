@@ -89,7 +89,7 @@ func Execute(ref string, opts Options) (*Result, error) {
 			Str("newStatus", "pending").
 			Msg("marked todo as pending using workflow manager")
 
-		// Preserve legacy position reset behavior for compatibility
+		// Reset positions to maintain sort order (pending items get next available position)
 		if todo.ParentID != "" {
 			collection.ResetSiblingPositions(todo.ParentID)
 		} else {

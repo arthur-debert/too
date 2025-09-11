@@ -74,7 +74,7 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 			Msg("marked todo as complete using workflow manager")
 
 
-		// Preserve legacy position reset behavior for compatibility
+		// Reset positions to maintain sort order (done items get position 0, pending items renumbered)
 		if todo.ParentID != "" {
 			collection.ResetSiblingPositions(todo.ParentID)
 		} else {
