@@ -75,3 +75,53 @@ func (m *Manager) Move(uid, oldParentUID, newParentUID string) error {
 
 	return nil
 }
+
+// --- Soft Delete Methods ---
+
+const (
+	// StatusActive is the status for items that are currently active.
+	StatusActive = "active"
+	// StatusDeleted is the status for items that have been soft-deleted.
+	StatusDeleted = "deleted"
+)
+
+// SoftDelete moves an item to the "deleted" state.
+// It tells the adapter to change the item's status and then rebuilds the
+// parent scope, which should no longer include the item.
+func (m *Manager) SoftDelete(uid, parentUID string) error {
+	// 1. Tell the adapter to change the item's status.
+	if err := m.adapter.SetStatus(uid, StatusDeleted); err != nil {
+		return fmt.Errorf("adapter failed to set status to deleted: %w", err)
+	}
+
+	// 2. Rebuild the scope from which the item was removed.
+	// The adapter's GetChildren(parentUID) should no longer return this UID.
+	if err := m.reg.RebuildScope(m.adapter, parentUID); err != nil {
+		return fmt.Errorf("failed to rebuild parent scope '%s' after soft delete: %w", parentUID, err)
+	}
+	return nil
+}
+
+// Restore moves an item back to the "active" state from a soft-deleted state.
+func (m *Manager) Restore(uid, parentUID string) error {
+	// 1. Tell the adapter to change the item's status.
+	if err := m.adapter.SetStatus(uid, StatusActive); err != nil {
+		return fmt.Errorf("adapter failed to set status to active: %w", err)
+	}
+
+	// 2. Rebuild the scope to which the item is returning.
+	if err := m.reg.RebuildScope(m.adapter, parentUID); err != nil {
+		return fmt.Errorf("failed to rebuild parent scope '%s' after restore: %w", parentUID, err)
+	}
+	return nil
+}
+
+// Purge permanently deletes a soft-deleted item via the adapter.
+// Note: This does not update the registry, as the item should already be
+// gone from any active scopes.
+func (m *Manager) Purge(uid string) error {
+	if err := m.adapter.RemoveItem(uid); err != nil {
+		return fmt.Errorf("adapter failed to remove item: %w", err)
+	}
+	return nil
+}
