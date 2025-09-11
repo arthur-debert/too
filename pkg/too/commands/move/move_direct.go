@@ -31,8 +31,7 @@ func ExecuteDirect(sourcePath string, destParentPath string, opts Options) (*Res
 		return nil, fmt.Errorf("todo not found at position: %s", sourcePath)
 	}
 
-	collection := manager.GetCollection()
-	sourceTodo := collection.FindItemByID(sourceUID)
+	sourceTodo := manager.GetTodoByID(sourceUID)
 	if sourceTodo == nil {
 		return nil, fmt.Errorf("todo with ID '%s' not found", sourceUID)
 	}
@@ -49,7 +48,7 @@ func ExecuteDirect(sourcePath string, destParentPath string, opts Options) (*Res
 
 	// Check for circular reference
 	if destParentUID != store.RootScope {
-		destParent := collection.FindItemByID(destParentUID)
+		destParent := manager.GetTodoByID(destParentUID)
 		if destParent != nil && isDescendantOf(destParent, sourceTodo) {
 			logger.Error().
 				Str("sourcePath", sourcePath).
@@ -71,12 +70,12 @@ func ExecuteDirect(sourcePath string, destParentPath string, opts Options) (*Res
 	// Get parent references for the result
 	var oldParent *models.Todo
 	if oldParentUID != store.RootScope {
-		oldParent = collection.FindItemByID(oldParentUID)
+		oldParent = manager.GetTodoByID(oldParentUID)
 	}
 	
 	var newParent *models.Todo
 	if destParentUID != store.RootScope {
-		newParent = collection.FindItemByID(destParentUID)
+		newParent = manager.GetTodoByID(destParentUID)
 	}
 
 	// Perform the move
@@ -91,7 +90,6 @@ func ExecuteDirect(sourcePath string, destParentPath string, opts Options) (*Res
 			Str("todoID", sourceTodo.ID).
 			Str("todoText", sourceTodo.Text).
 			Str("parentID", sourceTodo.ParentID).
-			Int("position", sourceTodo.Position).
 			Err(err).
 			Msg("failed to get new position path")
 		return nil, fmt.Errorf("failed to determine new position path: %w", err)

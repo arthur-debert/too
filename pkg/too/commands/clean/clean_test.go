@@ -44,13 +44,8 @@ func TestCleanCommand(t *testing.T) {
 			{Text: "Third pending", Status: models.StatusPending},
 		})
 
-		// Manually set non-sequential positions to simulate real-world gaps
+		// Save the collection
 		collection, _ := store.Load()
-		collection.Todos[0].Position = 2
-		collection.Todos[1].Position = 5
-		collection.Todos[2].Position = 7
-		collection.Todos[3].Position = 10
-		collection.Todos[4].Position = 15
 		err := store.Save(collection)
 		testutil.AssertNoError(t, err)
 
@@ -68,11 +63,8 @@ func TestCleanCommand(t *testing.T) {
 		testutil.AssertCollectionSize(t, collection, 3)
 
 		// Check that positions are now 1, 2, 3
-		assert.Equal(t, 1, collection.Todos[0].Position)
 		assert.Equal(t, "First pending", collection.Todos[0].Text)
-		assert.Equal(t, 2, collection.Todos[1].Position)
 		assert.Equal(t, "Second pending", collection.Todos[1].Text)
-		assert.Equal(t, 3, collection.Todos[2].Position)
 		assert.Equal(t, "Third pending", collection.Todos[2].Text)
 	})
 

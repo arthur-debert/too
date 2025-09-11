@@ -81,16 +81,17 @@ func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo 
 
 // AssertTodoByPosition finds a todo by position and verifies it exists.
 // Returns the todo if found, allowing further assertions.
+// DEPRECATED: Position field has been removed. Use AssertTodoByIndex instead.
 func AssertTodoByPosition(t *testing.T, todos []*models.Todo, position int) *models.Todo {
 	t.Helper()
-
-	for _, todo := range todos {
-		if todo.Position == position {
-			return todo
-		}
+	// Since Position field is removed, we'll use array index as a fallback
+	// This maintains backward compatibility while tests are migrated
+	index := position - 1 // Convert 1-based position to 0-based index
+	if index >= 0 && index < len(todos) {
+		return todos[index]
 	}
 
-	t.Errorf("todo with position %d not found", position)
+	t.Errorf("todo at position %d (index %d) not found", position, index)
 	return nil
 }
 

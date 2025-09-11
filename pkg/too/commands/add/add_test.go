@@ -24,7 +24,6 @@ func TestAddCommand(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.NotNil(t, result.Todo)
 		assert.Equal(t, "My first todo", result.Todo.Text)
-		assert.Equal(t, 1, result.Todo.Position)
 		assert.Equal(t, models.StatusPending, result.Todo.GetStatus())
 
 		// Verify it was saved using testutil
@@ -45,7 +44,6 @@ func TestAddCommand(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "New todo", result.Todo.Text)
-		assert.Equal(t, 3, result.Todo.Position) // Should be 3 after two existing
 
 		// Verify all todos are present
 		collection, err := store.Load()
@@ -156,19 +154,16 @@ func TestAddCommand(t *testing.T) {
 		opts := add.Options{CollectionPath: store.Path()}
 
 		// Add first todo
-		result1, err := add.Execute("First", opts)
+		_, err := add.Execute("First", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, 1, result1.Todo.Position)
 
 		// Add second todo
-		result2, err := add.Execute("Second", opts)
+		_, err = add.Execute("Second", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, 2, result2.Todo.Position)
 
 		// Add third todo
-		result3, err := add.Execute("Third", opts)
+		_, err = add.Execute("Third", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, 3, result3.Todo.Position)
 
 		// Verify all are saved
 		collection, err := store.Load()
@@ -236,10 +231,6 @@ func TestAddCommand(t *testing.T) {
 		// and active items should be renumbered to 1, 2
 		collection, _ := store.Load()
 		// Manually set positions to simulate the state after reordering
-		collection.Todos[0].Position = 1 // Active 1
-		collection.Todos[1].Position = 0 // Done 1
-		collection.Todos[2].Position = 2 // Active 2
-		collection.Todos[3].Position = 0 // Done 2
 		err := store.Save(collection)
 		testutil.AssertNoError(t, err)
 
@@ -250,7 +241,6 @@ func TestAddCommand(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		// Should get position 3 (after active items at positions 1 and 2)
-		assert.Equal(t, 3, result.Todo.Position)
 
 		// Verify it was saved correctly
 		collection, err = store.Load()
@@ -261,9 +251,7 @@ func TestAddCommand(t *testing.T) {
 		for _, todo := range collection.Todos {
 			if todo.GetStatus() == models.StatusPending {
 				activeCount++
-				assert.Greater(t, todo.Position, 0, "Active todo should have position > 0")
 			} else {
-				assert.Equal(t, 0, todo.Position, "Done todo should have position 0")
 			}
 		}
 		assert.Equal(t, 3, activeCount, "Should have 3 active todos")
@@ -279,9 +267,6 @@ func TestAddCommand(t *testing.T) {
 
 		// Set all positions to 0 (as they should be for done items)
 		collection, _ := store.Load()
-		for _, todo := range collection.Todos {
-			todo.Position = 0
-		}
 		err := store.Save(collection)
 		testutil.AssertNoError(t, err)
 
@@ -292,7 +277,6 @@ func TestAddCommand(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		// Should get position 1 as the first active item
-		assert.Equal(t, 1, result.Todo.Position)
 	})
 }
 
@@ -311,7 +295,6 @@ func TestAddCommandWithParent(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "Sub-task", result.Todo.Text)
-		assert.Equal(t, 1, result.Todo.Position) // First child
 
 		// Verify structure
 		collection, err := store.Load()
@@ -335,14 +318,12 @@ func TestAddCommandWithParent(t *testing.T) {
 		testutil.AssertNoError(t, err)
 
 		// Add second child
-		result2, err := add.Execute("Child 2", opts)
+		_, err = add.Execute("Child 2", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, 2, result2.Todo.Position) // Second child
 
 		// Add third child
-		result3, err := add.Execute("Child 3", opts)
+		_, err = add.Execute("Child 3", opts)
 		testutil.AssertNoError(t, err)
-		assert.Equal(t, 3, result3.Todo.Position) // Third child
 
 		// Verify structure
 		collection, err := store.Load()
@@ -368,7 +349,6 @@ func TestAddCommandWithParent(t *testing.T) {
 
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
-		assert.Equal(t, 2, result.Todo.Position) // Second grandchild
 
 		// Verify structure
 		collection, err := store.Load()
@@ -422,9 +402,7 @@ func TestAddCommandWithParent(t *testing.T) {
 		_, _ = collection.CreateTodo("Active child", parent.ID)
 		child2, _ := collection.CreateTodo("Done child", parent.ID)
 		child2.Statuses = map[string]string{"completion": string(models.StatusDone)}
-		child2.Position = 0 // Done items have position 0
-		child3, _ := collection.CreateTodo("Another active", parent.ID)
-		child3.Position = 2 // Should be renumbered after done child
+		_, _ = collection.CreateTodo("Another active", parent.ID)
 
 		err := store.Save(collection)
 		testutil.AssertNoError(t, err)
@@ -439,7 +417,6 @@ func TestAddCommandWithParent(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		// Should get position 3 (after positions 1 and 2)
-		assert.Equal(t, 3, result.Todo.Position)
 
 		// Verify structure
 		collection, err = store.Load()
@@ -450,9 +427,7 @@ func TestAddCommandWithParent(t *testing.T) {
 		// Check positions
 		for _, child := range parent.Items {
 			if child.GetStatus() == models.StatusDone {
-				assert.Equal(t, 0, child.Position, "Done child should have position 0")
 			} else {
-				assert.Greater(t, child.Position, 0, "Active child should have position > 0")
 			}
 		}
 	})

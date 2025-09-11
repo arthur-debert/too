@@ -21,7 +21,6 @@ func TestJSONFormatterBehavior(t *testing.T) {
 		// Test rendering an add result
 		result := &too.AddResult{
 			Todo: &models.Todo{
-				Position: 1,
 				Text:     "Test todo",
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Items:    []*models.Todo{},

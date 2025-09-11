@@ -157,12 +157,14 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 		},
 		"renderNestedTodosWithHighlight": func(todos []*models.Todo, parentPath string, level int, highlightID string) string {
 			var result strings.Builder
-			for _, todo := range todos {
+			for i, todo := range todos {
+				// Use array index + 1 as position since Position field is removed
+				position := i + 1
 				path := parentPath
 				if path == "" {
-					path = fmt.Sprintf("%d", todo.Position)
+					path = fmt.Sprintf("%d", position)
 				} else {
-					path = fmt.Sprintf("%s.%d", parentPath, todo.Position)
+					path = fmt.Sprintf("%s.%d", parentPath, position)
 				}
 
 				// Render this todo with its path and indentation
@@ -199,12 +201,14 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 		},
 		"renderNestedTodos": func(todos []*models.Todo, parentPath string, level int) string {
 			var result strings.Builder
-			for _, todo := range todos {
+			for i, todo := range todos {
+				// Use array index + 1 as position since Position field is removed
+				position := i + 1
 				path := parentPath
 				if path == "" {
-					path = fmt.Sprintf("%d", todo.Position)
+					path = fmt.Sprintf("%d", position)
 				} else {
-					path = fmt.Sprintf("%s.%d", parentPath, todo.Position)
+					path = fmt.Sprintf("%s.%d", parentPath, position)
 				}
 
 				// Render this todo with its path and indentation

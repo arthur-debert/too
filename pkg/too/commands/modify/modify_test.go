@@ -1,7 +1,6 @@
 package modify_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too/commands/modify"
@@ -17,11 +16,10 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the first todo's ID
 		collection, _ := store.Load()
-		todoPosition := collection.Todos[0].Position
 
 		// Execute modify command
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(fmt.Sprintf("%d", todoPosition), "Modified todo text", opts)
+		result, err := modify.Execute("1", "Modified todo text", opts)
 
 		// Verify result
 		testutil.AssertNoError(t, err)
@@ -33,7 +31,7 @@ func TestModifyCommand(t *testing.T) {
 		// Verify persistence using testutil
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
+		todo := collection.Todos[0]
 		assert.Equal(t, "Modified todo text", todo.Text)
 
 		// Ensure other todos are unchanged
@@ -53,19 +51,28 @@ func TestModifyCommand(t *testing.T) {
 		err := store.Save(collection)
 		testutil.AssertNoError(t, err)
 
-		// Modify the todo
+		// Modify the active todo at position "1" (IDM position path)
 		opts := modify.Options{CollectionPath: store.Path()}
 		result, err := modify.Execute("1", "Active task (updated)", opts)
 
 		// Verify status is preserved
 		testutil.AssertNoError(t, err)
 		testutil.AssertTodoHasStatus(t, result.Todo, models.StatusPending)
+		assert.Equal(t, "Active task (updated)", result.Todo.Text)
 
 		// Verify in persistence
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByPosition(t, collection.Todos, 1)
-		testutil.AssertTodoHasStatus(t, todo, models.StatusPending)
+		// Find the modified todo by text
+		var modifiedTodo *models.Todo
+		for _, todo := range collection.Todos {
+			if todo.Text == "Active task (updated)" {
+				modifiedTodo = todo
+				break
+			}
+		}
+		assert.NotNil(t, modifiedTodo)
+		testutil.AssertTodoHasStatus(t, modifiedTodo, models.StatusPending)
 	})
 
 	t.Run("returns error for non-existent todo", func(t *testing.T) {
@@ -98,11 +105,10 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the todo's ID
 		collection, _ := store.Load()
-		todoPosition := collection.Todos[0].Position
 
 		// Try to modify with empty text
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(fmt.Sprintf("%d", todoPosition), "", opts)
+		result, err := modify.Execute("1", "", opts)
 
 		// Verify error
 		assert.Error(t, err)
@@ -112,7 +118,7 @@ func TestModifyCommand(t *testing.T) {
 		// Verify no changes were made
 		collection, err = store.Load()
 		testutil.AssertNoError(t, err)
-		todo := testutil.AssertTodoByPosition(t, collection.Todos, todoPosition)
+		todo := collection.Todos[0]
 		assert.Equal(t, "Original text", todo.Text)
 	})
 
@@ -126,11 +132,10 @@ func TestModifyCommand(t *testing.T) {
 
 		// Get the second todo's ID
 		collection, _ := store.Load()
-		secondTodoPosition := collection.Todos[1].Position
 
 		// Modify only the second todo
 		opts := modify.Options{CollectionPath: store.Path()}
-		result, err := modify.Execute(fmt.Sprintf("%d", secondTodoPosition), "Second todo (modified)", opts)
+		result, err := modify.Execute("2", "Second todo (modified)", opts)
 
 		// Verify correct todo was modified
 		testutil.AssertNoError(t, err)

@@ -30,9 +30,8 @@ func ExecuteDirect(positionPath string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("todo not found: %w", err)
 	}
 
-	// Get the todo
-	collection := manager.GetCollection()
-	todo := collection.FindItemByID(uid)
+	// Get the todo using DirectWorkflowManager method
+	todo := manager.GetTodoByID(uid)
 	if todo == nil {
 		return nil, fmt.Errorf("todo with ID '%s' not found", uid)
 	}
@@ -48,12 +47,7 @@ func ExecuteDirect(positionPath string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to set completion status: %w", err)
 	}
 
-	// Reset positions
-	if todo.ParentID != "" {
-		collection.ResetSiblingPositions(todo.ParentID)
-	} else {
-		collection.ResetRootPositions()
-	}
+	// Position management is handled by IDM, no need to reset
 
 	// Save changes
 	if err := manager.Save(); err != nil {
@@ -74,28 +68,15 @@ func ExecuteDirect(positionPath string, opts Options) (*Result, error) {
 		Mode:      opts.Mode,
 	}
 
-	// Add long mode data if requested
+	// Add long mode data if requested using manager's IDM-aware methods
 	if opts.Mode == "long" {
-		result.AllTodos = collection.ListActive()
+		result.AllTodos = manager.ListActive()
 		if result.AllTodos == nil {
 			result.AllTodos = []*models.Todo{}
 		}
-		result.TotalCount, result.DoneCount = countTodos(collection.Todos)
+		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 
 	return result, nil
 }
 
-// Helper function to count todos
-func countTodos(todos []*models.Todo) (total, done int) {
-	for _, todo := range todos {
-		total++
-		if todo.GetStatus() == models.StatusDone {
-			done++
-		}
-		subTotal, subDone := countTodos(todo.Items)
-		total += subTotal
-		done += subDone
-	}
-	return total, done
-}

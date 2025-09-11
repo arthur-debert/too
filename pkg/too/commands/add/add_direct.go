@@ -35,22 +35,28 @@ func RunDirect(s store.Store, text string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to save collection: %w", err)
 	}
 
-	// Get the created todo
-	collection := manager.GetCollection()
-	todo := collection.FindItemByID(newUID)
+	// Get the created todo using DirectWorkflowManager method
+	todo := manager.GetTodoByID(newUID)
 	if todo == nil {
 		return nil, fmt.Errorf("todo with ID %s not found after creation", newUID)
 	}
 
-	result := &Result{
-		Todo: todo,
-		Mode: opts.Mode,
+	// Get the position path of the newly created todo
+	positionPath, err := manager.GetPositionPath(store.RootScope, newUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get position path: %w", err)
 	}
 
-	// If in long mode, get additional data
+	result := &Result{
+		Todo:         todo,
+		PositionPath: positionPath,
+		Mode:         opts.Mode,
+	}
+
+	// If in long mode, get additional data using manager's IDM-aware methods
 	if opts.Mode == "long" {
-		result.AllTodos = collection.ListActive()
-		result.TotalCount, result.DoneCount = countTodos(collection.Todos)
+		result.AllTodos = manager.ListActive()
+		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 
 	return result, nil

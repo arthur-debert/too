@@ -25,7 +25,6 @@ func TestJSONFormatter(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.AddResult{
 			Todo: &models.Todo{
-				Position: 1,
 				Text:     "Test todo",
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Items:    []*models.Todo{},
@@ -40,7 +39,6 @@ func TestJSONFormatter(t *testing.T) {
 		err = json.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
 		assert.Equal(t, result.Todo.Text, decoded.Todo.Text)
-		assert.Equal(t, result.Todo.Position, decoded.Todo.Position)
 	})
 
 	t.Run("RenderList", func(t *testing.T) {
@@ -48,13 +46,11 @@ func TestJSONFormatter(t *testing.T) {
 		result := &too.ListResult{
 			Todos: []*models.Todo{
 				{
-					Position: 1,
 					Text:     "First todo",
 					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items:    []*models.Todo{},
 				},
 				{
-					Position: 2,
 					Text:     "Second todo",
 					Statuses: map[string]string{"completion": string(models.StatusDone)},
 					Items:    []*models.Todo{},
@@ -95,7 +91,6 @@ func TestJSONFormatter(t *testing.T) {
 		results := []*too.CompleteResult{
 			{
 				Todo: &models.Todo{
-					Position: 1,
 					Text:     "Completed todo",
 					Statuses: map[string]string{"completion": string(models.StatusDone)},
 					Items:    []*models.Todo{},
@@ -144,12 +139,10 @@ func TestJSONFormatter(t *testing.T) {
 		result := &too.ListResult{
 			Todos: []*models.Todo{
 				{
-					Position: 1,
 					Text:     "Parent todo",
 					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items: []*models.Todo{
 						{
-							Position: 1,
 							Text:     "Child todo",
 							Statuses: map[string]string{"completion": string(models.StatusPending)},
 							Items:    []*models.Todo{},

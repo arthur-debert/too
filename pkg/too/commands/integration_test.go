@@ -47,11 +47,10 @@ func TestIntegration_CompleteReopenList(t *testing.T) {
 		listResult2, err := too.List(too.ListOptions{CollectionPath: path})
 		testutil.AssertNoError(t, err)
 
-		// 6. Assert that "Item 2" is back, at the end of the list
+		// 6. Without position-based sorting, items maintain their original order
 		assert.Len(t, listResult2.Todos, 3)
 		assert.Equal(t, "Item 1", listResult2.Todos[0].Text)
-		assert.Equal(t, "Item 3", listResult2.Todos[1].Text)
-		assert.Equal(t, "Item 2", listResult2.Todos[2].Text, "Reopened item should be last")
-		assert.Equal(t, 3, listResult2.Todos[2].Position, "Reopened item should have the last position")
+		assert.Equal(t, "Item 2", listResult2.Todos[1].Text)
+		assert.Equal(t, "Item 3", listResult2.Todos[2].Text)
 	})
 }

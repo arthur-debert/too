@@ -19,7 +19,6 @@ type LegacyTodoFormat struct {
 // MixedIDTodoFormat represents todos that might have string or numeric IDs
 type MixedIDTodoFormat struct {
 	ID       interface{}       `json:"id"`       // Can be string or number
-	Position int               `json:"position"` // Optional position field
 	Text     string            `json:"text"`
 	Status   models.TodoStatus `json:"status"`
 	Modified time.Time         `json:"modified"`
@@ -46,12 +45,11 @@ func LoadTodosWithMigration(data []byte) ([]*models.Todo, error) {
 	if err := json.Unmarshal(data, &mixedTodos); err == nil {
 		// Convert mixed format to new format
 		todos := make([]*models.Todo, 0, len(mixedTodos))
-		for i, mixed := range mixedTodos {
+		for _, mixed := range mixedTodos {
 			todo := &models.Todo{
 				Text:     mixed.Text,
 				Statuses: map[string]string{"completion": string(mixed.Status)},
 				Modified: mixed.Modified,
-				Position: mixed.Position,
 				Items:    []*models.Todo{},
 			}
 
@@ -62,16 +60,8 @@ func LoadTodosWithMigration(data []byte) ([]*models.Todo, error) {
 			case float64:
 				// JSON numbers come as float64
 				todo.ID = uuid.New().String()
-				if mixed.Position == 0 {
-					todo.Position = int(id)
-				}
 			default:
 				todo.ID = uuid.New().String()
-			}
-
-			// Ensure position is set
-			if todo.Position == 0 {
-				todo.Position = i + 1
 			}
 
 			// Ensure ID is set
@@ -96,7 +86,6 @@ func LoadTodosWithMigration(data []byte) ([]*models.Todo, error) {
 	for _, legacy := range legacyTodos {
 		todo := &models.Todo{
 			ID:       uuid.New().String(),
-			Position: int(legacy.ID), // Use old ID as position
 			Text:     legacy.Text,
 			Statuses: map[string]string{"completion": string(legacy.Status)},
 			Modified: legacy.Modified,

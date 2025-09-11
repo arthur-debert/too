@@ -24,7 +24,6 @@ func ExecuteDirect(ref string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to create direct workflow manager: %w", err)
 	}
 
-	collection := manager.GetCollection()
 	var uid string
 
 	// Try to resolve as position path or find by short ID
@@ -33,23 +32,23 @@ func ExecuteDirect(ref string, opts Options) (*Result, error) {
 		uid, err = manager.ResolvePositionPath(store.RootScope, ref)
 		if err != nil {
 			// Try as short ID instead
-			todo, shortErr := collection.FindItemByShortID(ref)
+			todo, shortErr := manager.GetTodoByShortID(ref)
 			if shortErr != nil || todo == nil {
 				return nil, fmt.Errorf("todo not found with reference: %s", ref)
 			}
 			uid = todo.ID
 		}
 	} else {
-		// Find by short ID
-		todo, err := collection.FindItemByShortID(ref)
+		// Find by short ID using DirectWorkflowManager method
+		todo, err := manager.GetTodoByShortID(ref)
 		if err != nil || todo == nil {
 			return nil, fmt.Errorf("todo not found with reference: %s", ref)
 		}
 		uid = todo.ID
 	}
 
-	// Get the todo for validation
-	todo := collection.FindItemByID(uid)
+	// Get the todo for validation using DirectWorkflowManager method
+	todo := manager.GetTodoByID(uid)
 	if todo == nil {
 		return nil, fmt.Errorf("todo with ID '%s' not found", uid)
 	}
@@ -72,12 +71,7 @@ func ExecuteDirect(ref string, opts Options) (*Result, error) {
 		Str("newStatus", "pending").
 		Msg("marked todo as pending using direct workflow manager")
 
-	// Reset positions to maintain sort order
-	if todo.ParentID != "" {
-		collection.ResetSiblingPositions(todo.ParentID)
-	} else {
-		collection.ResetRootPositions()
-	}
+	// Position management is handled by IDM, no need to reset
 
 	// Save changes
 	if err := manager.Save(); err != nil {

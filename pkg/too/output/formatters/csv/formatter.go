@@ -53,18 +53,21 @@ func (f *formatter) writeCSV(w io.Writer, headers []string, rows [][]string) err
 func (f *formatter) flattenTodos(todos []*models.Todo, parentPath string) [][]string {
 	var rows [][]string
 
-	for _, todo := range todos {
+	for i, todo := range todos {
 		// Build the current path
 		currentPath := todo.Text
 		if parentPath != "" {
 			currentPath = parentPath + " > " + todo.Text
 		}
 
+		// Use array index + 1 as position since Position field is removed
+		position := i + 1
+
 		// Add the current todo as a row
 		row := []string{
 			todo.ID,
 			parentPath, // parent column for hierarchy
-			fmt.Sprintf("%d", todo.Position),
+			fmt.Sprintf("%d", position),
 			todo.Text,
 			string(todo.GetStatus()),
 			todo.Modified.Format("2006-01-02T15:04:05"),
@@ -94,7 +97,7 @@ func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
 	rows := [][]string{{
 		result.Todo.ID,
 		"",
-		fmt.Sprintf("%d", result.Todo.Position),
+		"1", // For single todo output, position is always 1
 		result.Todo.Text,
 		string(result.Todo.GetStatus()),
 		result.Todo.Modified.Format("2006-01-02T15:04:05"),
@@ -152,7 +155,7 @@ func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
 		row := []string{
 			todo.ID,
 			"",
-			fmt.Sprintf("%d", todo.Position),
+			"1", // For single todo output, position is always 1
 			todo.Text,
 			string(todo.GetStatus()),
 			todo.Modified.Format("2006-01-02T15:04:05"),

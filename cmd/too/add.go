@@ -112,11 +112,8 @@ var addCmd = &cobra.Command{
 
 				// Add children with this todo as parent
 				if len(todo.Children) > 0 {
-					// Get the position of the newly created todo
-					newParentPath := fmt.Sprintf("%d", result.Todo.Position)
-					if parentPath != "" {
-						newParentPath = parentPath + "." + newParentPath
-					}
+					// Use the position path of the newly created todo
+					newParentPath := result.PositionPath
 
 					for _, child := range todo.Children {
 						if err := addTodoWithChildren(child, newParentPath); err != nil {

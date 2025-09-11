@@ -30,18 +30,16 @@ func TestComplete(t *testing.T) {
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
 
-		// With new behavior: slice is reordered with active items first
-		// Active todo is now first in slice with position 1
-		activeTodo := collection.Todos[0]
-		assert.Equal(t, "Test todo 2", activeTodo.Text)
-		assert.Equal(t, 1, activeTodo.Position)
-		testutil.AssertTodoHasStatus(t, activeTodo, models.StatusPending)
-
-		// Completed todo is now second in slice with position 0
-		completedTodo := collection.Todos[1]
+		// Without position-based sorting, items remain in their original order
+		// First todo should be completed
+		completedTodo := collection.Todos[0]
 		assert.Equal(t, "Test todo 1", completedTodo.Text)
-		assert.Equal(t, 0, completedTodo.Position)
 		testutil.AssertTodoHasStatus(t, completedTodo, models.StatusDone)
+
+		// Second todo should remain pending
+		activeTodo := collection.Todos[1]
+		assert.Equal(t, "Test todo 2", activeTodo.Text)
+		testutil.AssertTodoHasStatus(t, activeTodo, models.StatusPending)
 	})
 
 	t.Run("complete nested todo", func(t *testing.T) {
@@ -79,17 +77,16 @@ func TestComplete(t *testing.T) {
 		assert.Equal(t, models.StatusPending, parent.GetStatus())
 		assert.Equal(t, 2, len(parent.Items))
 
-		// Active sibling is now first in slice with position 1
-		sibling := parent.Items[0]
-		assert.Equal(t, "Sub-task 1.2", sibling.Text)
-		assert.Equal(t, 1, sibling.Position)
-		assert.Equal(t, models.StatusPending, sibling.GetStatus())
-
-		// Completed child is now second in slice with position 0
-		completedChild := parent.Items[1]
+		// Without position-based sorting, items remain in their original order
+		// First child should be completed
+		completedChild := parent.Items[0]
 		assert.Equal(t, "Sub-task 1.1", completedChild.Text)
-		assert.Equal(t, 0, completedChild.Position)
 		assert.Equal(t, models.StatusDone, completedChild.GetStatus())
+
+		// Second child should remain pending
+		sibling := parent.Items[1]
+		assert.Equal(t, "Sub-task 1.2", sibling.Text)
+		assert.Equal(t, models.StatusPending, sibling.GetStatus())
 	})
 
 	t.Run("complete grandchild todo", func(t *testing.T) {
@@ -139,7 +136,6 @@ func TestComplete(t *testing.T) {
 
 		// The grandchild should have been completed
 		assert.Equal(t, 1, len(subtaskWithGrandchild.Items))
-		assert.Equal(t, 0, subtaskWithGrandchild.Items[0].Position)
 		assert.Equal(t, models.StatusDone, subtaskWithGrandchild.Items[0].GetStatus())
 
 		// But top-level parent should remain pending (not all children complete)

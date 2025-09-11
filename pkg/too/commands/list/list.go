@@ -23,23 +23,24 @@ type Result struct {
 func Execute(opts Options) (*Result, error) {
 	s := store.NewStore(opts.CollectionPath)
 
-	// Load the full collection
-	collection, err := s.Load()
+	// Create direct workflow manager instead of loading collection directly
+	manager, err := store.NewDirectWorkflowManager(s, opts.CollectionPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Use the new collection APIs for filtering
+	// Use DirectWorkflowManager's IDM-aware filtering methods
 	var filteredTodos []*models.Todo
 	if opts.ShowAll {
-		filteredTodos = collection.ListAll()
+		filteredTodos = manager.ListAll()
 	} else if opts.ShowDone {
-		filteredTodos = collection.ListArchived()
+		filteredTodos = manager.ListArchived()
 	} else {
-		filteredTodos = collection.ListActive()
+		filteredTodos = manager.ListActive()
 	}
 
 	// Count totals from the original collection
+	collection := manager.GetCollection()
 	totalCount, doneCount := countTodos(collection.Todos)
 
 	return &Result{

@@ -26,9 +26,8 @@ func ExecuteDirect(positionStr string, newText string, opts Options) (*Result, e
 		return nil, fmt.Errorf("failed to resolve todo position '%s': %w", positionStr, err)
 	}
 
-	// Find and modify the todo
-	collection := manager.GetCollection()
-	todo := collection.FindItemByID(uid)
+	// Find and modify the todo using DirectWorkflowManager method
+	todo := manager.GetTodoByID(uid)
 	if todo == nil {
 		return nil, fmt.Errorf("todo with ID '%s' not found", uid)
 	}

@@ -72,7 +72,6 @@ func TestDirectWorkflowManager(t *testing.T) {
 		child1 := &models.Todo{
 			ID:       "child1",
 			ParentID: parent.ID,
-			Position: 1,
 			Text:     "Child 1",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Items:    []*models.Todo{},
@@ -80,7 +79,6 @@ func TestDirectWorkflowManager(t *testing.T) {
 		child2 := &models.Todo{
 			ID:       "child2",
 			ParentID: parent.ID,
-			Position: 2,
 			Text:     "Child 2",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Items:    []*models.Todo{},
@@ -142,7 +140,22 @@ func (a *directTestAdapter) GetChildren(parentUID string) ([]string, error) {
 		if todoI == nil || todoJ == nil {
 			return false
 		}
-		return todoI.Position < todoJ.Position
+		// Without Position field, maintain order by array index
+		// Find the index of each todo in the parent's Items slice
+		parent := a.collection.FindItemByID(todoI.ParentID)
+		if parent == nil {
+			return false
+		}
+		indexI, indexJ := -1, -1
+		for idx, child := range parent.Items {
+			if child.ID == todoI.ID {
+				indexI = idx
+			}
+			if child.ID == todoJ.ID {
+				indexJ = idx
+			}
+		}
+		return indexI < indexJ
 	})
 
 	return children, nil

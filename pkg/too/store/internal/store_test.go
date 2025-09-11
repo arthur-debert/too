@@ -33,7 +33,6 @@ func TestJSONFileStore_Load(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection.Todos, 1)
-		assert.Equal(t, 1, collection.Todos[0].Position)
 		assert.NotEmpty(t, collection.Todos[0].ID) // Should have UUID
 	})
 
@@ -490,7 +489,6 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		child1 := &models.Todo{
 			ID:       "child-1",
 			ParentID: parent.ID,
-			Position: 1,
 			Text:     "Child task 1",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: parent.Modified,
@@ -500,7 +498,6 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		child2 := &models.Todo{
 			ID:       "child-2",
 			ParentID: parent.ID,
-			Position: 2,
 			Text:     "Child task 2",
 			Statuses: map[string]string{"completion": string(models.StatusDone)},
 			Modified: parent.Modified,
@@ -510,7 +507,6 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		grandchild := &models.Todo{
 			ID:       "grandchild-1",
 			ParentID: child1.ID,
-			Position: 1,
 			Text:     "Grandchild task",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: parent.Modified,
@@ -601,25 +597,25 @@ func TestJSONFileStore_NestedTodos(t *testing.T) {
 		level1, _ := collection.CreateTodo("Level 1", "")
 
 		level2 := &models.Todo{
-			ID: "level-2", ParentID: level1.ID, Position: 1,
+			ID: "level-2", ParentID: level1.ID,
 			Text: "Level 2", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
 		level3 := &models.Todo{
-			ID: "level-3", ParentID: level2.ID, Position: 1,
+			ID: "level-3", ParentID: level2.ID,
 			Text: "Level 3", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
 		level4 := &models.Todo{
-			ID: "level-4", ParentID: level3.ID, Position: 1,
+			ID: "level-4", ParentID: level3.ID,
 			Text: "Level 4", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}
 
 		level5 := &models.Todo{
-			ID: "level-5", ParentID: level4.ID, Position: 1,
+			ID: "level-5", ParentID: level4.ID,
 			Text: "Level 5", Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: level1.Modified, Items: []*models.Todo{},
 		}

@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/arthur-debert/too/pkg/idm"
 	"github.com/arthur-debert/too/pkg/idm/workflow"
@@ -262,15 +261,8 @@ func (a *directAdapter) GetChildren(parentUID string) ([]string, error) {
 		}
 	}
 
-	// Sort by position
-	sort.Slice(children, func(i, j int) bool {
-		todoI := a.collection.FindItemByID(children[i])
-		todoJ := a.collection.FindItemByID(children[j])
-		if todoI == nil || todoJ == nil {
-			return false
-		}
-		return todoI.Position < todoJ.Position
-	})
+	// Keep order as-is from the collection structure
+	// IDM will assign HIDs based on this order
 
 	return children, nil
 }
@@ -587,4 +579,207 @@ func (a *directWorkflowAdapter) SetStatusesBulk(updates map[string]map[string]st
 		}
 	}
 	return nil
+}
+
+// ListActive returns only active (pending) todos using IDM ordering.
+// This replaces collection.ListActive() with IDM-aware filtering.
+func (m *DirectWorkflowManager) ListActive() []*models.Todo {
+	// Get all UIDs from root scope (IDM maintains proper ordering)
+	uids := m.registry.GetUIDs(RootScope)
+	
+	var activeTodos []*models.Todo
+	for _, uid := range uids {
+		todo := m.collection.FindItemByID(uid)
+		if todo != nil && todo.GetStatus() == models.StatusPending {
+			// Clone the todo and recursively add active children
+			clonedTodo := todo.Clone()
+			clonedTodo.Items = m.getActiveChildren(todo)
+			activeTodos = append(activeTodos, clonedTodo)
+		}
+	}
+	
+	return activeTodos
+}
+
+// ListArchived returns only archived (done) todos using collection traversal
+// since done todos are not registered in IDM (only active todos get HIDs).
+// This replaces collection.ListArchived() with proper behavioral propagation.
+func (m *DirectWorkflowManager) ListArchived() []*models.Todo {
+	return m.filterTodos(m.collection.Todos, func(t *models.Todo) bool {
+		return t.GetStatus() == models.StatusDone
+	}, false) // Don't recurse into done items (behavioral propagation)
+}
+
+// ListAll returns all todos regardless of status using collection traversal.
+// This preserves the complete tree structure including any inconsistent states.
+// This replaces collection.ListAll() with the same behavior.
+func (m *DirectWorkflowManager) ListAll() []*models.Todo {
+	return m.cloneTodos(m.collection.Todos)
+}
+
+// cloneTodos creates a deep copy of a slice of todos
+func (m *DirectWorkflowManager) cloneTodos(todos []*models.Todo) []*models.Todo {
+	cloned := make([]*models.Todo, len(todos))
+	for i, todo := range todos {
+		cloned[i] = todo.Clone()
+	}
+	return cloned
+}
+
+// GetTodoByID finds a todo by its ID without exposing the collection.
+// This replaces direct collection.FindItemByID() calls.
+func (m *DirectWorkflowManager) GetTodoByID(uid string) *models.Todo {
+	return m.collection.FindItemByID(uid)
+}
+
+// GetTodoByShortID finds a todo by its short ID without exposing the collection.
+// This replaces direct collection.FindItemByShortID() calls.
+func (m *DirectWorkflowManager) GetTodoByShortID(shortID string) (*models.Todo, error) {
+	return m.collection.FindItemByShortID(shortID)
+}
+
+// CountTodos returns the total count and done count of all todos without exposing the collection.
+// This replaces direct access to collection.Todos for counting.
+func (m *DirectWorkflowManager) CountTodos() (totalCount, doneCount int) {
+	return m.countAllTodos(m.collection.Todos)
+}
+
+// countAllTodos recursively counts total and done todos
+func (m *DirectWorkflowManager) countAllTodos(todos []*models.Todo) (total int, done int) {
+	for _, todo := range todos {
+		total++
+		if todo.GetStatus() == models.StatusDone {
+			done++
+		}
+		// Recursively count children
+		childTotal, childDone := m.countAllTodos(todo.Items)
+		total += childTotal
+		done += childDone
+	}
+	return total, done
+}
+
+// getActiveChildren recursively returns only active children of a todo.
+func (m *DirectWorkflowManager) getActiveChildren(parent *models.Todo) []*models.Todo {
+	var activeChildren []*models.Todo
+	
+	for _, child := range parent.Items {
+		if child.GetStatus() == models.StatusPending {
+			clonedChild := child.Clone()
+			clonedChild.Items = m.getActiveChildren(child)
+			activeChildren = append(activeChildren, clonedChild)
+		}
+	}
+	
+	return activeChildren
+}
+
+// CleanFinishedTodos removes all done todos and their descendants from the collection and IDM.
+// Returns the removed todos for reporting purposes.
+func (m *DirectWorkflowManager) CleanFinishedTodos() ([]*models.Todo, int, error) {
+	// Find all done items before removing them
+	removedTodos := m.findDoneItems(m.collection.Todos)
+	
+	// Remove done todos from the collection
+	m.collection.Todos = m.removeFinishedTodosRecursive(m.collection.Todos)
+	
+	// Remove done todos from IDM registry
+	for _, removedTodo := range removedTodos {
+		// Remove from parent scope (either root or parent todo)
+		parentScope := RootScope
+		if removedTodo.ParentID != "" {
+			parentScope = removedTodo.ParentID
+		}
+		m.registry.Remove(parentScope, removedTodo.ID)
+		
+		// If the removed todo had children, remove its scope entirely
+		if len(removedTodo.Items) > 0 {
+			m.registry.RemoveScope(removedTodo.ID)
+		}
+	}
+	
+	// Count remaining active todos
+	activeCount := m.countActiveTodos(m.collection.Todos)
+	
+	return removedTodos, activeCount, nil
+}
+
+// findDoneItems finds all done todos (not including their pending descendants)
+func (m *DirectWorkflowManager) findDoneItems(todos []*models.Todo) []*models.Todo {
+	var doneItems []*models.Todo
+	for _, todo := range todos {
+		if todo.GetStatus() == models.StatusDone {
+			doneItems = append(doneItems, todo.Clone())
+		}
+		// Always recurse, as a pending parent can have done children
+		doneItems = append(doneItems, m.findDoneItems(todo.Items)...)
+	}
+	return doneItems
+}
+
+// removeFinishedTodosRecursive removes done todos and their descendants
+func (m *DirectWorkflowManager) removeFinishedTodosRecursive(todos []*models.Todo) []*models.Todo {
+	var activeTodos []*models.Todo
+
+	for _, todo := range todos {
+		if todo.GetStatus() != models.StatusDone {
+			// Keep this todo but recursively clean its children
+			todoCopy := *todo
+			todoCopy.Items = m.removeFinishedTodosRecursive(todo.Items)
+			activeTodos = append(activeTodos, &todoCopy)
+		}
+		// If done, skip this todo and all its descendants
+	}
+
+	return activeTodos
+}
+
+// countActiveTodos recursively counts all active (non-done) todos
+func (m *DirectWorkflowManager) countActiveTodos(todos []*models.Todo) int {
+	count := 0
+	for _, todo := range todos {
+		if todo.GetStatus() != models.StatusDone {
+			count++
+			count += m.countActiveTodos(todo.Items)
+		}
+	}
+	return count
+}
+
+// filterTodos recursively filters todos based on a predicate function.
+// If recurseIntoDone is false, it stops recursion at done items (behavioral propagation).
+// This is similar to the collection method but operates within DirectWorkflowManager.
+func (m *DirectWorkflowManager) filterTodos(todos []*models.Todo, predicate func(*models.Todo) bool, recurseIntoDone bool) []*models.Todo {
+	var filtered []*models.Todo
+
+	for _, todo := range todos {
+		if predicate(todo) {
+			// Clone the todo to avoid modifying the original
+			filteredTodo := &models.Todo{
+				ID:       todo.ID,
+				ParentID: todo.ParentID,
+				Text:     todo.Text,
+				Statuses: make(map[string]string),
+				Modified: todo.Modified,
+				Items:    []*models.Todo{},
+			}
+
+			// Clone statuses map
+			for k, v := range todo.Statuses {
+				filteredTodo.Statuses[k] = v
+			}
+
+			// If this todo is done and we're not recursing into done items,
+			// stop here (behavioral propagation)
+			if todo.GetStatus() == models.StatusDone && !recurseIntoDone {
+				filtered = append(filtered, filteredTodo)
+			} else {
+				// Recursively filter children
+				filteredTodo.Items = m.filterTodos(todo.Items, predicate, recurseIntoDone)
+				filtered = append(filtered, filteredTodo)
+			}
+		}
+	}
+
+	return filtered
 }

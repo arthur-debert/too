@@ -16,11 +16,12 @@ type Options struct {
 
 // Result contains the result of the add command
 type Result struct {
-	Todo       *models.Todo
-	Mode       string         // Output mode passed from options
-	AllTodos   []*models.Todo // All todos for long mode
-	TotalCount int            // Total count for long mode
-	DoneCount  int            // Done count for long mode
+	Todo         *models.Todo
+	PositionPath string         // Position path of the newly created todo (e.g., "1", "1.2")
+	Mode         string         // Output mode passed from options
+	AllTodos     []*models.Todo // All todos for long mode
+	TotalCount   int            // Total count for long mode
+	DoneCount    int            // Done count for long mode
 }
 
 // Execute adds a new todo to the collection

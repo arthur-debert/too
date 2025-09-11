@@ -23,7 +23,6 @@ const (
 type Todo struct {
 	ID       string            `json:"id"`                 // UUID for stable internal reference
 	ParentID string            `json:"parentId"`           // UUID of parent item, empty for top-level items
-	Position int               `json:"position,omitempty"` // Position managed by IDM
 	Text     string            `json:"text"`
 	Statuses map[string]string `json:"statuses,omitempty"` // Multi-dimensional status for workflow features
 	Modified time.Time         `json:"modified"`
@@ -56,7 +55,6 @@ func (c *Collection) CreateTodo(text string, parentID string) (*Todo, error) {
 
 	if parentID == "" {
 		// Add to root level
-		newTodo.Position = c.findHighestPosition(c.Todos) + 1
 		c.Todos = append(c.Todos, newTodo)
 	} else {
 		// Find parent and add as child
@@ -64,30 +62,18 @@ func (c *Collection) CreateTodo(text string, parentID string) (*Todo, error) {
 		if parent == nil {
 			return nil, fmt.Errorf("parent todo with ID %s not found", parentID)
 		}
-		newTodo.Position = c.findHighestPosition(parent.Items) + 1
 		parent.Items = append(parent.Items, newTodo)
 	}
 
 	return newTodo, nil
 }
 
-// findHighestPosition finds the highest position in a slice of todos
-func (c *Collection) findHighestPosition(todos []*Todo) int {
-	var highest = 0
-	for _, todo := range todos {
-		if todo.Position > highest {
-			highest = todo.Position
-		}
-	}
-	return highest
-}
 
 // Clone creates a deep copy of the todo.
 func (t *Todo) Clone() *Todo {
 	clone := &Todo{
 		ID:       t.ID,
 		ParentID: t.ParentID,
-		Position: t.Position,
 		Text:     t.Text,
 		Statuses: make(map[string]string),
 		Modified: t.Modified,
@@ -166,26 +152,9 @@ func (c *Collection) Clone() *Collection {
 // Reorder resets positions for active (pending) todos, giving them sequential positions starting from 1.
 // Done todos are left with position 0.
 func (c *Collection) Reorder() {
-	ResetActivePositions(&c.Todos)
+	// No-op: IDM handles positioning
 }
 
-// ResetSiblingPositions resets positions for all siblings of the todo with the given parent ID.
-// This only affects todos at one level (children of the same parent).
-func (c *Collection) ResetSiblingPositions(parentID string) {
-	parent := c.FindItemByID(parentID)
-	if parent != nil && len(parent.Items) > 0 {
-		// Reset positions only for active (pending) items
-		ResetActivePositions(&parent.Items)
-	}
-}
-
-// ResetRootPositions resets positions for all root-level todos.
-func (c *Collection) ResetRootPositions() {
-	if len(c.Todos) > 0 {
-		// Reset positions only for active (pending) items
-		ResetActivePositions(&c.Todos)
-	}
-}
 
 // MigrateCollection ensures all todos have proper IDs and structure for nested lists
 func MigrateCollection(c *Collection) {
@@ -280,8 +249,8 @@ func (t *Todo) GetShortID() string {
 }
 
 // ListActive returns only active (pending) todos from the collection.
-// This implements behavioral propagation: when a parent is done, all its
-// descendants are hidden regardless of their status.
+// DEPRECATED: Use DirectWorkflowManager with IDM queries instead.
+// This method is kept for backward compatibility during Phase 3 migration.
 func (c *Collection) ListActive() []*Todo {
 	return filterTodos(c.Todos, func(t *Todo) bool {
 		return t.GetStatus() == StatusPending
@@ -289,8 +258,8 @@ func (c *Collection) ListActive() []*Todo {
 }
 
 // ListArchived returns only archived (done) todos from the collection.
-// When showing archived items, behavioral propagation stops - we don't
-// show the children of done items.
+// DEPRECATED: Use DirectWorkflowManager with IDM queries instead.
+// This method is kept for backward compatibility during Phase 3 migration.
 func (c *Collection) ListArchived() []*Todo {
 	return filterTodos(c.Todos, func(t *Todo) bool {
 		return t.GetStatus() == StatusDone
@@ -298,8 +267,8 @@ func (c *Collection) ListArchived() []*Todo {
 }
 
 // ListAll returns all todos from the collection regardless of status.
-// This shows the complete tree structure including any inconsistent states
-// (e.g., pending children under done parents).
+// DEPRECATED: Use DirectWorkflowManager with IDM queries instead.
+// This method is kept for backward compatibility during Phase 3 migration.
 func (c *Collection) ListAll() []*Todo {
 	return cloneTodos(c.Todos)
 }
@@ -315,7 +284,6 @@ func filterTodos(todos []*Todo, predicate func(*Todo) bool, recurseIntoDone bool
 			filteredTodo := &Todo{
 				ID:       todo.ID,
 				ParentID: todo.ParentID,
-				Position: todo.Position,
 				Text:     todo.Text,
 				Statuses: make(map[string]string),
 				Modified: todo.Modified,
@@ -361,9 +329,6 @@ func (c *Collection) AllTodos() []*Todo {
 }
 
 // FindHighestPosition finds the highest position in a slice of todos (public version).
-func (c *Collection) FindHighestPosition(todos []*Todo) int {
-	return c.findHighestPosition(todos)
-}
 
 // RemoveTodo removes a todo by ID from the collection.
 func (c *Collection) RemoveTodo(id string) error {

@@ -11,9 +11,9 @@ func TestListActive(t *testing.T) {
 	t.Run("returns only pending todos", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Active 1", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "2", Position: 2, Text: "Done 1", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
-				{ID: "3", Position: 3, Text: "Active 2", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Active 1", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "2",  Text: "Done 1", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "3",  Text: "Active 2", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -27,19 +27,19 @@ func TestListActive(t *testing.T) {
 	t.Run("hides children of done parents (behavioral propagation)", func(t *testing.T) {
 		parent := &models.Todo{
 			ID:       "parent",
-			Position: 1,
+			
 			Text:     "Done Parent",
 			Statuses: map[string]string{"completion": string(models.StatusDone)},
 			Items: []*models.Todo{
-				{ID: "child1", ParentID: "parent", Position: 1, Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "child2", ParentID: "parent", Position: 2, Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "child1", ParentID: "parent",  Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "child2", ParentID: "parent",  Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
 		collection := &models.Collection{
 			Todos: []*models.Todo{
 				parent,
-				{ID: "2", Position: 2, Text: "Active Sibling", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "2",  Text: "Active Sibling", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -53,12 +53,12 @@ func TestListActive(t *testing.T) {
 	t.Run("shows pending children of pending parents", func(t *testing.T) {
 		parent := &models.Todo{
 			ID:       "parent",
-			Position: 1,
+			
 			Text:     "Active Parent",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Items: []*models.Todo{
-				{ID: "child1", ParentID: "parent", Position: 1, Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "child2", ParentID: "parent", Position: 2, Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "child1", ParentID: "parent",  Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "child2", ParentID: "parent",  Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -82,8 +82,8 @@ func TestListActive(t *testing.T) {
 	t.Run("all done returns empty list", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Done 1", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
-				{ID: "2", Position: 2, Text: "Done 2", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Done 1", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "2",  Text: "Done 2", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -94,7 +94,7 @@ func TestListActive(t *testing.T) {
 	t.Run("returns clones not originals", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Active", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Active", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -110,9 +110,9 @@ func TestListArchived(t *testing.T) {
 	t.Run("returns only done todos", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Active", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "2", Position: 2, Text: "Done 1", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
-				{ID: "3", Position: 3, Text: "Done 2", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Active", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "2",  Text: "Done 1", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "3",  Text: "Done 2", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -126,12 +126,12 @@ func TestListArchived(t *testing.T) {
 	t.Run("shows done parents without their children", func(t *testing.T) {
 		parent := &models.Todo{
 			ID:       "parent",
-			Position: 1,
+			
 			Text:     "Done Parent",
 			Statuses: map[string]string{"completion": string(models.StatusDone)},
 			Items: []*models.Todo{
-				{ID: "child1", ParentID: "parent", Position: 1, Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "child2", ParentID: "parent", Position: 2, Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "child1", ParentID: "parent",  Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "child2", ParentID: "parent",  Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -148,12 +148,12 @@ func TestListArchived(t *testing.T) {
 	t.Run("shows done children of pending parents", func(t *testing.T) {
 		parent := &models.Todo{
 			ID:       "parent",
-			Position: 1,
+			
 			Text:     "Active Parent",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Items: []*models.Todo{
-				{ID: "child1", ParentID: "parent", Position: 1, Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "child2", ParentID: "parent", Position: 2, Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "child1", ParentID: "parent",  Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "child2", ParentID: "parent",  Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -174,8 +174,8 @@ func TestListArchived(t *testing.T) {
 	t.Run("all pending returns empty list", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Active 1", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "2", Position: 2, Text: "Active 2", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Active 1", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "2",  Text: "Active 2", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -188,8 +188,8 @@ func TestListAll(t *testing.T) {
 	t.Run("returns all todos regardless of status", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Active", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "2", Position: 2, Text: "Done", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Active", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "2",  Text: "Done", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -203,12 +203,12 @@ func TestListAll(t *testing.T) {
 	t.Run("shows all children including inconsistent states", func(t *testing.T) {
 		parent := &models.Todo{
 			ID:       "parent",
-			Position: 1,
+			
 			Text:     "Done Parent",
 			Statuses: map[string]string{"completion": string(models.StatusDone)},
 			Items: []*models.Todo{
-				{ID: "child1", ParentID: "parent", Position: 1, Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
-				{ID: "child2", ParentID: "parent", Position: 2, Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
+				{ID: "child1", ParentID: "parent",  Text: "Pending Child", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "child2", ParentID: "parent",  Text: "Done Child", Statuses: map[string]string{"completion": string(models.StatusDone)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -233,7 +233,7 @@ func TestListAll(t *testing.T) {
 	t.Run("returns clones not originals", func(t *testing.T) {
 		collection := &models.Collection{
 			Todos: []*models.Todo{
-				{ID: "1", Position: 1, Text: "Original", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
+				{ID: "1",  Text: "Original", Statuses: map[string]string{"completion": string(models.StatusPending)}, Items: []*models.Todo{}},
 			},
 		}
 
@@ -248,7 +248,7 @@ func TestListAll(t *testing.T) {
 		grandchild := &models.Todo{
 			ID:       "grandchild",
 			ParentID: "child",
-			Position: 1,
+			
 			Text:     "Grandchild",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Items:    []*models.Todo{},
@@ -257,7 +257,7 @@ func TestListAll(t *testing.T) {
 		child := &models.Todo{
 			ID:       "child",
 			ParentID: "parent",
-			Position: 1,
+			
 			Text:     "Child",
 			Statuses: map[string]string{"completion": string(models.StatusDone)},
 			Items:    []*models.Todo{grandchild},
@@ -265,7 +265,7 @@ func TestListAll(t *testing.T) {
 
 		parent := &models.Todo{
 			ID:       "parent",
-			Position: 1,
+			
 			Text:     "Parent",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Items:    []*models.Todo{child},

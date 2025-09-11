@@ -27,7 +27,6 @@ func TestCSVFormatter(t *testing.T) {
 		result := &too.AddResult{
 			Todo: &models.Todo{
 				ID:       "123",
-				Position: 1,
 				Text:     "Test todo",
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Items:    []*models.Todo{},
@@ -60,14 +59,12 @@ func TestCSVFormatter(t *testing.T) {
 			Todos: []*models.Todo{
 				{
 					ID:       "1",
-					Position: 1,
 					Text:     "First todo",
 					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items:    []*models.Todo{},
 				},
 				{
 					ID:       "2",
-					Position: 2,
 					Text:     "Second todo, with comma",
 					Statuses: map[string]string{"completion": string(models.StatusDone)},
 					Items:    []*models.Todo{},
@@ -152,19 +149,16 @@ func TestCSVFormatter(t *testing.T) {
 			Todos: []*models.Todo{
 				{
 					ID:       "1",
-					Position: 1,
 					Text:     "Parent todo",
 					Statuses: map[string]string{"completion": string(models.StatusPending)},
 					Items: []*models.Todo{
 						{
 							ID:       "1.1",
-							Position: 1,
 							Text:     "Child todo",
 							Statuses: map[string]string{"completion": string(models.StatusPending)},
 							Items: []*models.Todo{
 								{
 									ID:       "1.1.1",
-									Position: 1,
 									Text:     "Grandchild todo",
 									Statuses: map[string]string{"completion": string(models.StatusPending)},
 									Items:    []*models.Todo{},
@@ -200,7 +194,6 @@ func TestCSVFormatter(t *testing.T) {
 		result := &too.AddResult{
 			Todo: &models.Todo{
 				ID:       "123",
-				Position: 1,
 				Text:     "Todo with\nnewline",
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Items:    []*models.Todo{},
@@ -224,7 +217,6 @@ func TestCSVFormatter(t *testing.T) {
 		result := &too.AddResult{
 			Todo: &models.Todo{
 				ID:       "123",
-				Position: 1,
 				Text:     `Todo with "quotes", commas, and 'apostrophes'`,
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Items:    []*models.Todo{},
@@ -248,7 +240,6 @@ func TestCSVFormatter(t *testing.T) {
 		result := &too.MoveResult{
 			Todo: &models.Todo{
 				ID:       "123",
-				Position: 3,
 				Text:     "Moved todo",
 				Statuses: map[string]string{"completion": string(models.StatusPending)},
 				Items:    []*models.Todo{},
