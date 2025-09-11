@@ -235,3 +235,22 @@ func (a *IDMStoreAdapter) SetPinned(uid string, isPinned bool) error {
 	// too doesn't currently support pinned items, so this is a no-op
 	return nil
 }
+
+// GetParent implements the idm.ManagedStoreAdapter interface. It returns the
+// parent UID of the given item.
+func (a *IDMStoreAdapter) GetParent(uid string) (string, error) {
+	if uid == RootScope {
+		return "", nil // Root has no parent
+	}
+	
+	todo := a.collection.FindItemByID(uid)
+	if todo == nil {
+		return "", fmt.Errorf("todo with UID %s not found", uid)
+	}
+	
+	if todo.ParentID == "" {
+		return RootScope, nil
+	}
+	
+	return todo.ParentID, nil
+}

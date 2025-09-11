@@ -20,13 +20,14 @@ const (
 
 // Todo represents a single task in the to-do list.
 type Todo struct {
-	ID       string     `json:"id"`       // UUID for stable internal reference
-	ParentID string     `json:"parentId"` // UUID of parent item, empty for top-level items
-	Position int        `json:"position"` // Sequential position relative to siblings
-	Text     string     `json:"text"`
-	Status   TodoStatus `json:"status"`
-	Modified time.Time  `json:"modified"`
-	Items    []*Todo    `json:"items"` // Child todo items
+	ID       string            `json:"id"`       // UUID for stable internal reference
+	ParentID string            `json:"parentId"` // UUID of parent item, empty for top-level items
+	Position int               `json:"position"` // Sequential position relative to siblings
+	Text     string            `json:"text"`
+	Status   TodoStatus        `json:"status"`             // Legacy status field for backward compatibility
+	Statuses map[string]string `json:"statuses,omitempty"` // Multi-dimensional status for workflow features
+	Modified time.Time         `json:"modified"`
+	Items    []*Todo           `json:"items"` // Child todo items
 }
 
 // Collection represents a list of todos.
@@ -99,6 +100,44 @@ func (t *Todo) Clone() *Todo {
 	}
 
 	return clone
+}
+
+// EnsureStatuses initializes the Statuses map if it's nil and ensures backward compatibility.
+func (t *Todo) EnsureStatuses() {
+	if t.Statuses == nil {
+		t.Statuses = make(map[string]string)
+		// Migrate legacy status to completion dimension for backward compatibility
+		t.Statuses["completion"] = string(t.Status)
+	}
+}
+
+// GetWorkflowStatus gets a status dimension value, with fallback to legacy status for completion.
+func (t *Todo) GetWorkflowStatus(dimension string) (string, bool) {
+	t.EnsureStatuses()
+	
+	if value, exists := t.Statuses[dimension]; exists {
+		return value, true
+	}
+	
+	// Fallback for completion dimension to legacy status field
+	if dimension == "completion" {
+		return string(t.Status), true
+	}
+	
+	return "", false
+}
+
+// SetWorkflowStatus sets a status dimension value and maintains backward compatibility.
+func (t *Todo) SetWorkflowStatus(dimension, value string) {
+	t.EnsureStatuses()
+	t.Statuses[dimension] = value
+	
+	// Update legacy status field if this is the completion dimension
+	if dimension == "completion" {
+		t.Status = TodoStatus(value)
+	}
+	
+	t.Modified = time.Now()
 }
 
 // SetStatus changes the todo's status while maintaining invariants.
@@ -336,4 +375,50 @@ func cloneTodos(todos []*Todo) []*Todo {
 		cloned[i] = todo.Clone()
 	}
 	return cloned
+}
+
+// AllTodos returns all todos in the collection as a flat slice.
+func (c *Collection) AllTodos() []*Todo {
+	var allTodos []*Todo
+	c.Walk(func(t *Todo) {
+		allTodos = append(allTodos, t)
+	})
+	return allTodos
+}
+
+// FindHighestPosition finds the highest position in a slice of todos (public version).
+func (c *Collection) FindHighestPosition(todos []*Todo) int {
+	return c.findHighestPosition(todos)
+}
+
+// RemoveTodo removes a todo by ID from the collection.
+func (c *Collection) RemoveTodo(id string) error {
+	todo := c.FindItemByID(id)
+	if todo == nil {
+		return fmt.Errorf("todo with ID %s not found", id)
+	}
+	
+	// Remove from parent's items list
+	if todo.ParentID == "" {
+		// Remove from root level
+		for i, rootTodo := range c.Todos {
+			if rootTodo.ID == id {
+				c.Todos = append(c.Todos[:i], c.Todos[i+1:]...)
+				return nil
+			}
+		}
+	} else {
+		// Remove from parent's items
+		parent := c.FindItemByID(todo.ParentID)
+		if parent != nil {
+			for i, child := range parent.Items {
+				if child.ID == id {
+					parent.Items = append(parent.Items[:i], parent.Items[i+1:]...)
+					return nil
+				}
+			}
+		}
+	}
+	
+	return fmt.Errorf("failed to remove todo with ID %s", id)
 }
