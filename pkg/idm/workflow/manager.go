@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"fmt"
-	"strings"
 	
 	"github.com/arthur-debert/too/pkg/idm"
 )
@@ -282,47 +281,41 @@ func (sm *StatusManager) GetChildrenInContext(parentUID, context string) ([]stri
 
 // ResolvePositionPathInContext resolves a position path within a specific context.
 // Only items visible in the context are considered for position numbering.
+// This method creates a temporary context-aware registry and uses the core IDM resolver.
 func (sm *StatusManager) ResolvePositionPathInContext(startScope, path, context string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("empty position path")
 	}
 	
-	parts := strings.Split(path, ".")
-	currentScope := startScope
-	
-	for _, part := range parts {
-		// Parse the position number
-		var pos int
-		if _, err := fmt.Sscanf(part, "%d", &pos); err != nil {
-			return "", fmt.Errorf("invalid position '%s' in path: %w", part, err)
-		}
-		if pos < 1 {
-			return "", fmt.Errorf("position must be >= 1, got %d", pos)
-		}
-		
-		// Get children visible in this context
-		children, err := sm.GetChildrenInContext(currentScope, context)
-		if err != nil {
-			return "", fmt.Errorf("failed to get children for scope '%s': %w", currentScope, err)
-		}
-		
-		// Check if position is valid
-		if pos > len(children) {
-			return "", fmt.Errorf("position %d out of range (max %d) in scope '%s'", pos, len(children), currentScope)
-		}
-		
-		// Get the UID at this position (1-based indexing)
-		currentScope = children[pos-1]
+	// Create a context-aware adapter that only returns visible children
+	contextAdapter := &contextAwareAdapter{
+		base:    sm.adapter,
+		context: context,
+		manager: sm,
 	}
 	
-	return currentScope, nil
+	// Create a temporary registry and populate it with context-visible children
+	tempRegistry := idm.NewRegistry()
+	
+	// Build all relevant scopes that might be needed for path resolution
+	scopes, err := sm.adapter.GetScopes()
+	if err != nil {
+		return "", fmt.Errorf("failed to get scopes: %w", err)
+	}
+	
+	for _, scope := range scopes {
+		if err := tempRegistry.RebuildScope(contextAdapter, scope); err != nil {
+			continue // Skip scopes with errors, but don't fail completely
+		}
+	}
+	
+	// Use the core IDM resolver for path resolution
+	return tempRegistry.ResolvePositionPath(startScope, path)
 }
 
 // GetPositionPathInContext returns the position path for an item within a specific context.
+// This method creates a temporary context-aware registry and uses the core IDM GetPositionPath.
 func (sm *StatusManager) GetPositionPathInContext(startScope, targetUID, context string) (string, error) {
-	// Use the enhanced registry method we added earlier, but filter by context
-	// For now, we'll implement a simpler version that builds the path by traversing up
-	
 	// Check if the target is visible in this context
 	visible, err := sm.IsVisibleInContext(targetUID, context)
 	if err != nil {
@@ -332,74 +325,28 @@ func (sm *StatusManager) GetPositionPathInContext(startScope, targetUID, context
 		return "", fmt.Errorf("item '%s' not visible in context '%s'", targetUID, context)
 	}
 	
-	// Get all items and build a parent-child map
-	allUIDs, err := sm.adapter.GetAllUIDs()
+	// Create a context-aware adapter that only returns visible children
+	contextAdapter := &contextAwareAdapter{
+		base:    sm.adapter,
+		context: context,
+		manager: sm,
+	}
+	
+	// Create a temporary registry and build all context-visible scopes
+	tempRegistry := idm.NewRegistry()
+	scopes, err := sm.adapter.GetScopes()
 	if err != nil {
 		return "", err
 	}
 	
-	// Build parent map
-	parentMap := make(map[string]string)
-	for _, uid := range allUIDs {
-		// We need to determine the parent of each item
-		// This is adapter-specific, so we'll iterate through all scopes
-		scopes, err := sm.adapter.GetScopes()
-		if err != nil {
-			continue
-		}
-		
-		for _, scope := range scopes {
-			children, err := sm.GetChildrenInContext(scope, context)
-			if err != nil {
-				continue
-			}
-			
-			for _, child := range children {
-				if child == uid {
-					parentMap[uid] = scope
-					break
-				}
-			}
+	for _, scope := range scopes {
+		if err := tempRegistry.RebuildScope(contextAdapter, scope); err != nil {
+			continue // Skip scopes with errors
 		}
 	}
 	
-	// Build path from target to root
-	var pathParts []string
-	current := targetUID
-	
-	for current != startScope && current != "root" {
-		parent, exists := parentMap[current]
-		if !exists {
-			return "", fmt.Errorf("could not find parent for item '%s'", current)
-		}
-		
-		// Get siblings in context and find position
-		siblings, err := sm.GetChildrenInContext(parent, context)
-		if err != nil {
-			return "", err
-		}
-		
-		position := -1
-		for i, sibling := range siblings {
-			if sibling == current {
-				position = i + 1 // 1-based indexing
-				break
-			}
-		}
-		
-		if position == -1 {
-			return "", fmt.Errorf("item '%s' not found in parent's children", current)
-		}
-		
-		pathParts = append([]string{fmt.Sprintf("%d", position)}, pathParts...)
-		current = parent
-	}
-	
-	if len(pathParts) == 0 {
-		return "", fmt.Errorf("could not build path from '%s' to '%s'", startScope, targetUID)
-	}
-	
-	return strings.Join(pathParts, "."), nil
+	// Use the core IDM GetPositionPath method
+	return tempRegistry.GetPositionPath(startScope, targetUID, contextAdapter)
 }
 
 // --- Auto-Transitions ---
@@ -512,6 +459,31 @@ func (sm *StatusManager) GetAllItemsInContext(context string) ([]string, error) 
 	}
 	
 	return sm.adapter.GetAllItemsInContext(context, rules)
+}
+
+// --- Context-Aware Adapter ---
+
+// contextAwareAdapter wraps a WorkflowStoreAdapter to provide context-filtered children
+// for use with the core IDM resolver. It implements idm.StoreAdapter.
+type contextAwareAdapter struct {
+	base    WorkflowStoreAdapter
+	context string
+	manager *StatusManager
+}
+
+// GetChildren returns only children that are visible in the specified context
+func (ca *contextAwareAdapter) GetChildren(scope string) ([]string, error) {
+	return ca.manager.GetChildrenInContext(scope, ca.context)
+}
+
+// GetScopes delegates to the base adapter
+func (ca *contextAwareAdapter) GetScopes() ([]string, error) {
+	return ca.base.GetScopes()
+}
+
+// GetAllUIDs delegates to the base adapter
+func (ca *contextAwareAdapter) GetAllUIDs() ([]string, error) {
+	return ca.base.GetAllUIDs()
 }
 
 // --- Helper Methods ---
