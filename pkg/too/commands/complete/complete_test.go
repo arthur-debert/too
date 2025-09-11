@@ -111,8 +111,7 @@ func TestComplete(t *testing.T) {
 		collection, err := store.Load()
 		testutil.AssertNoError(t, err)
 
-		// Verify bottom-up completion: 1.2 should be done (all children complete)
-		// After reordering, 1.2 becomes 1.1 (since 1.1 was pending and 1.2 had higher position)
+		// Verify no auto-completion: Sub-task 1.2 should remain pending
 		var parent *models.Todo
 		for _, todo := range collection.Todos {
 			if todo.Text == "Parent todo" {
@@ -127,22 +126,21 @@ func TestComplete(t *testing.T) {
 		}
 		assert.Equal(t, 2, len(parent.Items))
 
-		// Find the completed subtask (with grandchild) - it should have position 0
-		var completedSubtask *models.Todo
+		// Find the subtask with grandchild - it should remain pending
+		var subtaskWithGrandchild *models.Todo
 		for _, item := range parent.Items {
 			if item.Text == "Sub-task 1.2" {
-				completedSubtask = item
+				subtaskWithGrandchild = item
 				break
 			}
 		}
-		assert.NotNil(t, completedSubtask)
-		assert.Equal(t, 0, completedSubtask.Position)
-		assert.Equal(t, models.StatusDone, completedSubtask.Status, "Parent at 1.2 should be done (bottom-up completion)")
+		assert.NotNil(t, subtaskWithGrandchild)
+		assert.Equal(t, models.StatusPending, subtaskWithGrandchild.Status, "Parent at 1.2 should remain pending (no auto-completion)")
 
-		// The grandchild should also have position 0
-		assert.Equal(t, 1, len(completedSubtask.Items))
-		assert.Equal(t, 0, completedSubtask.Items[0].Position)
-		assert.Equal(t, models.StatusDone, completedSubtask.Items[0].Status)
+		// The grandchild should have been completed
+		assert.Equal(t, 1, len(subtaskWithGrandchild.Items))
+		assert.Equal(t, 0, subtaskWithGrandchild.Items[0].Position)
+		assert.Equal(t, models.StatusDone, subtaskWithGrandchild.Items[0].Status)
 
 		// But top-level parent should remain pending (not all children complete)
 		assert.Equal(t, models.StatusPending, parent.Status, "Parent at 1 should remain pending (1.1 still pending)")

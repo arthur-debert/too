@@ -11,10 +11,11 @@ import (
 
 // WorkflowManager wraps the IDM workflow system for too's use cases.
 type WorkflowManager struct {
-	statusManager *workflow.StatusManager
-	adapter       *WorkflowTodoAdapter
-	registry      *idm.Registry
-	hierarchyMgr  *idm.Manager
+	statusManager             *workflow.StatusManager
+	adapter                   *WorkflowTodoAdapter
+	registry                  *idm.Registry
+	hierarchyMgr              *idm.Manager
+	autoTransitionInProgress  map[string]bool // Guard against infinite recursion
 }
 
 // NewWorkflowManager creates a new workflow manager for the given collection.
@@ -57,10 +58,11 @@ func NewWorkflowManager(collection *models.Collection, collectionPath string) (*
 	}
 
 	return &WorkflowManager{
-		statusManager: statusManager,
-		adapter:       adapter,
-		registry:      hierarchyMgr.Registry(),
-		hierarchyMgr:  hierarchyMgr,
+		statusManager:            statusManager,
+		adapter:                  adapter,
+		registry:                 hierarchyMgr.Registry(),
+		hierarchyMgr:             hierarchyMgr,
+		autoTransitionInProgress: make(map[string]bool),
 	}, nil
 }
 
@@ -110,7 +112,17 @@ func (wm *WorkflowManager) ResolvePositionPathInContext(scope, path, context str
 }
 
 // SetStatus sets a status dimension for an item and triggers auto-transitions.
+// Includes recursion guard to prevent infinite loops in auto-transitions.
 func (wm *WorkflowManager) SetStatus(uid, dimension, value string) error {
+	// Check if this item is already being processed to prevent infinite recursion
+	if wm.autoTransitionInProgress[uid] {
+		return nil // Skip to prevent recursion
+	}
+	
+	// Mark this item as being processed
+	wm.autoTransitionInProgress[uid] = true
+	defer delete(wm.autoTransitionInProgress, uid)
+	
 	return wm.statusManager.SetStatus(uid, dimension, value)
 }
 

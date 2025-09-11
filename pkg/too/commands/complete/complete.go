@@ -6,7 +6,6 @@ import (
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
-	"github.com/rs/zerolog"
 )
 
 // Options contains options for the complete command
@@ -74,10 +73,6 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 			Str("newStatus", "done").
 			Msg("marked todo as complete using workflow manager")
 
-		// Preserve legacy bottom-up completion behavior while auto-transitions are disabled
-		if todo.ParentID != "" {
-			checkAndCompleteParent(collection, todo.ParentID, logger)
-		}
 
 		// Preserve legacy position reset behavior for compatibility
 		if todo.ParentID != "" {
@@ -118,54 +113,4 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	return result, nil
 }
 
-// checkAndCompleteParent recursively checks if all children of a parent are complete,
-// and if so, marks the parent as complete and continues up the hierarchy.
-// This is a temporary implementation while auto-transitions are being fixed.
-func checkAndCompleteParent(collection *models.Collection, parentID string, logger zerolog.Logger) {
-	// Find the parent todo
-	parent := collection.FindItemByID(parentID)
-	if parent == nil {
-		logger.Error().
-			Str("parentID", parentID).
-			Msg("parent not found during bottom-up completion")
-		return
-	}
-
-	// Check if all children are complete
-	allChildrenComplete := true
-	for _, child := range parent.Items {
-		if child.Status != models.StatusDone {
-			allChildrenComplete = false
-			break
-		}
-	}
-
-	// If all children are complete, mark parent as complete
-	// Only mark parent as complete if it actually has children to check
-	// This prevents childless parents from being auto-completed
-	if allChildrenComplete && len(parent.Items) > 0 {
-		logger.Debug().
-			Str("parentID", parentID).
-			Int("childCount", len(parent.Items)).
-			Msg("all children complete, marking parent as complete")
-
-		// Use the new method which handles status, position, and timestamp
-		parent.MarkComplete(collection, true) // Skip reorder during recursion
-
-		// Continue up the hierarchy
-		if parent.ParentID != "" {
-			logger.Debug().
-				Str("grandparentID", parent.ParentID).
-				Msg("checking grandparent for bottom-up completion")
-
-			checkAndCompleteParent(collection, parent.ParentID, logger)
-		}
-	} else {
-		logger.Debug().
-			Str("parentID", parentID).
-			Bool("allChildrenComplete", allChildrenComplete).
-			Int("childCount", len(parent.Items)).
-			Msg("parent not marked complete")
-	}
-}
 

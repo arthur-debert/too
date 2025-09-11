@@ -19,7 +19,7 @@ type WorkflowConfig struct {
 // DefaultWorkflowConfig returns the default workflow configuration.
 func DefaultWorkflowConfig() *WorkflowConfig {
 	return &WorkflowConfig{
-		Enabled:    false, // Temporarily disabled while fixing auto-transitions
+		Enabled:    false, // Disabled while completing legacy code removal
 		PresetName: "todo", // Default to basic todo workflow
 	}
 }
