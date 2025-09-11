@@ -7,7 +7,7 @@ import "github.com/arthur-debert/too/pkg/too/models"
 func CountTodos(todos []*models.Todo) (totalCount, doneCount int) {
 	for _, todo := range todos {
 		totalCount++
-		if todo.Status == models.StatusDone {
+		if todo.GetStatus() == models.StatusDone {
 			doneCount++
 		}
 		// Recursively count children

@@ -54,7 +54,7 @@ func Execute(opts Options) (*Result, error) {
 func findDoneItems(todos []*models.Todo) []*models.Todo {
 	var doneItems []*models.Todo
 	for _, todo := range todos {
-		if todo.Status == models.StatusDone {
+		if todo.GetStatus() == models.StatusDone {
 			doneItems = append(doneItems, todo.Clone())
 		}
 		// Always recurse, as a pending parent can have done children

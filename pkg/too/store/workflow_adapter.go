@@ -158,15 +158,10 @@ func (a *WorkflowTodoAdapter) MoveItem(uid, newParentUID string) error {
 	return nil
 }
 
-// SetStatus sets the legacy status field for backward compatibility.
+// SetStatus sets the completion status through the workflow system.
 func (a *WorkflowTodoAdapter) SetStatus(uid, status string) error {
-	todo := a.collection.FindItemByID(uid)
-	if todo == nil {
-		return fmt.Errorf("todo with ID %s not found", uid)
-	}
-	
-	todo.Status = models.TodoStatus(status)
-	return nil
+	// Delegate to SetItemStatus with completion dimension
+	return a.SetItemStatus(uid, "completion", status)
 }
 
 // SetPinned is not applicable to the todo system, but we implement it for interface compliance.
@@ -218,6 +213,9 @@ func (a *WorkflowTodoAdapter) SetItemStatus(uid, dimension, value string) error 
 	if dimension == "completion" {
 		todo.Status = models.TodoStatus(value)
 	}
+	
+	// Update modified timestamp when status changes
+	todo.SetModified()
 	
 	return nil
 }

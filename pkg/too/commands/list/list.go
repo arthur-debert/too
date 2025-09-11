@@ -53,7 +53,7 @@ func Execute(opts Options) (*Result, error) {
 func countTodos(todos []*models.Todo) (total int, done int) {
 	for _, todo := range todos {
 		total++
-		if todo.Status == models.StatusDone {
+		if todo.GetStatus() == models.StatusDone {
 			done++
 		}
 		// Recursively count children

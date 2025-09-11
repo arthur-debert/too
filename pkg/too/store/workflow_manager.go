@@ -191,7 +191,7 @@ func (wm *WorkflowManager) BuildResult(uid, mode, oldStatus string) (*WorkflowRe
 func countTodos(todos []*models.Todo) (total, done int) {
 	for _, todo := range todos {
 		total++
-		if todo.Status == models.StatusDone {
+		if todo.GetStatus() == models.StatusDone {
 			done++
 		}
 		subTotal, subDone := countTodos(todo.Items)

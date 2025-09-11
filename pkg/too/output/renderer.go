@@ -140,7 +140,7 @@ func formatMultilineText(text string, baseIndent string, columnWidth int) string
 func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 	return map[string]interface{}{
 		"isDone": func(todo *models.Todo) bool {
-			return todo.Status == models.StatusDone
+			return todo.GetStatus() == models.StatusDone
 		},
 		"padPosition": func(pos int) string {
 			return fmt.Sprintf("%6d", pos)

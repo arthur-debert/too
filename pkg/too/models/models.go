@@ -49,7 +49,8 @@ func (c *Collection) CreateTodo(text string, parentID string) (*Todo, error) {
 		ID:       uuid.New().String(),
 		ParentID: parentID,
 		Text:     text,
-		Status:   StatusPending,
+		Status:   StatusPending, // Keep for backward compatibility
+		Statuses: map[string]string{"completion": string(StatusPending)}, // Set workflow status
 		Modified: time.Now(),
 		Items:    []*Todo{},
 	}
@@ -127,60 +128,30 @@ func (t *Todo) GetWorkflowStatus(dimension string) (string, bool) {
 	return "", false
 }
 
-// SetWorkflowStatus sets a status dimension value and maintains backward compatibility.
-func (t *Todo) SetWorkflowStatus(dimension, value string) {
+// SetModified updates the modified timestamp to the current time.
+func (t *Todo) SetModified() {
+	t.Modified = time.Now()
+}
+
+// GetStatus returns the todo's completion status from the workflow statuses.
+// This maintains backward compatibility by deriving status from the completion dimension.
+func (t *Todo) GetStatus() TodoStatus {
 	t.EnsureStatuses()
-	t.Statuses[dimension] = value
-	
-	// Update legacy status field if this is the completion dimension
-	if dimension == "completion" {
-		t.Status = TodoStatus(value)
+	if status, exists := t.Statuses["completion"]; exists {
+		return TodoStatus(status)
 	}
-	
-	t.Modified = time.Now()
+	// Fallback to legacy Status field if Statuses map doesn't have completion
+	return t.Status
 }
 
-// SetStatus changes the todo's status while maintaining invariants.
-// If skipReorder is false (default), it triggers position reset at the appropriate level.
-func (t *Todo) SetStatus(status TodoStatus, collection *Collection, skipReorder ...bool) {
-	// Handle optional parameter
-	skip := false
-	if len(skipReorder) > 0 {
-		skip = skipReorder[0]
-	}
-
-	// Track if status actually changed
-	oldStatus := t.Status
-	statusChanged := oldStatus != status
-
-	// Update status and timestamp
-	t.Status = status
-	t.Modified = time.Now()
-
-	// Maintain invariant: done items have position 0
-	if status == StatusDone {
-		t.Position = 0
-	}
-	// Note: If changing to pending and position is 0, it will be set by reorder
-
-	// Trigger reorder unless skipped or status unchanged
-	if !skip && statusChanged {
-		if t.ParentID != "" {
-			collection.ResetSiblingPositions(t.ParentID)
-		} else {
-			collection.ResetRootPositions()
-		}
-	}
+// IsComplete returns true if the todo is marked as done.
+func (t *Todo) IsComplete() bool {
+	return t.GetStatus() == StatusDone
 }
 
-// MarkComplete marks the todo as done and maintains invariants.
-func (t *Todo) MarkComplete(collection *Collection, skipReorder ...bool) {
-	t.SetStatus(StatusDone, collection, skipReorder...)
-}
-
-// MarkPending marks the todo as pending and maintains invariants.
-func (t *Todo) MarkPending(collection *Collection, skipReorder ...bool) {
-	t.SetStatus(StatusPending, collection, skipReorder...)
+// IsPending returns true if the todo is marked as pending.
+func (t *Todo) IsPending() bool {
+	return t.GetStatus() == StatusPending
 }
 
 // Clone creates a deep copy of the collection.
@@ -315,7 +286,7 @@ func (t *Todo) GetShortID() string {
 // descendants are hidden regardless of their status.
 func (c *Collection) ListActive() []*Todo {
 	return filterTodos(c.Todos, func(t *Todo) bool {
-		return t.Status == StatusPending
+		return t.GetStatus() == StatusPending
 	}, false) // Don't recurse into done items
 }
 
@@ -324,7 +295,7 @@ func (c *Collection) ListActive() []*Todo {
 // show the children of done items.
 func (c *Collection) ListArchived() []*Todo {
 	return filterTodos(c.Todos, func(t *Todo) bool {
-		return t.Status == StatusDone
+		return t.GetStatus() == StatusDone
 	}, false) // Don't recurse into done items
 }
 
@@ -355,7 +326,7 @@ func filterTodos(todos []*Todo, predicate func(*Todo) bool, recurseIntoDone bool
 
 			// If this todo is done and we're not recursing into done items,
 			// stop here (behavioral propagation)
-			if todo.Status == StatusDone && !recurseIntoDone {
+			if todo.GetStatus() == StatusDone && !recurseIntoDone {
 				filtered = append(filtered, filteredTodo)
 			} else {
 				// Recursively filter children

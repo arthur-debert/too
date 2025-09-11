@@ -42,7 +42,8 @@ func ResetActivePositions(todos *[]*Todo) {
 	var doneTodos []*Todo
 
 	for _, todo := range *todos {
-		switch todo.Status {
+		status := todo.GetStatus()
+		switch status {
 		case StatusPending, "": // Handle empty status as pending
 			if todo.Position == 0 {
 				reopenedTodos = append(reopenedTodos, todo)

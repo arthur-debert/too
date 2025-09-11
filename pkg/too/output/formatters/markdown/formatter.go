@@ -58,7 +58,7 @@ func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
 	for i, todo := range todos {
 		// Format: "1. [x] Todo text" or "1. [ ] Todo text"
 		checkbox := "[ ]"
-		if todo.Status == models.StatusDone {
+		if todo.GetStatus() == models.StatusDone {
 			checkbox = "[x]"
 		}
 
@@ -78,7 +78,7 @@ func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
 // RenderAdd renders the add command result as Markdown
 func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
 	checkbox := "[ ]"
-	if result.Todo.Status == models.StatusDone {
+	if result.Todo.GetStatus() == models.StatusDone {
 		checkbox = "[x]"
 	}
 	_, err := fmt.Fprintf(w, "Added todo #%d: %s %s\n", result.Todo.Position, checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
@@ -88,7 +88,7 @@ func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
 // RenderModify renders the modify command result as Markdown
 func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
 	checkbox := "[ ]"
-	if result.Todo.Status == models.StatusDone {
+	if result.Todo.GetStatus() == models.StatusDone {
 		checkbox = "[x]"
 	}
 	_, err := fmt.Fprintf(w, "Modified todo #%d: %s %s\n", result.Todo.Position, checkbox, formatMultilineMarkdown(result.Todo.Text, ""))

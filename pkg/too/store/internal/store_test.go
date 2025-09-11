@@ -413,6 +413,8 @@ func TestStore_Find(t *testing.T) {
 			_, _ = collection.CreateTodo("Buy milk", "")
 			doneTodo, _ := collection.CreateTodo("Buy eggs", "")
 			doneTodo.Status = models.StatusDone
+			doneTodo.EnsureStatuses()
+			doneTodo.Statuses["completion"] = string(models.StatusDone)
 			doneTodo.Modified = time.Now()
 			_, _ = collection.CreateTodo("Buy bread and milk", "")
 			err := s.Save(collection)

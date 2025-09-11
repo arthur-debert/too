@@ -53,7 +53,7 @@ func (a *IDMStoreAdapter) GetChildren(parentUID string) ([]string, error) {
 	// Filter for pending todos, as they are the only ones with HIDs.
 	pendingTodos := make([]*models.Todo, 0)
 	for _, todo := range targetTodos {
-		if todo.Status == models.StatusPending {
+		if todo.GetStatus() == models.StatusPending {
 			pendingTodos = append(pendingTodos, todo)
 		}
 	}
@@ -215,15 +215,21 @@ func (a *IDMStoreAdapter) SetStatus(uid, status string) error {
 		return fmt.Errorf("todo with UID %s not found", uid)
 	}
 	
-	// Map IDM status constants to too status constants
+	// Map IDM status constants to workflow statuses
+	todo.EnsureStatuses()
 	switch status {
 	case idm.StatusActive:
-		todo.Status = models.StatusPending
+		todo.Statuses["completion"] = string(models.StatusPending)
+		todo.Status = models.StatusPending // Backward compatibility
 	case idm.StatusDeleted:
-		todo.Status = models.StatusDone
+		todo.Statuses["completion"] = string(models.StatusDone)
+		todo.Status = models.StatusDone // Backward compatibility
 	default:
 		return fmt.Errorf("unknown status: %s", status)
 	}
+	
+	// Update modified timestamp
+	todo.SetModified()
 	
 	return nil
 }
