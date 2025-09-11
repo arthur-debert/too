@@ -36,6 +36,22 @@ func (m *mockStoreAdapter) GetScopes() ([]string, error) {
 	return scopes, nil
 }
 
+// GetAllUIDs implements the StoreAdapter interface for the mock.
+func (m *mockStoreAdapter) GetAllUIDs() ([]string, error) {
+	uidSet := make(map[string]bool)
+	for _, children := range m.data {
+		for _, uid := range children {
+			uidSet[uid] = true
+		}
+	}
+	
+	uids := make([]string, 0, len(uidSet))
+	for uid := range uidSet {
+		uids = append(uids, uid)
+	}
+	return uids, nil
+}
+
 // --- Test Cases ---
 
 func TestNewRegistry(t *testing.T) {
@@ -217,7 +233,7 @@ func TestResolvePositionPaths(t *testing.T) {
 		if err == nil {
 			t.Fatal("Expected an error for an invalid path, but got nil")
 		}
-		if err.Error() != `invalid HID 9 in scope 'root' (contains 2 items)` {
+		if err.Error() != `no item found at position '9'` {
 			t.Errorf("Expected error message for invalid HID, but got: %s", err.Error())
 		}
 	})
