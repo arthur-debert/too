@@ -12,7 +12,8 @@ var cleanCmd = &cobra.Command{
 	GroupID: "misc",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("data-path")
+		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
+		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
 		// Call business logic
 		result, err := too.Clean(too.CleanOptions{

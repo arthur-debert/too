@@ -18,7 +18,8 @@ var moveCmd = &cobra.Command{
 		destParentPath := args[1]
 
 		// Get collection path from command flags
-		collectionPath, _ := cmd.Flags().GetString("data-path")
+		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
+		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
 		result, err := too.Move(sourcePath, destParentPath, too.MoveOptions{
 			CollectionPath: collectionPath,

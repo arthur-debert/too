@@ -187,20 +187,37 @@ func (m *PureIDMManager) GetPositionPath(scope, uid string) (string, error) {
 	return m.registry.GetPositionPath(scope, uid, adapter)
 }
 
-// ListActive returns only active (pending) todos using IDM ordering.
+// ListActive returns only active (pending) todos whose entire parent chain is also active.
+// This ensures that children under done parents are not considered "active".
 func (m *PureIDMManager) ListActive() []*models.IDMTodo {
-	// Get all UIDs from root scope (IDM maintains proper ordering)
-	uids := m.registry.GetUIDs(RootScope)
-	
 	var activeTodos []*models.IDMTodo
-	for _, uid := range uids {
-		todo := m.collection.FindByUID(uid)
-		if todo != nil && todo.GetStatus() == models.StatusPending {
+	for _, todo := range m.collection.Items {
+		if todo.GetStatus() == models.StatusPending && m.isActiveRecursive(todo.UID) {
 			activeTodos = append(activeTodos, todo.Clone())
 		}
 	}
-	
 	return activeTodos
+}
+
+// isActiveRecursive checks if a todo and all its ancestors are active/pending.
+func (m *PureIDMManager) isActiveRecursive(uid string) bool {
+	todo := m.collection.FindByUID(uid)
+	if todo == nil {
+		return false
+	}
+	
+	// If this todo is done, it's not active
+	if todo.GetStatus() == models.StatusDone {
+		return false
+	}
+	
+	// If this todo has no parent, it's active (root level)
+	if todo.ParentID == "" {
+		return true
+	}
+	
+	// Check if the parent is also active recursively
+	return m.isActiveRecursive(todo.ParentID)
 }
 
 // ListArchived returns only archived (done) todos.

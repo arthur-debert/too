@@ -34,7 +34,8 @@ var addCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var text string
-		collectionPath, _ := cmd.Flags().GetString("data-path")
+		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
+		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 		parentPath, _ := cmd.Flags().GetString("to")
 
 		// Handle editor mode
