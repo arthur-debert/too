@@ -1,6 +1,14 @@
+{{- if .Message -}}
+<{{.MessageType}}>{{.Message}}</{{.MessageType}}>
+
+{{end -}}
 {{- if .Todos -}}
-{{renderNestedTodos .Todos "" 0 -}}
-<count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
+{{- if .HighlightID -}}
+{{renderNestedTodosWithHighlight .Todos "" 0 .HighlightID -}}
 {{- else -}}
+{{renderNestedTodos .Todos "" 0 -}}
+{{- end -}}
+<count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
+{{- else if not .Message -}}
 <warning>No todos found</warning>
 {{- end -}}

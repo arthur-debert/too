@@ -1,8 +1,0 @@
-{{- if eq .Mode "long" -}}
-<success>✓</success> Completed: <value>{{.Todo.Text}}</value>
-
-{{renderNestedTodosWithHighlight .AllTodos "" 0 ""}}
-<count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
-{{- else -}}
-<success>✓</success> Completed: <value>{{.Todo.Text}}</value>
-{{- end -}}

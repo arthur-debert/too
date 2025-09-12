@@ -331,7 +331,30 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 
 // RenderAdd renders the add command result using lipbalm
 func (r *LipbamlRenderer) RenderAdd(result *too.AddResult) error {
-	output, err := r.renderTemplate("add_result", result)
+	// For short mode, just show the message
+	if result.Mode == "short" {
+		wrapped := &TodoListWithMessage{
+			Message:     fmt.Sprintf("Added todo #%s: %s", result.PositionPath, result.Todo.Text),
+			MessageType: "success",
+		}
+		output, err := r.renderTemplate("todo_list", wrapped)
+		if err != nil {
+			return fmt.Errorf("failed to render add result: %w", err)
+		}
+		_, err = fmt.Fprintln(r.Writer, output)
+		return err
+	}
+	
+	// For long mode, show message + todo list with highlight
+	wrapped := &TodoListWithMessage{
+		Message:     fmt.Sprintf("Added todo #%s: %s", result.PositionPath, result.Todo.Text),
+		MessageType: "success",
+		Todos:       result.AllTodos,
+		TotalCount:  result.TotalCount,
+		DoneCount:   result.DoneCount,
+		HighlightID: result.Todo.UID,
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to render add result: %w", err)
 	}
@@ -361,7 +384,21 @@ func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
 
 // RenderClean renders the clean command result using lipbalm
 func (r *LipbamlRenderer) RenderClean(result *too.CleanResult) error {
-	output, err := r.renderTemplate("clean_result", result)
+	message := fmt.Sprintf("Removed %d finished todo(s)", result.RemovedCount)
+	messageType := "success"
+	if result.RemovedCount == 0 {
+		message = "No finished todos to clean"
+		messageType = "warning"
+	}
+	
+	wrapped := &TodoListWithMessage{
+		Message:     message,
+		MessageType: messageType,
+		Todos:       result.ActiveTodos,
+		TotalCount:  result.ActiveCount,
+		DoneCount:   0, // After clean, no done todos remain
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to render clean result: %w", err)
 	}
@@ -371,7 +408,28 @@ func (r *LipbamlRenderer) RenderClean(result *too.CleanResult) error {
 
 // RenderSearch renders the search command result using lipbalm
 func (r *LipbamlRenderer) RenderSearch(result *too.SearchResult) error {
-	output, err := r.renderTemplate("search_result", result)
+	matchCount := len(result.MatchedTodos)
+	message := fmt.Sprintf("Found %d match", matchCount)
+	if matchCount != 1 {
+		message = fmt.Sprintf("Found %d matches", matchCount)
+	}
+	if result.Query != "" {
+		message += fmt.Sprintf(" for \"%s\"", result.Query)
+	}
+	
+	messageType := "info"
+	if matchCount == 0 {
+		messageType = "warning"
+	}
+	
+	wrapped := &TodoListWithMessage{
+		Message:     message,
+		MessageType: messageType,
+		Todos:       result.MatchedTodos,
+		TotalCount:  result.TotalCount,
+		DoneCount:   0, // Search doesn't track done count separately
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to render search result: %w", err)
 	}
@@ -381,7 +439,14 @@ func (r *LipbamlRenderer) RenderSearch(result *too.SearchResult) error {
 
 // RenderList renders the list command result using lipbalm
 func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
-	output, err := r.renderTemplate("todo_list", result)
+	// Wrap ListResult to work with the enhanced todo_list template
+	wrapped := &TodoListWithMessage{
+		Todos:      result.Todos,
+		TotalCount: result.TotalCount,
+		DoneCount:  result.DoneCount,
+		// No message for basic list
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to render list: %w", err)
 	}
@@ -392,7 +457,33 @@ func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
 // RenderComplete renders the complete command results using lipbalm
 func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
 	for _, result := range results {
-		output, err := r.renderTemplate("complete_result", result)
+		// For short mode, just show the message
+		if result.Mode == "short" {
+			wrapped := &TodoListWithMessage{
+				Message:     fmt.Sprintf("✓ Completed: %s", result.Todo.Text),
+				MessageType: "success",
+			}
+			output, err := r.renderTemplate("todo_list", wrapped)
+			if err != nil {
+				return fmt.Errorf("failed to render complete result: %w", err)
+			}
+			_, err = fmt.Fprintln(r.Writer, output)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		
+		// For long mode, show message + todo list with highlight
+		wrapped := &TodoListWithMessage{
+			Message:     fmt.Sprintf("✓ Completed: %s", result.Todo.Text),
+			MessageType: "success",
+			Todos:       result.AllTodos,
+			TotalCount:  result.TotalCount,
+			DoneCount:   result.DoneCount,
+			HighlightID: result.Todo.UID,
+		}
+		output, err := r.renderTemplate("todo_list", wrapped)
 		if err != nil {
 			return fmt.Errorf("failed to render complete result: %w", err)
 		}
