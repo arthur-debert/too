@@ -54,9 +54,15 @@ func (r *Renderer) RenderChange(result *too.ChangeResult) error {
 }
 
 
+// RenderMessage renders a message result
+func (r *Renderer) RenderMessage(result *too.MessageResult) error {
+	return r.formatter.RenderMessage(r.writer, result)
+}
+
 // RenderInit renders the init command result
 func (r *Renderer) RenderInit(result *too.InitResult) error {
-	return r.formatter.RenderInit(r.writer, result)
+	msg := too.NewInfoMessage(result.Message)
+	return r.RenderMessage(msg)
 }
 
 
@@ -73,7 +79,8 @@ func (r *Renderer) RenderList(result *too.ListResult) error {
 
 // RenderDataPath renders the datapath command result
 func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
-	return r.formatter.RenderDataPath(r.writer, result)
+	msg := too.NewInfoMessage(result.Path)
+	return r.RenderMessage(msg)
 }
 
 // RenderFormats renders the formats command result

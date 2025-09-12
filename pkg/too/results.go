@@ -21,3 +21,22 @@ func NewChangeResult(command string, affected []*models.IDMTodo, all []*models.I
 		DoneCount:     done,
 	}
 }
+
+// MessageResult represents a simple message output
+type MessageResult struct {
+	Text  string // The message text
+	Level string // Message level: info, success, warning, error
+}
+
+// NewMessageResult creates a new MessageResult with the specified level
+func NewMessageResult(text, level string) *MessageResult {
+	return &MessageResult{
+		Text:  text,
+		Level: level,
+	}
+}
+
+// NewInfoMessage creates a new info message result
+func NewInfoMessage(text string) *MessageResult {
+	return NewMessageResult(text, "info")
+}

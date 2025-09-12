@@ -111,10 +111,23 @@ func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
 	return nil
 }
 
-// RenderInit renders the init command result as Markdown
-func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
-	_, err := fmt.Fprintf(w, "Initialized todo collection at: `%s`\n", result.DBPath)
-	return err
+// RenderMessage renders a message result as Markdown
+func (f *formatter) RenderMessage(w io.Writer, result *too.MessageResult) error {
+	// Simple markdown formatting based on level
+	switch result.Level {
+	case "error":
+		_, err := fmt.Fprintf(w, "**Error:** %s\n", result.Text)
+		return err
+	case "warning":
+		_, err := fmt.Fprintf(w, "**Warning:** %s\n", result.Text)
+		return err
+	case "success":
+		_, err := fmt.Fprintf(w, "✓ %s\n", result.Text)
+		return err
+	default: // info
+		_, err := fmt.Fprintf(w, "%s\n", result.Text)
+		return err
+	}
 }
 
 
@@ -158,11 +171,6 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 
 // RenderSwap renders the swap command result as Markdown
 
-// RenderDataPath renders the datapath command result as Markdown
-func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
-	_, err := fmt.Fprintf(w, "Data file path: `%s`\n", result.Path)
-	return err
-}
 
 // RenderFormats renders the formats command result as Markdown
 func (f *formatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error {

@@ -15,10 +15,9 @@ type Formatter interface {
 
 	// Render methods for different result types
 	RenderChange(w io.Writer, result *too.ChangeResult) error    // For all todo-modifying commands
-	RenderInit(w io.Writer, result *too.InitResult) error        // Special case: no todos
+	RenderMessage(w io.Writer, result *too.MessageResult) error  // For simple messages
 	RenderSearch(w io.Writer, result *too.SearchResult) error    // Special case: filtered view
 	RenderList(w io.Writer, result *too.ListResult) error        // Special case: no message
-	RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error
 	RenderFormats(w io.Writer, result *too.ListFormatsResult) error
 	RenderError(w io.Writer, err error) error
 }

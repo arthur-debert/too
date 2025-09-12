@@ -117,10 +117,10 @@ func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
 	return f.writeCSV(w, todoHeaders, todoRows)
 }
 
-// RenderInit renders the init command result as CSV
-func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
-	headers := []string{"message", "path", "created"}
-	rows := [][]string{{result.Message, result.DBPath, fmt.Sprintf("%t", result.Created)}}
+// RenderMessage renders a message result as CSV
+func (f *formatter) RenderMessage(w io.Writer, result *too.MessageResult) error {
+	headers := []string{"level", "message"}
+	rows := [][]string{{result.Level, result.Text}}
 	return f.writeCSV(w, headers, rows)
 }
 
@@ -180,12 +180,6 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 }
 
 
-// RenderDataPath renders the datapath command result as CSV
-func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
-	headers := []string{"data_path"}
-	rows := [][]string{{result.Path}}
-	return f.writeCSV(w, headers, rows)
-}
 
 // RenderFormats renders the formats command result as CSV
 func (f *formatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error {

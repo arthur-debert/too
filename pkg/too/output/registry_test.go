@@ -21,10 +21,9 @@ func (m *mockFormatter) Name() string        { return m.name }
 func (m *mockFormatter) Description() string { return m.desc }
 
 func (m *mockFormatter) RenderChange(w io.Writer, result *too.ChangeResult) error         { return nil }
-func (m *mockFormatter) RenderInit(w io.Writer, result *too.InitResult) error             { return nil }
+func (m *mockFormatter) RenderMessage(w io.Writer, result *too.MessageResult) error       { return nil }
 func (m *mockFormatter) RenderSearch(w io.Writer, result *too.SearchResult) error         { return nil }
 func (m *mockFormatter) RenderList(w io.Writer, result *too.ListResult) error             { return nil }
-func (m *mockFormatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error { return nil }
 func (m *mockFormatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error   { return nil }
 func (m *mockFormatter) RenderError(w io.Writer, err error) error                         { return nil }
 

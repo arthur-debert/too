@@ -56,10 +56,10 @@ func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
 	return f.renderer.RenderChange(result)
 }
 
-// RenderInit renders the init command result
-func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
+// RenderMessage renders a message result
+func (f *formatter) RenderMessage(w io.Writer, result *too.MessageResult) error {
 	f.renderer.Writer = w
-	return f.renderer.RenderInit(result)
+	return f.renderer.RenderMessage(result)
 }
 
 
@@ -76,11 +76,6 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 }
 
 
-// RenderDataPath renders the datapath command result
-func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderDataPath(result)
-}
 
 // RenderFormats renders the formats command result
 func (f *formatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error {

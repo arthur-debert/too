@@ -184,26 +184,30 @@ func TestMarkdownFormatter(t *testing.T) {
 		assert.Contains(t, output, "- **markdown**: Markdown output")
 	})
 
-	t.Run("RenderInit", func(t *testing.T) {
+	t.Run("RenderMessage", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.InitResult{
-			DBPath: "/home/user/.todos.json",
-		}
+		result := too.NewInfoMessage("Todo collection initialized")
 
-		err := formatter.RenderInit(&buf, result)
+		err := formatter.RenderMessage(&buf, result)
 		require.NoError(t, err)
-		assert.Equal(t, "Initialized todo collection at: `/home/user/.todos.json`\n", buf.String())
+		assert.Equal(t, "Todo collection initialized\n", buf.String())
 	})
 
-	t.Run("RenderDataPath", func(t *testing.T) {
+	t.Run("RenderMessage with levels", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.ShowDataPathResult{
-			Path: "/home/user/.todos.json",
-		}
-
-		err := formatter.RenderDataPath(&buf, result)
+		
+		// Test success message
+		result := too.NewMessageResult("Operation successful", "success")
+		err := formatter.RenderMessage(&buf, result)
 		require.NoError(t, err)
-		assert.Equal(t, "Data file path: `/home/user/.todos.json`\n", buf.String())
+		assert.Equal(t, "✓ Operation successful\n", buf.String())
+		
+		// Test warning message
+		buf.Reset()
+		result = too.NewMessageResult("Warning message", "warning")
+		err = formatter.RenderMessage(&buf, result)
+		require.NoError(t, err)
+		assert.Equal(t, "**Warning:** Warning message\n", buf.String())
 	})
 
 	t.Run("RenderList with multiline todos", func(t *testing.T) {

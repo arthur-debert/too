@@ -253,12 +253,15 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 }
 
 
-// RenderInit renders the init command result using lipbalm
-func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
-	message := NewPlainMessage(result.Message)
+// RenderMessage renders a simple message result
+func (r *LipbamlRenderer) RenderMessage(result *too.MessageResult) error {
+	message := &Message{
+		Text:  result.Text,
+		Level: result.Level,
+	}
 	output, err := r.renderTemplate("message", message)
 	if err != nil {
-		return fmt.Errorf("failed to render init result: %w", err)
+		return fmt.Errorf("failed to render message: %w", err)
 	}
 	_, err = fmt.Fprintln(r.Writer, output)
 	return err
@@ -306,16 +309,6 @@ func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
 
 
 
-// RenderDataPath renders the datapath command result using lipbalm
-func (r *LipbamlRenderer) RenderDataPath(result *too.ShowDataPathResult) error {
-	message := NewPlainMessage(result.Path)
-	output, err := r.renderTemplate("message", message)
-	if err != nil {
-		return fmt.Errorf("failed to render datapath result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
 
 // RenderFormats renders the formats command result using lipbalm
 func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {

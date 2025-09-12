@@ -23,8 +23,8 @@ func (f *mockTermFormatter) RenderChange(w io.Writer, result *too.ChangeResult) 
 	return err
 }
 
-func (f *mockTermFormatter) RenderInit(w io.Writer, result *too.InitResult) error {
-	_, err := w.Write([]byte("mock init output"))
+func (f *mockTermFormatter) RenderMessage(w io.Writer, result *too.MessageResult) error {
+	_, err := w.Write([]byte("mock message output"))
 	return err
 }
 
@@ -41,10 +41,6 @@ func (f *mockTermFormatter) RenderList(w io.Writer, result *too.ListResult) erro
 
 
 
-func (f *mockTermFormatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
-	_, err := w.Write([]byte("mock datapath output"))
-	return err
-}
 
 func (f *mockTermFormatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error {
 	_, err := w.Write([]byte("mock formats output"))
