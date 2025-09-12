@@ -213,6 +213,97 @@ func (m *PureIDMManager) AttachPositionPaths(todos []*models.IDMTodo) {
 	}
 }
 
+// AttachActiveOnlyPositionPaths calculates position paths for active todos only,
+// providing consecutive position IDs (1, 2, 3...) with no gaps for the list view.
+// This matches the pre-IDM behavior where completed todos don't create gaps.
+func (m *PureIDMManager) AttachActiveOnlyPositionPaths(todos []*models.IDMTodo) {
+	// Create a temporary registry that includes only ACTIVE todos for position calculation
+	tempRegistry := idm.NewRegistry()
+	activeAdapter := &pureIDMAdapterActiveOnly{collection: m.collection}
+	
+	// Build registry with active items only
+	tempRegistry.RebuildScope(activeAdapter, RootScope)
+	for _, item := range m.collection.Items {
+		// Only add scope if this item has active children
+		if item.GetStatus() == models.StatusPending && len(m.collection.GetChildren(item.UID)) > 0 {
+			tempRegistry.RebuildScope(activeAdapter, item.UID)
+		}
+	}
+	
+	// Calculate position paths using the active-only registry
+	for _, todo := range todos {
+		if path, err := tempRegistry.GetPositionPath(RootScope, todo.UID, activeAdapter); err == nil {
+			todo.PositionPath = path
+		} else {
+			// For completed todos or failed calculations, use "0" to match pre-IDM behavior
+			todo.PositionPath = "0"
+		}
+	}
+}
+
+// pureIDMAdapterActiveOnly is like pureIDMAdapter but includes only ACTIVE todos
+// for position path calculation. This provides consecutive IDs (1, 2, 3...) for active todos.
+type pureIDMAdapterActiveOnly struct {
+	collection *models.IDMCollection
+}
+
+func (a *pureIDMAdapterActiveOnly) GetChildren(parentUID string) ([]string, error) {
+	// Map RootScope to empty string for the data model
+	var parentID string
+	if parentUID == RootScope {
+		parentID = ""
+	} else {
+		parentID = parentUID
+	}
+	
+	children := a.collection.GetChildren(parentID)
+	
+	// Return only ACTIVE children for consecutive position calculation
+	var activeChildren []string
+	for _, child := range children {
+		if child.GetStatus() == models.StatusPending {
+			activeChildren = append(activeChildren, child.UID)
+		}
+	}
+	
+	return activeChildren, nil
+}
+
+func (a *pureIDMAdapterActiveOnly) GetParent(uid string) (string, error) {
+	todo := a.collection.FindByUID(uid)
+	if todo == nil {
+		return "", fmt.Errorf("todo with UID %s not found", uid)
+	}
+	
+	if todo.ParentID == "" {
+		return RootScope, nil
+	}
+	
+	return todo.ParentID, nil
+}
+
+func (a *pureIDMAdapterActiveOnly) GetScopes() ([]string, error) {
+	scopes := []string{RootScope}
+	// Only include active items as scopes
+	for _, item := range a.collection.Items {
+		if item.GetStatus() == models.StatusPending && len(a.collection.GetChildren(item.UID)) > 0 {
+			scopes = append(scopes, item.UID)
+		}
+	}
+	return scopes, nil
+}
+
+func (a *pureIDMAdapterActiveOnly) GetAllUIDs() ([]string, error) {
+	var uids []string
+	// Only return active todos
+	for _, item := range a.collection.Items {
+		if item.GetStatus() == models.StatusPending {
+			uids = append(uids, item.UID)
+		}
+	}
+	return uids, nil
+}
+
 // pureIDMAdapterAllItems is like pureIDMAdapter but includes ALL todos (active + completed)
 // for position path calculation. This ensures completed todos get consistent position paths.
 type pureIDMAdapterAllItems struct {

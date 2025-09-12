@@ -73,8 +73,8 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	// Add long mode data if requested
 	if opts.Mode == "long" {
 		result.AllTodos = manager.ListActive()
-		// CRITICAL: Attach IDM position paths for consistent display
-		manager.AttachPositionPaths(result.AllTodos)
+		// CRITICAL: Use active-only position paths for consecutive IDs in command output
+		manager.AttachActiveOnlyPositionPaths(result.AllTodos)
 		result.TotalCount, result.DoneCount = manager.CountTodos()
 	}
 
