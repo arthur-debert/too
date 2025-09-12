@@ -383,7 +383,8 @@ func (r *LipbamlRenderer) RenderModify(result *too.ModifyResult) error {
 
 // RenderInit renders the init command result using lipbalm
 func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
-	output, err := r.renderTemplate("init_result", result)
+	message := NewPlainMessage(result.Message)
+	output, err := r.renderTemplate("message", message)
 	if err != nil {
 		return fmt.Errorf("failed to render init result: %w", err)
 	}
@@ -549,7 +550,8 @@ func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
 
 // RenderDataPath renders the datapath command result using lipbalm
 func (r *LipbamlRenderer) RenderDataPath(result *too.ShowDataPathResult) error {
-	output, err := r.renderTemplate("datapath_result", result)
+	message := NewPlainMessage(result.Path)
+	output, err := r.renderTemplate("message", message)
 	if err != nil {
 		return fmt.Errorf("failed to render datapath result: %w", err)
 	}
@@ -569,7 +571,11 @@ func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {
 
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
-	output, renderErr := r.renderTemplate("error", err.Error())
+	message := &Message{
+		Text:  "Error: " + err.Error(),
+		Level: "error",
+	}
+	output, renderErr := r.renderTemplate("message", message)
 	if renderErr != nil {
 		return renderErr
 	}
