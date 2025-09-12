@@ -14,6 +14,9 @@ var (
 	verbosity  int
 	formatFlag string
 	modeFlag   string
+	// Output verbosity flags
+	quietFlag bool
+	loudFlag  bool
 
 	rootCmd = &cobra.Command{
 		Use:     "too",
@@ -27,6 +30,14 @@ var (
 			// Setup logging based on verbosity
 			logging.SetupLogger(verbosity)
 			log.Debug().Str("command", cmd.Name()).Msg("Command started")
+
+			// Handle quiet/loud flags
+			if quietFlag {
+				modeFlag = "short"
+			}
+			if loudFlag {
+				modeFlag = "long"
+			}
 
 			// Validate mode flag
 			if modeFlag != "short" && modeFlag != "long" {
@@ -94,7 +105,17 @@ func init() {
 	// Add persistent flags
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
 	rootCmd.PersistentFlags().StringVarP(&formatFlag, "format", "f", "term", msgFlagFormat)
-	rootCmd.PersistentFlags().StringVarP(&modeFlag, "mode", "m", "short", msgFlagMode)
+	rootCmd.PersistentFlags().StringVarP(&modeFlag, "mode", "m", "long", msgFlagMode)
+	
+	// Add quiet/loud flags
+	rootCmd.PersistentFlags().BoolVar(&quietFlag, "quiet", false, msgFlagQuiet)
+	rootCmd.PersistentFlags().BoolVar(&loudFlag, "loud", false, msgFlagLoud)
+	
+	// Mark quiet/loud as mutually exclusive
+	rootCmd.MarkFlagsMutuallyExclusive("quiet", "loud")
+	// Also mark them as mutually exclusive with mode
+	rootCmd.MarkFlagsMutuallyExclusive("mode", "quiet")
+	rootCmd.MarkFlagsMutuallyExclusive("mode", "loud")
 
 	// Setup custom help
 	setupHelp()

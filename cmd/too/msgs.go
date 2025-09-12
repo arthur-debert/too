@@ -69,6 +69,8 @@ const (
 	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.json)"
 	msgFlagFormat   = "output format (term, json, markdown)"
 	msgFlagMode     = "output mode (short, long)"
+	msgFlagQuiet    = "quiet output (shows only confirmation message)"
+	msgFlagLoud     = "loud output (shows full todo list after command)"
 
 	// List command flags
 	msgFlagDone = "print done todos"
