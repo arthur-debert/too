@@ -92,6 +92,9 @@ func Execute(ref string, opts Options) (*Result, error) {
 		return nil, err
 	}
 
+	// Set the position path that was used to find it
+	todo.PositionPath = ref
+
 	// Get all todos for display
 	allTodos := manager.ListActive()
 	manager.AttachActiveOnlyPositionPaths(allTodos)

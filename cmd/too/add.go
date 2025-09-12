@@ -106,7 +106,6 @@ var addCmd = &cobra.Command{
 				result, err := too.Add(todo.Text, too.AddOptions{
 					CollectionPath: collectionPath,
 					ParentPath:     parentPath,
-					Mode:           modeFlag,
 				})
 				if err != nil {
 					return fmt.Errorf("failed to add todo '%s': %w", todo.Text, err)
@@ -156,7 +155,6 @@ var addCmd = &cobra.Command{
 		result, err := too.Add(text, too.AddOptions{
 			CollectionPath: collectionPath,
 			ParentPath:     parentPath,
-			Mode:           modeFlag,
 		})
 		if err != nil {
 			return err

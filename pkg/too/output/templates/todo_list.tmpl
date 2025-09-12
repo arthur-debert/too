@@ -1,7 +1,3 @@
-{{- if .Message -}}
-<{{.MessageType}}>{{.Message}}</{{.MessageType}}>
-
-{{end -}}
 {{- if .Todos -}}
 {{- $hierarchy := buildHierarchy .Todos -}}
 {{- $highlightID := .HighlightID -}}
@@ -9,6 +5,10 @@
 <count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
 {{- else if not .Message -}}
 <warning>No todos found</warning>
+{{- end -}}
+{{- if .Message -}}
+
+<{{.MessageType}}>{{.Message}}</{{.MessageType}}>
 {{- end -}}
 
 {{- define "todoItem" -}}

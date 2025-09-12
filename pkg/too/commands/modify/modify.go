@@ -56,6 +56,9 @@ func Execute(positionStr string, newText string, opts Options) (*Result, error) 
 	if err := manager.Save(); err != nil {
 		return nil, err
 	}
+	
+	// Set the position path that was used to find it
+	todo.PositionPath = positionStr
 
 	// Get all todos for display
 	allTodos := manager.ListActive()

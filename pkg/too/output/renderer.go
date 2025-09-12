@@ -93,6 +93,66 @@ func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos [
 	return err
 }
 
+// RenderChange renders any command that changes todos
+func (r *LipbamlRenderer) RenderChange(result *too.ChangeResult) error {
+	// Build message with proper pluralization
+	var message string
+	affectedCount := len(result.AffectedTodos)
+	
+	if affectedCount == 0 {
+		message = fmt.Sprintf("%s: no todos affected", strings.Title(result.Command))
+	} else {
+		// Get position paths for affected todos
+		positions := make([]string, affectedCount)
+		for i, todo := range result.AffectedTodos {
+			if todo.PositionPath != "" {
+				positions[i] = todo.PositionPath
+			} else {
+				positions[i] = todo.UID[:7] // fallback to short UID
+			}
+		}
+		
+		todoWord := "todo"
+		if affectedCount > 1 {
+			todoWord = "todos"
+		}
+		
+		verb := strings.Title(result.Command)
+		if !strings.HasSuffix(result.Command, "ed") {
+			verb = verb + "ed"
+		}
+		message = fmt.Sprintf("%s %s: %s", verb, todoWord, strings.Join(positions, ", "))
+	}
+	
+	// Determine message type based on command
+	messageType := "success"
+	switch result.Command {
+	case "modified":
+		messageType = "info"
+	case "reopened":
+		messageType = "warning"
+	case "cleaned":
+		if affectedCount == 0 {
+			messageType = "warning"
+		}
+	}
+	
+	// Get first affected todo's UID for highlighting (if any)
+	highlightID := ""
+	if len(result.AffectedTodos) > 0 {
+		highlightID = result.AffectedTodos[0].UID
+	}
+	
+	return r.renderTodoCommand(
+		message,
+		messageType,
+		result.AllTodos,
+		result.TotalCount,
+		result.DoneCount,
+		highlightID,
+	)
+}
+
 
 // templateFuncs returns custom functions for templates
 func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
@@ -194,34 +254,29 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 
 // RenderAdd renders the add command result using lipbalm
 func (r *LipbamlRenderer) RenderAdd(result *too.AddResult) error {
-	message := fmt.Sprintf("Added todo #%s: %s", result.PositionPath, result.Todo.Text)
-	
-	// For short mode, just show the message without todos
-	if result.Mode == "short" {
-		return r.renderTodoCommand(message, "success", nil, 0, 0, "")
-	}
-	
-	// For long mode, show message + todo list with highlight
-	return r.renderTodoCommand(
-		message,
-		"success",
+	// Convert to ChangeResult
+	result.Todo.PositionPath = result.PositionPath
+	changeResult := too.NewChangeResult(
+		"added",
+		[]*models.IDMTodo{result.Todo},
 		result.AllTodos,
 		result.TotalCount,
 		result.DoneCount,
-		result.Todo.UID,
 	)
+	return r.RenderChange(changeResult)
 }
 
 // RenderModify renders the modify command result using lipbalm
 func (r *LipbamlRenderer) RenderModify(result *too.ModifyResult) error {
-	return r.renderTodoCommand(
-		fmt.Sprintf("Modified todo: %s", result.Todo.Text),
-		"info",
+	// Convert to ChangeResult
+	changeResult := too.NewChangeResult(
+		"modified",
+		[]*models.IDMTodo{result.Todo},
 		result.AllTodos,
 		result.TotalCount,
 		result.DoneCount,
-		result.Todo.UID,
 	)
+	return r.RenderChange(changeResult)
 }
 
 // RenderInit renders the init command result using lipbalm
@@ -237,21 +292,14 @@ func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
 
 // RenderClean renders the clean command result using lipbalm
 func (r *LipbamlRenderer) RenderClean(result *too.CleanResult) error {
-	message := fmt.Sprintf("Removed %d finished todo(s)", result.RemovedCount)
-	messageType := "success"
-	if result.RemovedCount == 0 {
-		message = "No finished todos to clean"
-		messageType = "warning"
-	}
-	
-	return r.renderTodoCommand(
-		message,
-		messageType,
+	changeResult := too.NewChangeResult(
+		"cleaned",
+		result.RemovedTodos,
 		result.ActiveTodos,
 		result.ActiveCount,
 		0, // After clean, no done todos remain
-		"", // No highlight
 	)
+	return r.RenderChange(changeResult)
 }
 
 // RenderSearch renders the search command result using lipbalm
@@ -294,59 +342,67 @@ func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
 
 // RenderComplete renders the complete command results using lipbalm
 func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
-	for _, result := range results {
-		message := fmt.Sprintf("✓ Completed: %s", result.Todo.Text)
-		
-		// For short mode, just show the message
-		if result.Mode == "short" {
-			if err := r.renderTodoCommand(message, "success", nil, 0, 0, ""); err != nil {
-				return err
-			}
-			continue
-		}
-		
-		// For long mode, show message + todo list with highlight
-		if err := r.renderTodoCommand(
-			message,
-			"success",
-			result.AllTodos,
-			result.TotalCount,
-			result.DoneCount,
-			result.Todo.UID,
-		); err != nil {
-			return err
-		}
+	if len(results) == 0 {
+		return nil
 	}
-	return nil
+	
+	// Collect all affected todos
+	affectedTodos := make([]*models.IDMTodo, len(results))
+	for i, result := range results {
+		affectedTodos[i] = result.Todo
+	}
+	
+	// Use data from the last result (they all have the same AllTodos after completion)
+	lastResult := results[len(results)-1]
+	changeResult := too.NewChangeResult(
+		"completed",
+		affectedTodos,
+		lastResult.AllTodos,
+		lastResult.TotalCount,
+		lastResult.DoneCount,
+	)
+	
+	return r.RenderChange(changeResult)
 }
 
 // RenderReopen renders the reopen command results using lipbalm
 func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
-	for _, result := range results {
-		if err := r.renderTodoCommand(
-			fmt.Sprintf("○ Reopened: %s", result.Todo.Text),
-			"warning",
-			result.AllTodos,
-			result.TotalCount,
-			result.DoneCount,
-			result.Todo.UID,
-		); err != nil {
-			return err
-		}
+	if len(results) == 0 {
+		return nil
 	}
-	return nil
+	
+	// Collect all affected todos
+	affectedTodos := make([]*models.IDMTodo, len(results))
+	for i, result := range results {
+		affectedTodos[i] = result.Todo
+	}
+	
+	// Use data from the last result
+	lastResult := results[len(results)-1]
+	changeResult := too.NewChangeResult(
+		"reopened",
+		affectedTodos,
+		lastResult.AllTodos,
+		lastResult.TotalCount,
+		lastResult.DoneCount,
+	)
+	
+	return r.RenderChange(changeResult)
 }
 
 // RenderMove renders the move command result using lipbalm
 func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
-	return r.renderTodoCommand(
-		fmt.Sprintf("Moved todo from %s to %s: %s", result.OldPath, result.NewPath, result.Todo.Text),
-		"success",
+	// Set the new position path on the todo
+	result.Todo.PositionPath = result.NewPath
+	
+	changeResult := too.NewChangeResult(
+		"moved",
+		[]*models.IDMTodo{result.Todo},
 		result.AllTodos,
 		result.TotalCount,
 		result.DoneCount,
-		result.Todo.UID,
 	)
+	return r.RenderChange(changeResult)
 }
 
 // RenderDataPath renders the datapath command result using lipbalm

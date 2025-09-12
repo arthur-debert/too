@@ -117,6 +117,9 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 		return nil, err
 	}
 
+	// Set the position path that was used to find it
+	sourceTodo.PositionPath = sourcePath
+
 	// Get all todos for display
 	allTodos := manager.ListActive()
 	manager.AttachActiveOnlyPositionPaths(allTodos)

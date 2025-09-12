@@ -11,17 +11,15 @@ import (
 type Options struct {
 	CollectionPath string
 	ParentPath     string // Position path of parent todo (e.g., "1.2")
-	Mode           string // Output mode: "short" or "long"
 }
 
 // Result contains the result of the add command
 type Result struct {
 	Todo         *models.IDMTodo
 	PositionPath string           // Position path of the newly created todo (e.g., "1", "1.2")
-	Mode         string           // Output mode passed from options
-	AllTodos     []*models.IDMTodo // All todos for long mode
-	TotalCount   int              // Total count for long mode
-	DoneCount    int              // Done count for long mode
+	AllTodos     []*models.IDMTodo // All todos after the operation
+	TotalCount   int              // Total count after the operation
+	DoneCount    int              // Done count after the operation
 }
 
 // Execute adds a new todo to the collection using pure IDM.
@@ -70,19 +68,19 @@ func Execute(text string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to get position path: %w", err)
 	}
 
+	// Get all todos and counts
+	allTodos := manager.ListActive()
+	// CRITICAL: Attach IDM position paths for consistent display
+	manager.AttachPositionPaths(allTodos)
+	totalCount, doneCount := manager.CountTodos()
+
 	// Build result
 	result := &Result{
 		Todo:         todo,
 		PositionPath: positionPath,
-		Mode:         opts.Mode,
-	}
-
-	// Add long mode data if requested
-	if opts.Mode == "long" {
-		result.AllTodos = manager.ListActive()
-		// CRITICAL: Attach IDM position paths for consistent display
-		manager.AttachPositionPaths(result.AllTodos)
-		result.TotalCount, result.DoneCount = manager.CountTodos()
+		AllTodos:     allTodos,
+		TotalCount:   totalCount,
+		DoneCount:    doneCount,
 	}
 
 	return result, nil
