@@ -1,0 +1,286 @@
+                OUTPUT AND RENDERING SYSTEM
+
+    This document describes how too renders todo items for display, including
+    the visual formatting, status indicators, and hierarchical presentation
+    used across different output contexts.
+
+
+1. Core Rendering Philosophy
+
+    too's output system is designed around clarity and consistency. The same
+    todo item should be recognizable across different views and commands,
+    while providing context-appropriate information density.
+
+    Key principles:
+
+        - Visual Consistency: Same items look the same across commands
+        - Status at a Glance: Quick visual indicators for completion state  
+        - Hierarchical Clarity: Clear indentation and numbering for nested items
+        - Context Awareness: Different detail levels for different use cases
+
+
+2. Status Symbol System
+
+    too uses Unicode symbols to indicate the completion status of todos:
+
+        ○ (U+25CB): Pending/scheduled todos - clean, hollow circle
+        ● (U+25CF): Completed todos - filled circle  
+        ◐ (U+25D0): Mixed state parents - half-filled circle
+        ⊘ (U+2298): Deleted todos - circled diagonal slash
+
+    2.1 Status Symbol Logic
+
+        Individual Items:
+            - Pending todos show ○ 
+            - Completed todos show ●
+            - Deleted todos show ⊘
+
+        Parent Items (with children):
+            - If all children are completed: ●
+            - If no children are completed: ○  
+            - If some children are completed: ◐ (mixed state)
+
+        This provides immediate visual feedback about project completion
+        status without requiring detailed inspection of children.
+
+    2.2 Benefits of Unicode Symbols
+
+        - Universal display support across terminals
+        - Clear visual hierarchy compared to text indicators  
+        - Compact representation saves horizontal space
+        - Consistent with modern task management conventions
+
+
+3. Hierarchical Display Format
+
+    3.1 Indentation System
+
+        too uses consistent 2-space indentation per nesting level:
+
+            1. Top Level Item
+               1. First Child  
+               2. Second Child
+                  1. Grandchild
+                  2. Another Grandchild
+            2. Another Top Level Item
+
+        This provides clear visual hierarchy while keeping moderate line lengths.
+
+    3.2 Position Path Display
+
+        Position paths are displayed according to their IDM-calculated values:
+
+        Active Context:
+            Shows consecutive numbers at each level, creating clean numbering
+            that matches user mental models of sequential lists.
+
+        Complete Context:
+            Shows stable position paths that remain consistent across operations,
+            enabling reliable command targeting.
+
+    3.3 Text Formatting
+
+        Item text is displayed as-is, with support for:
+            - Multi-line content (indented consistently)
+            - Unicode characters in todo text
+            - Reasonable line length handling
+
+
+4. Output Modes and Contexts
+
+    4.1 Short Mode (Default for Commands)
+
+        Used for command confirmations and brief status updates:
+
+            Added todo #3: Buy groceries
+
+        Characteristics:
+            - Single line confirmation
+            - Shows the position and action performed
+            - Minimal visual clutter
+
+    4.2 Long Mode (Default for List Views)
+
+        Used for detailed todo display:
+
+            ○ 1. Project Alpha
+               ○ 1. Design mockups
+               ● 2. Write tests
+            ◐ 2. Project Beta  
+               ● 1. Phase 1
+               ○ 2. Phase 2
+
+        Characteristics:
+            - Full hierarchical display
+            - Status symbols for all items
+            - Complete position paths
+            - Consistent indentation
+
+    4.3 Command Output Integration
+
+        Commands can show both confirmation and updated list:
+
+            ✓ Completed: Design mockups
+
+            ○ 1. Project Alpha
+               ● 1. Design mockups  
+               ○ 2. Write tests
+            ○ 2. Project Beta
+
+        This provides immediate feedback plus current state visibility.
+
+
+5. Context-Specific Rendering
+
+    5.1 Active View Rendering
+
+        Focus: Clean, actionable list of current work
+
+        Features:
+            - Only shows pending items and their pending ancestors
+            - Consecutive position numbering (1, 2, 3...)
+            - Completed subtrees are entirely hidden
+            - Emphasis on what needs attention
+
+        Example:
+            ○ 1. Current Project
+               ○ 1. Next task
+               ○ 2. Another task  
+            ○ 2. Personal Items
+               ○ 1. Buy milk
+
+    5.2 Complete View Rendering (--all)
+
+        Focus: Comprehensive overview with stable references
+
+        Features:
+            - Shows all items regardless of status
+            - Stable position paths for reliable addressing
+            - Status symbols distinguish completed from pending
+            - Full project history visible
+
+        Example:
+            ◐ 1. Current Project
+               ● 1. Completed task
+               ○ 2. Next task
+               ○ 3. Another task
+            ● 2. Finished Project
+               ● 1. All done
+               ● 2. Everything complete
+            ○ 3. Personal Items  
+               ● 1. Buy milk
+               ○ 2. Schedule appointment
+
+    5.3 Search Results Rendering
+
+        Focus: Highlighting matches while maintaining context
+
+        Features:
+            - Shows matched items with their position paths
+            - Includes parent context for nested items
+            - Sorted by position path for predictable ordering
+            - Highlights search terms (when terminal supports it)
+
+        Example:
+            Found 2 matches for "milk":
+
+            ○ 3.1. Buy milk
+            ● 4.2. Get milk alternatives
+
+
+6. Format-Specific Output
+
+    6.1 Terminal Format (Default)
+
+        Optimized for interactive terminal use:
+            - Uses Unicode symbols for status
+            - Applies color coding (when supported)
+            - Responsive to terminal width
+            - Human-readable formatting
+
+    6.2 JSON Format 
+
+        Machine-readable format for integration:
+            - Structured data with all fields
+            - Includes internal UIDs for API use
+            - Hierarchical structure preserved
+            - Suitable for scripts and tools
+
+    6.3 Markdown Format
+
+        Document-friendly format:
+            - Uses - [ ] and - [x] for checkboxes
+            - Proper Markdown indentation
+            - Compatible with documentation tools
+            - Good for export and sharing
+
+    6.4 CSV Format
+
+        Spreadsheet-compatible format:
+            - Flattened hierarchy with path columns
+            - All metadata in separate columns  
+            - Suitable for analysis and reporting
+            - Easy import to external tools
+
+
+7. Rendering System Architecture
+
+    7.1 Core Components
+
+        Renderer Interface:
+            Provides consistent rendering methods across all output formats.
+            Each format implements the same interface for uniform behavior.
+
+        HierarchicalTodo Structure:
+            Intermediate representation that combines IDM data with display
+            information. Includes position paths, status, and children.
+
+        Display Builders:
+            Convert flat IDM collections into hierarchical display structures
+            while applying context-appropriate filtering and numbering.
+
+    7.2 Position Path Integration
+
+        The rendering system integrates tightly with IDM:
+            - Uses IDM-calculated position paths for all numbering
+            - Respects different contexts (active vs complete)
+            - Maintains consistent addressing across views
+            - Handles hierarchical structure automatically
+
+    7.3 Status Symbol Resolution
+
+        Status symbols are determined by:
+            1. Individual todo completion status
+            2. Children completion analysis (for parents)
+            3. Special workflow statuses (deleted, etc.)
+            4. Context-appropriate symbol selection
+
+        This ensures visual consistency while providing maximum information
+        density in the display.
+
+
+8. User Experience Impact
+
+    8.1 Cognitive Benefits
+
+        - Immediate status recognition via symbols
+        - Clear hierarchical structure via indentation
+        - Predictable numbering for easy command construction
+        - Consistent presentation reduces mental overhead
+
+    8.2 Workflow Benefits
+
+        - Active view focuses attention on actionable items
+        - Complete view provides comprehensive project oversight  
+        - Search results maintain positional context
+        - Multiple formats enable diverse use cases
+
+    8.3 Integration Benefits
+
+        - JSON format enables tool integration
+        - Markdown format supports documentation workflows
+        - CSV format allows analysis and reporting
+        - Terminal format optimizes daily interactive use
+
+    The output system leverages IDM's stable addressing to provide both
+    intuitive daily-use displays and comprehensive project management views.

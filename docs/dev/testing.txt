@@ -1,0 +1,318 @@
+                Testing Guide
+
+This project uses test-driven development with a focus on clear, fast,
+and reliable tests. The IDM system requires special attention to testing
+both active and complete contexts.
+
+
+1. Test Types
+
+    Unit Tests (Preferred):
+    
+        Test business logic without filesystem access. Fast and reliable.
+        
+        • Always use MemoryIDMStore for in-memory testing
+        • Test both active and complete contexts
+        • Verify position path calculations
+        • Test the pkg/too API, not CLI parsing
+
+    Integration Tests:
+    
+        Only for testing the storage layer and IDM persistence.
+        
+        • Use t.TempDir() for automatic cleanup
+        • Test IDM registry rebuilding across save/load cycles
+        • Minimize filesystem tests
+
+
+2. IDM Testing Patterns
+
+    Creating Test Managers:
+    
+        -- go
+        func setupTestManager(t *testing.T) *store.PureIDMManager {
+            idmStore := store.NewMemoryIDMStore()
+            manager, err := store.NewPureIDMManager(idmStore, "")
+            require.NoError(t, err)
+            return manager
+        }
+        --
+
+    Testing Position Contexts:
+    
+        -- go
+        func TestActiveVsCompleteContexts(t *testing.T) {
+            manager := setupTestManager(t)
+            
+            // Add test todos
+            uid1, _ := manager.Add(store.RootScope, "First")
+            uid2, _ := manager.Add(store.RootScope, "Second") 
+            uid3, _ := manager.Add(store.RootScope, "Third")
+            
+            // Complete middle todo
+            manager.SetStatus(uid2, "completion", "done")
+            
+            // Test active context (consecutive numbering)
+            activeTodos := manager.ListActive()
+            manager.AttachActiveOnlyPositionPaths(activeTodos)
+            assert.Len(t, activeTodos, 2)
+            assert.Equal(t, "1", activeTodos[0].PositionPath) // First
+            assert.Equal(t, "2", activeTodos[1].PositionPath) // Third (renumbered)
+            
+            // Test complete context (stable paths)
+            allTodos := manager.ListAll()
+            manager.AttachPositionPaths(allTodos)
+            assert.Len(t, allTodos, 3)
+            assert.Equal(t, "1", allTodos[0].PositionPath) // First
+            assert.Equal(t, "2", allTodos[1].PositionPath) // Second (stable)
+            assert.Equal(t, "3", allTodos[2].PositionPath) // Third (stable)
+        }
+        --
+
+    Testing Position Resolution:
+    
+        -- go
+        func TestPositionResolution(t *testing.T) {
+            manager := setupTestManager(t)
+            
+            // Add todos with known UIDs
+            uid1, _ := manager.Add(store.RootScope, "Test todo")
+            
+            // Test resolution in active context
+            activeTodos := manager.ListActive() 
+            manager.AttachActiveOnlyPositionPaths(activeTodos)
+            
+            resolvedUID, err := manager.ResolvePositionPath(store.RootScope, "1")
+            require.NoError(t, err)
+            assert.Equal(t, uid1, resolvedUID)
+        }
+        --
+
+
+3. Test Utilities
+
+    The testutil package provides IDM-compatible helpers:
+
+    Store Creation:
+    
+        -- go
+        // Create memory store for IDM testing
+        store := testutil.NewMemoryIDMStore()
+        manager, err := store.NewPureIDMManager(store, "")
+        require.NoError(t, err)
+        
+        // Add test todos
+        uid1, _ := manager.Add(store.RootScope, "Task 1")
+        uid2, _ := manager.Add(store.RootScope, "Task 2")
+        --
+
+    Assertions:
+    
+        -- go
+        // IDM-specific assertions
+        func AssertTodoAtPosition(t *testing.T, todos []*models.IDMTodo, position, text string) {
+            found := false
+            for _, todo := range todos {
+                if todo.PositionPath == position && todo.Text == text {
+                    found = true
+                    break
+                }
+            }
+            assert.True(t, found, "Expected todo '%s' at position '%s'", text, position)
+        }
+        
+        func AssertConsecutivePositions(t *testing.T, todos []*models.IDMTodo) {
+            for i, todo := range todos {
+                expected := fmt.Sprintf("%d", i+1)
+                assert.Equal(t, expected, todo.PositionPath, 
+                    "Todo at index %d should have position %s", i, expected)
+            }
+        }
+        --
+
+    Hierarchical Testing:
+    
+        -- go
+        func setupHierarchicalTodos(t *testing.T) *store.PureIDMManager {
+            manager := setupTestManager(t)
+            
+            // Create parent
+            parentUID, _ := manager.Add(store.RootScope, "Project")
+            
+            // Create children  
+            child1UID, _ := manager.Add(parentUID, "Task 1")
+            child2UID, _ := manager.Add(parentUID, "Task 2")
+            
+            return manager
+        }
+        --
+
+
+4. Test Pattern
+
+    Follow the Arrange-Act-Assert pattern with IDM considerations:
+
+    -- go
+    func TestCompleteCommand(t *testing.T) {
+        // ARRANGE: Set up IDM manager with test data
+        manager := setupTestManager(t)
+        uid1, _ := manager.Add(store.RootScope, "Keep me")
+        uid2, _ := manager.Add(store.RootScope, "Complete me")
+        
+        // ACT: Execute command using IDM
+        result, err := complete.Execute("2", complete.Options{
+            CollectionPath: "",  // MemoryStore ignores path
+            Mode:          "long",
+        })
+        require.NoError(t, err)
+        
+        // ASSERT: Verify IDM state changes
+        assert.Equal(t, uid2, result.Todo.UID)
+        assert.Equal(t, "done", result.NewStatus)
+        
+        // Verify active context shows consecutive numbering
+        activeTodos := manager.ListActive()
+        manager.AttachActiveOnlyPositionPaths(activeTodos)
+        assert.Len(t, activeTodos, 1)
+        assert.Equal(t, "1", activeTodos[0].PositionPath) // Renumbered
+        assert.Equal(t, "Keep me", activeTodos[0].Text)
+    }
+    --
+
+
+5. Integration Testing Environment
+
+    For manual integration testing, use scripts/run-integration-env.sh:
+    
+    Purpose:
+    
+        • Test too commands without affecting your real todo data
+        • Verify IDM behavior with different .todos file states  
+        • Debug position path issues in isolated environment
+        • Test consecutive numbering vs stable path behavior
+    
+    Usage:
+    
+        -- bash
+        # Start with empty .todos file
+        ./scripts/run-integration-env.sh
+        
+        # Copy your current todos for testing
+        ./scripts/run-integration-env.sh ~/.todos.json
+        
+        # Use test fixtures
+        ./scripts/run-integration-env.sh test/fixtures/complex.todos
+        --
+    
+    Testing IDM Behavior:
+    
+        -- bash
+        [too-test] $ too add "First" && too add "Second" && too add "Third"
+        [too-test] $ too list
+        1. First
+        2. Second  
+        3. Third
+        
+        [too-test] $ too complete 2
+        [too-test] $ too list
+        1. First
+        2. Third    # Note: renumbered from 3 to 2
+        
+        [too-test] $ too list --all
+        1. First
+        ● 2. Second  # Completed, stable position
+        3. Third     # Stable position
+        --
+    
+    The script:
+    
+        • Creates a temporary directory in PROJECT_ROOT/tmp/
+        • Initializes or copies a .todos file
+        • Drops you into a shell with custom "[too-test]" prompt
+        • Adds too to PATH for easy testing
+        • Automatically cleans up when you exit
+
+
+6. Common Test Scenarios
+
+    Testing Consecutive Numbering:
+    
+        -- go
+        func TestConsecutiveNumbering(t *testing.T) {
+            manager := setupTestManager(t)
+            
+            // Add several todos
+            for i := 1; i <= 5; i++ {
+                manager.Add(store.RootScope, fmt.Sprintf("Todo %d", i))
+            }
+            
+            // Complete non-consecutive todos (2, 4)
+            allTodos := manager.ListAll()
+            manager.AttachPositionPaths(allTodos) // Get stable paths
+            
+            manager.SetStatus(allTodos[1].UID, "completion", "done") // Todo 2
+            manager.SetStatus(allTodos[3].UID, "completion", "done") // Todo 4
+            
+            // Verify active view has consecutive numbering
+            activeTodos := manager.ListActive()
+            manager.AttachActiveOnlyPositionPaths(activeTodos)
+            
+            AssertConsecutivePositions(t, activeTodos)
+            assert.Len(t, activeTodos, 3) // 1, 3, 5 remain
+        }
+        --
+
+    Testing Hierarchical Numbering:
+    
+        -- go
+        func TestHierarchicalPositions(t *testing.T) {
+            manager := setupTestManager(t)
+            
+            // Create nested structure
+            projectUID, _ := manager.Add(store.RootScope, "Project")
+            task1UID, _ := manager.Add(projectUID, "Task 1")
+            task2UID, _ := manager.Add(projectUID, "Task 2")
+            subtaskUID, _ := manager.Add(task1UID, "Subtask")
+            
+            // Test hierarchical position paths
+            activeTodos := manager.ListActive()
+            manager.AttachActiveOnlyPositionPaths(activeTodos)
+            
+            // Find todos by UID and check their positions
+            positionMap := make(map[string]string)
+            for _, todo := range activeTodos {
+                positionMap[todo.UID] = todo.PositionPath
+            }
+            
+            assert.Equal(t, "1", positionMap[projectUID])
+            assert.Equal(t, "1.1", positionMap[task1UID])
+            assert.Equal(t, "1.2", positionMap[task2UID])
+            assert.Equal(t, "1.1.1", positionMap[subtaskUID])
+        }
+        --
+
+
+7. Best Practices
+
+    DO:
+    
+        • Use MemoryIDMStore for all unit tests
+        • Test both active and complete contexts for each feature
+        • Verify position path calculations explicitly
+        • Test consecutive numbering after operations that change structure
+        • Use table-driven tests for different IDM scenarios
+
+    DON'T:
+    
+        • Assume position paths without verifying calculations
+        • Test only one context (active or complete)
+        • Hard-code UIDs in tests (they're random)
+        • Skip testing hierarchical scenarios
+        • Touch the filesystem unless testing IDM persistence
+
+    IDM-Specific:
+    
+        • Always call AttachPositionPaths or AttachActiveOnlyPositionPaths before assertions
+        • Test position resolution in both directions (path→UID and UID→path)
+        • Verify that operations using position paths target correct UIDs
+        • Test edge cases like empty collections and deeply nested structures

@@ -1,0 +1,213 @@
+                ID AND REFERENCING SYSTEM
+
+    This document describes the identifier system used in too and the core
+    philosophy behind how users interact with todo items. The system uses
+    IDM (Identifier Management) to provide both stable internal references
+    and intuitive user-facing numbering.
+
+
+1. The Core Problem: A Clean List vs. Stable References
+
+    The primary goal of too is to be a fast, convenient CLI tool. A key part
+    of this experience is how users refer to items. Users naturally think of
+    lists as clean, sequential numbers starting from 1. An item's position
+    should be easy to see and type.
+
+    This creates a conflict:
+
+        - User's Mental Model: A clean list (1, 2, 3...) of active tasks.
+        - Application's Need: A stable, unchanging reference to an item,
+          regardless of its status (done, pending) or any filtering (search).
+
+    If the number 2 sometimes refers to "Buy milk" and sometimes to "Pack
+    passport" depending on the view, the tool becomes unreliable and dangerous.
+
+
+2. The too Solution: IDM (Identifier Management) System
+
+    too solves this problem using IDM, which provides three layers of identification:
+
+        - UID (Unique Identifier): A permanent, stable UUID that never changes.
+          This is the authoritative identity of every todo item. Used internally
+          for all operations to ensure commands always target the correct item.
+
+        - HID (Human-friendly ID): A sequential, user-facing position (1, 2, 3...)
+          calculated by IDM based on the current view context. This is what users
+          see and interact with.
+
+        - Position Path: A hierarchical representation (like 1.2.3) for nested
+          structures, also calculated by IDM.
+
+    The IDM system maintains registries that map between these identifiers,
+    ensuring that user commands using HIDs are resolved to the correct UIDs
+    for reliable operation.
+
+
+3. The Two-Context Approach: Active vs. Complete Views
+
+    IDM implements different numbering contexts to solve the core conflict:
+
+    3.1 Active Context (Default View)
+        
+        - Only shows pending todos
+        - Provides consecutive HIDs (1, 2, 3...) with no gaps
+        - Completed todos are excluded from numbering
+        - When todos are completed, remaining active todos are renumbered
+
+        Example:
+            $ too list
+            1. First todo
+            2. Second todo  
+            3. Third todo
+
+            $ too complete 2
+            $ too list
+            1. First todo
+            2. Third todo    # Renumbered from 3 to 2
+
+    3.2 Complete Context (--all View)
+
+        - Shows all todos regardless of status
+        - Maintains stable position paths for consistency
+        - Completed todos remain in their original positions
+        - Provides reliable references for operations on completed items
+
+        Example:
+            $ too list --all
+            1. First todo
+            ● 2. Second todo    # Completed, marked with ●
+            3. Third todo
+
+    This dual-context approach ensures users get intuitive numbering for daily
+    use while maintaining stable references when needed.
+
+
+4. IDM Implementation Details
+
+    4.1 Core Components
+
+        - PureIDMManager: Main interface for todo operations using IDM
+        - IDM Registry: Maps between UIDs and position paths in different scopes
+        - IDM Adapters: Provide different filtering contexts (active-only, all items)
+
+    4.2 Position Calculation
+
+        Active-Only Mode:
+            Uses pureIDMAdapterActiveOnly to calculate consecutive positions
+            based only on pending todos. This ensures no gaps in numbering
+            when todos are completed.
+
+        Complete Mode: 
+            Uses pureIDMAdapterAllItems to calculate positions including
+            completed todos. This provides stable references across the
+            todo lifecycle.
+
+    4.3 Command Resolution
+
+        1. User enters command with HID: too complete 2
+        2. IDM resolves HID "2" to internal UID based on current context
+        3. Operation is performed using the stable UID
+        4. Result is displayed with appropriate HID for user feedback
+
+
+5. Walkthrough: A Practical Example
+
+    Here is a step-by-step example of how the IDM system works in practice.
+
+    5.1 Add initial items
+
+        We start with an empty list.
+
+            $ too add "Groceries"
+            $ too add "Packing"
+            $ too add "Laundry"
+
+        Commentary: IDM creates UIDs internally and assigns sequential HIDs.
+
+            $ too list
+            1. Groceries
+            2. Packing
+            3. Laundry
+
+    5.2 Complete middle item
+
+        We complete "Packing".
+
+            $ too complete 2
+
+        Commentary: IDM resolves HID "2" to Packing's UID, marks it complete,
+        then recalculates active positions. Laundry is renumbered from 3 to 2.
+
+            $ too list
+            1. Groceries
+            2. Laundry      # Was position 3, now 2
+
+    5.3 View all items including completed
+
+        The --all flag shows the complete context with stable positions.
+
+            $ too list --all
+            1. Groceries
+            ● 2. Packing    # Completed, but maintains stable position
+            3. Laundry
+
+    5.4 Add new item
+
+        We add another item.
+
+            $ too add "Shopping"
+
+        Commentary: In active context, new items get the next consecutive HID.
+
+            $ too list
+            1. Groceries
+            2. Laundry  
+            3. Shopping     # Gets next consecutive number
+
+            $ too list --all
+            1. Groceries
+            ● 2. Packing
+            3. Laundry
+            4. Shopping     # Gets next stable position
+
+    5.5 Reopen completed item
+
+        Using the stable position from --all view:
+
+            $ too reopen 2
+
+        Commentary: IDM resolves stable position "2" to Packing's UID and
+        reopens it. The active context recalculates consecutive positions.
+
+            $ too list
+            1. Groceries
+            2. Laundry
+            3. Packing      # Reopened, gets next consecutive position  
+            4. Shopping
+
+        This demonstrates how IDM provides both intuitive daily-use numbering
+        and stable references for complex operations.
+
+
+6. User Benefits
+
+    6.1 Intuitive Daily Use
+        
+        - Always see consecutive numbers (1, 2, 3...) for active todos
+        - No confusing gaps when items are completed
+        - Natural mental model of a clean, sequential list
+
+    6.2 Reliable Operations
+
+        - Commands always target the intended item via stable UIDs
+        - No ambiguity about which item "2" refers to
+        - Completed items remain accessible via --all view
+
+    6.3 Powerful Workflows
+
+        - Search results use consistent position paths
+        - Nested hierarchies work with dot notation (1.2.3)
+        - All operations work reliably regardless of filtering context
+
+    The IDM system ensures that too is both easy for simple use cases and
+    robust for complex todo management workflows.

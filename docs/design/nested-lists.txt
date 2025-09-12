@@ -1,0 +1,209 @@
+                NESTED LISTS DESIGN SPECIFICATION
+
+    This document outlines the design and behavior of the nested todo lists 
+    feature in too, including how it integrates with the IDM system.
+
+
+1. Problem Analysis
+
+    A simple, flat list is insufficient for organizing related tasks. Users need
+    the ability to break down larger items into smaller sub-tasks, creating a
+    natural hierarchy. This feature adds this capability while maintaining the
+    speed and convenience of the existing interface.
+
+    The challenge is maintaining intuitive user-facing numbering while supporting
+    arbitrary nesting depth and complex parent-child relationships.
+
+
+2. Core Design: Data Model and Business Rules
+
+    The implementation is built on the following principles:
+
+    2.1 Data Model
+
+        The IDMTodo struct supports hierarchical relationships:
+
+        - UID: A permanent, internal UUID (never changes)
+        - ParentID: A string referencing the parent's UID. Empty string for root items
+        - Text: The todo content  
+        - Statuses: Map of workflow statuses (completion, priority, etc.)
+        - PositionPath: IDM-calculated hierarchical position (e.g., "1.2.3")
+
+        The flat IDMCollection stores all todos with parent-child relationships
+        expressed via ParentID references. This provides both flexibility and
+        performance.
+
+    2.2 Business Rules: User-Centric Model
+
+        The core principle is preserving user intent while providing intuitive
+        hierarchical behavior.
+
+        1. Explicit Status Control: Item status is explicitly set by the user
+           and is not implicitly altered by actions on parents or children.
+
+        2. Behavioral Propagation (Top-Down): When a parent is marked done,
+           its children are effectively hidden from active views but retain
+           their individual statuses.
+
+        3. Auto-Completion (Bottom-Up): When all children of a parent are
+           completed, the parent is automatically marked complete as a
+           convenience feature.
+
+        4. Position Path Calculation: IDM calculates position paths based on
+           the current context (active-only vs all items) to provide either
+           consecutive numbering or stable references.
+
+
+3. IDM Integration for Hierarchical Structures
+
+    3.1 Scope-Based Organization
+
+        IDM organizes nested todos using scopes:
+        
+        - Root Scope: Contains top-level todos
+        - Item Scopes: Each todo with children becomes a scope containing its children
+        - Hierarchical Resolution: Position paths like "1.2.3" resolve across scopes
+
+    3.2 Position Path Calculation
+
+        Active Context (Default View):
+            - Only pending todos and their pending ancestors are included
+            - Provides consecutive numbering within each level
+            - Completed subtrees are excluded entirely
+
+        Complete Context (--all View):  
+            - All todos regardless of status are included
+            - Maintains stable position paths across the entire hierarchy
+            - Allows operations on any item in the tree
+
+    3.3 Parent-Child Visibility Rules
+
+        Active View Rules:
+            - If a parent is completed, none of its children appear in active view
+            - This matches user expectation: "If I'm done with a project, 
+              don't show me its tasks"
+            - Position numbering skips completed branches entirely
+
+        Complete View Rules:
+            - All items are visible with their stable position paths
+            - Completed items are marked with status indicators
+            - Full tree structure is preserved and navigable
+
+
+4. User-Facing API (CLI)
+
+    The command-line interface manages hierarchy using dot-notation addressing.
+
+    4.1 Addressing Items
+
+        Users interact with items using dot-separated position paths:
+        - "1": First top-level item
+        - "1.2": Second child of first top-level item  
+        - "2.1.3": Third grandchild of first child of second top-level item
+
+        IDM resolves these paths to internal UIDs based on current context.
+
+    4.2 Command Behaviors
+
+        too add:
+            - too add "Top-level task": Adds to root level
+            - too add "Sub-task" 1.2: Adds as child of item at 1.2
+            - New items get next consecutive position in their scope
+
+        too complete <positions...>:
+            - too complete 1.2: Marks item at 1.2 as done
+            - Triggers bottom-up completion if all siblings are done
+            - May cause renumbering in active view if gaps are created
+
+        too reopen <positions...>:
+            - too reopen 1.2: Marks item at 1.2 as pending  
+            - Only affects specified item, no propagation
+            - May cause renumbering in active view
+
+        too move <source> <destination>:
+            - too move 2.1.1 1: Moves item to be child of item 1
+            - too move 1.2 "": Moves item to root level
+            - IDM handles scope changes and position recalculation
+
+        too list:
+            - too list: Shows hierarchical active view with consecutive numbering
+            - too list --all: Shows complete tree with stable position paths
+            - Indentation indicates nesting level
+
+        too cleanup:
+            - Removes all completed items and their entire subtrees
+            - Causes position recalculation for remaining items
+            - Matches user expectation of cleaning entire project branches
+
+
+5. Hierarchical Display Format
+
+    5.1 Active View Display
+
+        1. Project Alpha
+           1. Design mockups
+           2. Implement backend
+        2. Project Beta  
+           1. Research requirements
+           2. Write specifications
+        3. Personal Tasks
+           1. Buy groceries
+           2. Schedule appointment
+
+        This shows only active items with consecutive numbering at each level.
+        Completed projects and their tasks are entirely hidden.
+
+    5.2 Complete View Display
+
+        1. Project Alpha
+           ● 1. Design mockups (done)
+           2. Implement backend
+           ● 3. Write tests (done)
+        ● 2. Project Beta (done)
+           ● 1. Research requirements (done) 
+           ● 2. Write specifications (done)
+        3. Personal Tasks
+           ● 1. Buy groceries (done)
+           2. Schedule appointment
+
+        This shows all items with stable position paths. Completed items are
+        marked with ● and maintain their original positions for reliable reference.
+
+    5.3 Mixed State Handling
+
+        When a parent has both completed and pending children, the display
+        uses visual indicators:
+
+        ◐ 1. Project Gamma (mixed)
+           ● 1. Phase 1 (done)
+           2. Phase 2 (pending)
+           3. Phase 3 (pending)
+
+        The ◐ symbol indicates a parent with mixed completion status.
+
+
+6. Implementation Benefits
+
+    6.1 User Experience
+        
+        - Natural hierarchical organization of related tasks
+        - Intuitive dot-notation addressing (1.2.3)
+        - Clean active view hides completed project clutter
+        - Stable references available when needed via --all
+
+    6.2 Technical Robustness
+
+        - Flat storage model provides performance and simplicity
+        - IDM ensures reliable command resolution regardless of view context
+        - Transactional integrity protects against data corruption
+        - Flexible scope system handles arbitrary nesting depth
+
+    6.3 Workflow Power
+
+        - Bottom-up auto-completion reduces manual status management
+        - Top-down behavioral propagation matches project lifecycle
+        - Move operations enable flexible project reorganization
+        - Cleanup operations handle entire project branches atomically
+
+    The nested lists system leverages IDM to provide both intuitive daily-use
+    numbering and the stability needed for complex hierarchical operations.

@@ -1,0 +1,381 @@
+                Development Guide
+
+This guide provides comprehensive information for too contributors,
+covering quick start, conventions, and architecture including the IDM system.
+
+
+1. Quick Start
+
+    Prerequisites:
+    
+        • Go 1.23 or later
+        • Git
+        • A Unix-like environment (macOS, Linux, WSL)
+
+    Initial Setup:
+    
+        1. Clone and enter the repository:
+        
+            -- bash
+            git clone https://github.com/arthur-debert/too.git
+            cd too
+            --
+
+        2. Source the environment variables if not using direnv:
+        
+            -- bash
+            source .envrc
+            --
+
+        3. Install pre-commit hooks (MANDATORY):
+        
+            -- bash
+            scripts/pre-commit install
+            --
+
+        4. Run tests to verify setup:
+        
+            -- bash
+            scripts/test
+            --
+
+    Essential Commands:
+    
+        • scripts/build - Build the CLI binary
+        • scripts/test - Run all tests with race detection
+        • scripts/lint - Run golangci-lint
+        • scripts/test-with-cov - Generate coverage report
+        • scripts/pre-commit - Run all pre-commit checks
+
+    Development Workflow:
+    
+        1. Create a feature branch:
+            • For GitHub issues: gh issue develop -c <issue-id>
+            • Otherwise: git checkout -b feature/description
+
+        2. Write tests first (TDD encouraged)
+
+        3. Implement with proper logging
+
+        4. Run tests and lint before committing
+
+        5. Pre-commit hooks will catch any issues
+
+        6. Create PR with issue reference for auto-close
+
+
+2. Architecture Overview
+
+    too follows a strict separation of concerns with IDM at its core:
+
+    CLI Layer (cmd/):
+    
+        • Thin layer using Cobra framework
+        • Only handles argument parsing and validation
+        • Help text and user messages
+        • Output formatting via pkg/too/output
+        • NO business logic
+
+    Business Logic (pkg/too/commands/):
+    
+        • Individual command packages for each operation
+        • Pure Go functions with typed parameters
+        • Returns structured data, never prints
+        • Uses IDM for all todo operations
+
+    IDM Layer (pkg/idm + pkg/too/store):
+    
+        • IDM provides stable UID ↔ position path mapping
+        • PureIDMManager handles all todo operations
+        • IDMStore provides persistence
+        • Workflow system manages status transitions
+
+    Data Flow:
+    
+        1. User runs command: too add "todo text" 
+        2. cmd/too/add.go parses arguments and flags
+        3. Calls too.Add() which creates PureIDMManager
+        4. IDM resolves position paths to stable UIDs
+        5. Business logic processes using UIDs
+        6. IDM calculates display position paths
+        7. pkg/too/output renders using templates
+
+    Message Management:
+    
+        All user-facing strings are centralized in cmd/too/msgs.go:
+        
+        • Command descriptions and usage
+        • Flag descriptions  
+        • Error messages
+        • Command aliases
+
+        This provides complete visibility of the "copy deck" and ensures
+        consistency across all commands.
+
+
+3. IDM System Architecture
+
+    3.1 Core Components
+
+        IDM Registry:
+            • Maps UIDs to position paths within scopes
+            • Handles hierarchical structure navigation
+            • Provides different numbering contexts (active vs all)
+
+        PureIDMManager:
+            • Main interface for todo operations
+            • Manages flat IDMCollection with parent-child relationships
+            • Integrates with workflow system for status management
+
+        IDM Adapters:
+            • pureIDMAdapter: Standard IDM operations
+            • pureIDMAdapterActiveOnly: Consecutive numbering for active todos
+            • pureIDMAdapterAllItems: Stable paths including completed todos
+
+    3.2 Position Path Contexts
+
+        Active Context (Default):
+            • Shows only pending todos and their pending ancestors
+            • Provides consecutive numbering (1, 2, 3...) with no gaps
+            • Used by: too list, command outputs in long mode
+
+        Complete Context (--all views):
+            • Shows all todos regardless of status
+            • Maintains stable position paths across todo lifecycle  
+            • Used by: too list --all, operations on completed todos
+
+    3.3 Data Model
+
+        IDMTodo Structure:
+            • UID: Stable internal identifier (UUID)
+            • ParentID: Reference to parent's UID (empty for root)
+            • Text: Todo content
+            • Statuses: Map of workflow statuses (completion, etc.)
+            • PositionPath: IDM-calculated display position
+
+        IDMCollection:
+            • Flat array of all IDMTodos
+            • Parent-child relationships via ParentID references
+            • Optimized for performance and serialization
+
+
+4. Coding Conventions
+
+    Error Handling:
+    
+        Standard Go error handling throughout IDM system:
+
+        -- go
+        uid, err := manager.ResolvePositionPath(store.RootScope, positionPath)
+        if err != nil {
+            return nil, fmt.Errorf("todo not found at position %s: %w", positionPath, err)
+        }
+        --
+
+    Logging:
+    
+        Logging is MANDATORY for all new code:
+
+        -- go
+        logger := logging.GetLogger("too.commands.add")
+        logger.Debug().
+            Str("text", todoText).
+            Str("uid", result.Todo.UID).
+            Str("positionPath", result.Todo.PositionPath).
+            Msg("todo added successfully")
+        --
+
+        Log levels:
+        
+        • TRACE (-vvv): Detailed execution flow, IDM resolution
+        • DEBUG (-vv): Business logic, position calculations
+        • INFO (-v): Command execution, status changes
+        • WARN: Warnings and recoverable errors
+        • ERROR: Operation failures
+
+    Testing:
+    
+        • Use test utilities from pkg/testutil
+        • Always use MemoryStore for unit tests
+        • Test with both active and complete contexts
+        • Verify position path calculations
+        • Test error codes, not error messages
+
+    Integration Testing:
+    
+        Use scripts/run-integration-env.sh for isolated testing:
+        
+        -- bash
+        # Start with a fresh .todos file
+        ./scripts/run-integration-env.sh
+        
+        # Start with existing data
+        ./scripts/run-integration-env.sh ~/.todos.json
+        --
+        
+        Features:
+        
+        • Creates isolated temporary directory
+        • Separate .todos file that won't affect your real data
+        • Drops you into a shell with too in PATH
+        • Automatically cleans up on exit
+        • Custom prompt "[too-test]" to indicate test environment
+
+    IDM Testing Patterns:
+    
+        -- go
+        // Create IDM manager for testing
+        store := store.NewMemoryIDMStore()
+        manager, err := store.NewPureIDMManager(store, "")
+        require.NoError(t, err)
+
+        // Test active vs complete contexts
+        activeTodos := manager.ListActive()
+        allTodos := manager.ListAll()
+        
+        // Verify position path calculations
+        manager.AttachActiveOnlyPositionPaths(activeTodos)
+        assert.Equal(t, "1", activeTodos[0].PositionPath)
+        --
+
+
+5. Key Design Decisions
+
+    Storage:
+    
+        • JSON file storage with flat IDMCollection structure
+        • IDMStore interface abstracts persistence 
+        • Each command: load → operate via IDM → save
+        • See docs/design/store.txxt for details
+
+    Position Management:
+    
+        • IDM provides two numbering contexts for different use cases
+        • Active context: consecutive numbering for daily use
+        • Complete context: stable paths for reliable operations
+        • Automatic renumbering maintains clean user experience
+
+    Command Aliases:
+    
+        • init (i), add (a), edit (e, m, modify)
+        • complete (c), reopen (o), move (m), search (s), list (ls)
+        • Global flags: --done (-d), --all (-a), --quiet, --loud
+
+    Build System:
+    
+        • Always use scripts/* for operations
+        • Never compile binaries in root directory
+        • Meta-tools in separate binaries:
+            - cmd/tools/too-completion
+            - cmd/tools/too-manpage
+
+
+6. Documentation Standards
+
+    Format:
+    
+        • ALL documentation must use txt format (not txxt)
+        • 4-space indentation for paragraphs
+        • Section headers with appropriate spacing
+        • No markdown-style headers
+
+    Organization:
+    
+        • docs/design/ - Architecture and design documents
+        • docs/dev/ - Developer guides and conventions
+        • Inline Go docs for API documentation
+
+
+7. Common Patterns
+
+    Adding a New Command:
+    
+        1. Create cmd/too/newcmd.go with Cobra command
+        2. Add strings to cmd/too/msgs.go
+        3. Create pkg/too/commands/newcmd/newcmd.go
+        4. Add API function to pkg/too/commands.go
+        5. Use PureIDMManager for all todo operations
+        6. Handle both active and complete contexts as needed
+        7. Create result type and template
+        8. Write comprehensive tests
+
+    Working with IDM:
+    
+        -- go
+        // Always create manager first
+        idmStore := store.NewIDMStore(collectionPath)
+        manager, err := store.NewPureIDMManager(idmStore, collectionPath)
+        if err != nil {
+            return nil, err
+        }
+
+        // Resolve user position to internal UID
+        uid, err := manager.ResolvePositionPath(store.RootScope, positionPath)
+        if err != nil {
+            return nil, fmt.Errorf("todo not found: %w", err)
+        }
+
+        // Perform operation using UID
+        err = manager.SetStatus(uid, "completion", "done")
+        if err != nil {
+            return nil, err
+        }
+
+        // Get todos for display
+        todos := manager.ListActive()
+        manager.AttachActiveOnlyPositionPaths(todos) // for consecutive numbering
+        // OR manager.AttachPositionPaths(todos) // for stable paths
+        --
+
+    Testing IDM Operations:
+    
+        -- go
+        func TestCompleteCommand(t *testing.T) {
+            // Setup
+            store := NewMemoryIDMStore()
+            manager, err := NewPureIDMManager(store, "")
+            require.NoError(t, err)
+            
+            // Add test data
+            uid1, _ := manager.Add(store.RootScope, "First todo")
+            uid2, _ := manager.Add(store.RootScope, "Second todo") 
+            
+            // Test active context
+            activeTodos := manager.ListActive()
+            manager.AttachActiveOnlyPositionPaths(activeTodos)
+            assert.Equal(t, "1", activeTodos[0].PositionPath)
+            assert.Equal(t, "2", activeTodos[1].PositionPath)
+            
+            // Complete middle todo
+            err = manager.SetStatus(uid1, "completion", "done")
+            require.NoError(t, err)
+            
+            // Verify renumbering
+            activeTodos = manager.ListActive()
+            manager.AttachActiveOnlyPositionPaths(activeTodos)
+            assert.Len(t, activeTodos, 1)
+            assert.Equal(t, "1", activeTodos[0].PositionPath) // Second todo now #1
+        }
+        --
+
+
+Remember: The IDM system ensures reliable command targeting while providing
+intuitive user-facing numbering. When in doubt, test both active and complete
+contexts to ensure your changes work correctly across all use cases.
+
+
+TLDR
+----
+
+    • Use scripts/* for build, lint, pre-commit, test
+    • CLI architecture with IDM at core:
+        - CLI (cmd) is thin: parsing, validation, help, output
+        - Business logic in pkg/too/commands/* uses PureIDMManager
+        - IDM provides UID ↔ position path mapping
+        - Two contexts: active (consecutive) vs complete (stable)
+        - All operations use UIDs internally, HIDs for user interface
+    • Testing: Use MemoryIDMStore, test both contexts
+    • Working on issues:
+        - GitHub issue: gh issue develop -c <issue-id>
+        - Create feature branch, implement with IDM, test, commit, PR
+        - Always verify position path behavior in both contexts
