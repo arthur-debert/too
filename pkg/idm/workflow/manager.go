@@ -369,6 +369,8 @@ func (sm *StatusManager) executeAutoTransition(rule AutoTransitionRule, targetUI
 	switch rule.Condition {
 	case ConditionAllChildrenStatusEquals:
 		return sm.executeAllChildrenStatusEquals(rule, targetUID)
+	case ConditionAnyChildStatusEquals:
+		return sm.executeAnyChildStatusEquals(rule, targetUID)
 	default:
 		// Unknown condition type, skip silently
 		return nil
@@ -409,6 +411,56 @@ func (sm *StatusManager) executeAllChildrenStatusEquals(rule AutoTransitionRule,
 	}
 	
 	// All children match the condition, execute the action
+	switch rule.Action {
+	case ActionSetStatus:
+		return sm.SetStatus(targetUID, rule.TargetDimension, rule.ActionValue)
+	default:
+		// Unknown action type, skip silently
+		return nil
+	}
+}
+
+// executeAnyChildStatusEquals implements the "any_child_status_equals" condition.
+func (sm *StatusManager) executeAnyChildStatusEquals(rule AutoTransitionRule, targetUID string) error {
+	// Get all children of the target item
+	allChildren, err := sm.adapter.GetChildren(targetUID)
+	if err != nil {
+		return err
+	}
+	
+	// If no children, skip this rule
+	if len(allChildren) == 0 {
+		return nil
+	}
+	
+	// Check if any child has the required status
+	foundMatch := false
+	for _, childUID := range allChildren {
+		childStatus, err := sm.adapter.GetItemStatus(childUID, rule.TargetDimension)
+		if err != nil {
+			// If child doesn't have this dimension, skip it
+			continue
+		}
+		if childStatus == rule.ConditionValue {
+			// Found at least one child that matches
+			foundMatch = true
+			break
+		}
+	}
+	
+	// If no child matches the condition, skip action
+	if !foundMatch {
+		return nil
+	}
+	
+	// Check if the target is already in the desired state (prevent infinite recursion)
+	currentStatus, err := sm.adapter.GetItemStatus(targetUID, rule.TargetDimension)
+	if err == nil && currentStatus == rule.ActionValue {
+		// Already in desired state, nothing to do
+		return nil
+	}
+	
+	// At least one child matches the condition, execute the action
 	switch rule.Action {
 	case ActionSetStatus:
 		return sm.SetStatus(targetUID, rule.TargetDimension, rule.ActionValue)
