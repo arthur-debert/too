@@ -26,7 +26,8 @@ Examples:
 		destPath := args[1]
 
 		// Get collection path from flag
-		collectionPath, _ := cmd.Flags().GetString("data-path")
+		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
+		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
 		// Call business logic
 		result, err := too.Swap(sourcePath, destPath, too.SwapOptions{

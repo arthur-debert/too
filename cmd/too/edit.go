@@ -37,7 +37,8 @@ var editCmd = &cobra.Command{
 		position := args[0]
 
 		var text string
-		collectionPath, _ := cmd.Flags().GetString("data-path")
+		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
+		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
 		// Handle editor mode
 		if editUseEditor {
