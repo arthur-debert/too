@@ -75,6 +75,24 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	return r, nil
 }
 
+// renderTodoCommand is a unified method for rendering todo commands with the todo_list template
+func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos []*models.IDMTodo, totalCount, doneCount int, highlightID string) error {
+	wrapped := &TodoListWithMessage{
+		Message:     message,
+		MessageType: messageType,
+		Todos:       todos,
+		TotalCount:  totalCount,
+		DoneCount:   doneCount,
+		HighlightID: highlightID,
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
+	if err != nil {
+		return fmt.Errorf("failed to render todo command: %w", err)
+	}
+	_, err = fmt.Fprintln(r.Writer, output)
+	return err
+}
+
 // formatMultilineText formats text with newlines, indenting subsequent lines
 func formatMultilineText(text string, baseIndent string, columnWidth int) string {
 	lines := strings.Split(text, "\n")
@@ -255,54 +273,34 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 
 // RenderAdd renders the add command result using lipbalm
 func (r *LipbamlRenderer) RenderAdd(result *too.AddResult) error {
-	// For short mode, just show the message
+	message := fmt.Sprintf("Added todo #%s: %s", result.PositionPath, result.Todo.Text)
+	
+	// For short mode, just show the message without todos
 	if result.Mode == "short" {
-		wrapped := &TodoListWithMessage{
-			Message:     fmt.Sprintf("Added todo #%s: %s", result.PositionPath, result.Todo.Text),
-			MessageType: "success",
-		}
-		output, err := r.renderTemplate("todo_list", wrapped)
-		if err != nil {
-			return fmt.Errorf("failed to render add result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.Writer, output)
-		return err
+		return r.renderTodoCommand(message, "success", nil, 0, 0, "")
 	}
 	
 	// For long mode, show message + todo list with highlight
-	wrapped := &TodoListWithMessage{
-		Message:     fmt.Sprintf("Added todo #%s: %s", result.PositionPath, result.Todo.Text),
-		MessageType: "success",
-		Todos:       result.AllTodos,
-		TotalCount:  result.TotalCount,
-		DoneCount:   result.DoneCount,
-		HighlightID: result.Todo.UID,
-	}
-	output, err := r.renderTemplate("todo_list", wrapped)
-	if err != nil {
-		return fmt.Errorf("failed to render add result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		message,
+		"success",
+		result.AllTodos,
+		result.TotalCount,
+		result.DoneCount,
+		result.Todo.UID,
+	)
 }
 
 // RenderModify renders the modify command result using lipbalm
 func (r *LipbamlRenderer) RenderModify(result *too.ModifyResult) error {
-	// Use list rendering with highlight on modified todo
-	wrapped := &TodoListWithMessage{
-		Message:     fmt.Sprintf("Modified todo: %s", result.Todo.Text),
-		MessageType: "info",
-		Todos:       result.AllTodos,
-		TotalCount:  result.TotalCount,
-		DoneCount:   result.DoneCount,
-		HighlightID: result.Todo.UID,
-	}
-	output, err := r.renderTemplate("todo_list", wrapped)
-	if err != nil {
-		return fmt.Errorf("failed to render modify result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		fmt.Sprintf("Modified todo: %s", result.Todo.Text),
+		"info",
+		result.AllTodos,
+		result.TotalCount,
+		result.DoneCount,
+		result.Todo.UID,
+	)
 }
 
 // RenderInit renders the init command result using lipbalm
@@ -325,19 +323,14 @@ func (r *LipbamlRenderer) RenderClean(result *too.CleanResult) error {
 		messageType = "warning"
 	}
 	
-	wrapped := &TodoListWithMessage{
-		Message:     message,
-		MessageType: messageType,
-		Todos:       result.ActiveTodos,
-		TotalCount:  result.ActiveCount,
-		DoneCount:   0, // After clean, no done todos remain
-	}
-	output, err := r.renderTemplate("todo_list", wrapped)
-	if err != nil {
-		return fmt.Errorf("failed to render clean result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		message,
+		messageType,
+		result.ActiveTodos,
+		result.ActiveCount,
+		0, // After clean, no done todos remain
+		"", // No highlight
+	)
 }
 
 // RenderSearch renders the search command result using lipbalm
@@ -356,73 +349,50 @@ func (r *LipbamlRenderer) RenderSearch(result *too.SearchResult) error {
 		messageType = "warning"
 	}
 	
-	wrapped := &TodoListWithMessage{
-		Message:     message,
-		MessageType: messageType,
-		Todos:       result.MatchedTodos,
-		TotalCount:  result.TotalCount,
-		DoneCount:   0, // Search doesn't track done count separately
-	}
-	output, err := r.renderTemplate("todo_list", wrapped)
-	if err != nil {
-		return fmt.Errorf("failed to render search result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		message,
+		messageType,
+		result.MatchedTodos,
+		result.TotalCount,
+		0, // Search doesn't track done count separately
+		"", // No highlight
+	)
 }
 
 // RenderList renders the list command result using lipbalm
 func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
-	// Wrap ListResult to work with the enhanced todo_list template
-	wrapped := &TodoListWithMessage{
-		Todos:      result.Todos,
-		TotalCount: result.TotalCount,
-		DoneCount:  result.DoneCount,
-		// No message for basic list
-	}
-	output, err := r.renderTemplate("todo_list", wrapped)
-	if err != nil {
-		return fmt.Errorf("failed to render list: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		"", // No message for basic list
+		"",
+		result.Todos,
+		result.TotalCount,
+		result.DoneCount,
+		"", // No highlight
+	)
 }
 
 // RenderComplete renders the complete command results using lipbalm
 func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
 	for _, result := range results {
+		message := fmt.Sprintf("✓ Completed: %s", result.Todo.Text)
+		
 		// For short mode, just show the message
 		if result.Mode == "short" {
-			wrapped := &TodoListWithMessage{
-				Message:     fmt.Sprintf("✓ Completed: %s", result.Todo.Text),
-				MessageType: "success",
-			}
-			output, err := r.renderTemplate("todo_list", wrapped)
-			if err != nil {
-				return fmt.Errorf("failed to render complete result: %w", err)
-			}
-			_, err = fmt.Fprintln(r.Writer, output)
-			if err != nil {
+			if err := r.renderTodoCommand(message, "success", nil, 0, 0, ""); err != nil {
 				return err
 			}
 			continue
 		}
 		
 		// For long mode, show message + todo list with highlight
-		wrapped := &TodoListWithMessage{
-			Message:     fmt.Sprintf("✓ Completed: %s", result.Todo.Text),
-			MessageType: "success",
-			Todos:       result.AllTodos,
-			TotalCount:  result.TotalCount,
-			DoneCount:   result.DoneCount,
-			HighlightID: result.Todo.UID,
-		}
-		output, err := r.renderTemplate("todo_list", wrapped)
-		if err != nil {
-			return fmt.Errorf("failed to render complete result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.Writer, output)
-		if err != nil {
+		if err := r.renderTodoCommand(
+			message,
+			"success",
+			result.AllTodos,
+			result.TotalCount,
+			result.DoneCount,
+			result.Todo.UID,
+		); err != nil {
 			return err
 		}
 	}
@@ -432,21 +402,14 @@ func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
 // RenderReopen renders the reopen command results using lipbalm
 func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
 	for _, result := range results {
-		// Use list rendering with highlight on reopened todo
-		wrapped := &TodoListWithMessage{
-			Message:     fmt.Sprintf("○ Reopened: %s", result.Todo.Text),
-			MessageType: "warning",
-			Todos:       result.AllTodos,
-			TotalCount:  result.TotalCount,
-			DoneCount:   result.DoneCount,
-			HighlightID: result.Todo.UID,
-		}
-		output, err := r.renderTemplate("todo_list", wrapped)
-		if err != nil {
-			return fmt.Errorf("failed to render reopen result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.Writer, output)
-		if err != nil {
+		if err := r.renderTodoCommand(
+			fmt.Sprintf("○ Reopened: %s", result.Todo.Text),
+			"warning",
+			result.AllTodos,
+			result.TotalCount,
+			result.DoneCount,
+			result.Todo.UID,
+		); err != nil {
 			return err
 		}
 	}
@@ -455,21 +418,14 @@ func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
 
 // RenderMove renders the move command result using lipbalm
 func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
-	// Use list rendering with highlight on moved todo
-	wrapped := &TodoListWithMessage{
-		Message:     fmt.Sprintf("Moved todo from %s to %s: %s", result.OldPath, result.NewPath, result.Todo.Text),
-		MessageType: "success",
-		Todos:       result.AllTodos,
-		TotalCount:  result.TotalCount,
-		DoneCount:   result.DoneCount,
-		HighlightID: result.Todo.UID,
-	}
-	output, err := r.renderTemplate("todo_list", wrapped)
-	if err != nil {
-		return fmt.Errorf("failed to render move result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		fmt.Sprintf("Moved todo from %s to %s: %s", result.OldPath, result.NewPath, result.Todo.Text),
+		"success",
+		result.AllTodos,
+		result.TotalCount,
+		result.DoneCount,
+		result.Todo.UID,
+	)
 }
 
 // RenderDataPath renders the datapath command result using lipbalm
