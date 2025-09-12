@@ -2,8 +2,12 @@
 <warning>No finished todos to clean</warning>
 {{- else -}}
 <success>Removed {{.RemovedCount}} finished todo(s)</success>
-{{- range .RemovedTodos }}
-  - {{.Text}}
-{{- end }}
-{{- end }}
-<count>{{.ActiveCount}} active todo(s) remaining</count>
+{{- end -}}
+{{- if .ActiveTodos }}
+
+{{renderNestedTodos .ActiveTodos "" 0 -}}
+<count>{{.ActiveCount}} todo(s), 0 done</count>
+{{- else }}
+
+<warning>No todos remaining</warning>
+{{- end -}}

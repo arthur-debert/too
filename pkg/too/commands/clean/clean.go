@@ -18,6 +18,9 @@ type Result struct {
 	RemovedCount int
 	RemovedTodos []*models.IDMTodo
 	ActiveCount  int
+	ActiveTodos  []*models.IDMTodo // Remaining active todos for display
+	TotalCount   int                // Total todos before clean
+	DoneCount    int                // Done todos before clean
 }
 
 // Execute removes finished todos from the collection using the pure IDM manager.
@@ -35,6 +38,9 @@ func Execute(opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to create pure IDM manager: %w", err)
 	}
 
+	// Get counts before clean
+	totalCount, doneCount := manager.CountTodos()
+
 	// Use the manager's integrated clean operation
 	removedTodos, activeCount, err := manager.CleanFinishedTodos()
 	if err != nil {
@@ -46,10 +52,18 @@ func Execute(opts Options) (*Result, error) {
 		return nil, fmt.Errorf("failed to save collection after clean: %w", err)
 	}
 
+	// Get remaining active todos for display
+	activeTodos := manager.ListActive()
+	// Attach active-only position paths for consecutive numbering
+	manager.AttachActiveOnlyPositionPaths(activeTodos)
+
 	result := &Result{
 		RemovedCount: len(removedTodos),
 		RemovedTodos: removedTodos,
 		ActiveCount:  activeCount,
+		ActiveTodos:  activeTodos,
+		TotalCount:   totalCount,
+		DoneCount:    doneCount,
 	}
 
 	logger.Info().
