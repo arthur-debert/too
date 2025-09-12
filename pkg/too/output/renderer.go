@@ -44,46 +44,8 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	}
 	lipbalm.SetDefaultRenderer(lipglossRenderer)
 
-	// Define the style map with semantic names
-	styleMap := lipbalm.StyleMap{
-		// Status and result styles
-		"success": lipgloss.NewStyle().
-			Foreground(styles.SUCCESS_COLOR),
-		"error": lipgloss.NewStyle().
-			Foreground(styles.ERROR_COLOR).
-			Bold(true),
-		"warning": lipgloss.NewStyle().
-			Foreground(styles.WARNING_COLOR),
-		"info": lipgloss.NewStyle().
-			Foreground(styles.INFO_COLOR),
-
-		// Todo state styles
-		"todo-done": lipgloss.NewStyle().
-			Foreground(styles.SUCCESS_COLOR).
-			Bold(true),
-		"todo-pending": lipgloss.NewStyle().
-			Foreground(styles.ERROR_COLOR).
-			Bold(true),
-
-		// UI element styles
-		"position": lipgloss.NewStyle().
-			Foreground(styles.SUBDUED_TEXT),
-		"muted": lipgloss.NewStyle().
-			Foreground(styles.VERY_FAINT_TEXT).
-			Faint(true),
-		"highlighted-todo": lipgloss.NewStyle().
-			Bold(true),
-		"subdued": lipgloss.NewStyle().
-			Foreground(styles.SUBDUED_TEXT),
-		"accent": lipgloss.NewStyle().
-			Foreground(styles.ACCENT_COLOR),
-		"count": lipgloss.NewStyle().
-			Foreground(styles.INFO_COLOR),
-		"label": lipgloss.NewStyle().
-			Foreground(styles.SUBDUED_TEXT),
-		"value": lipgloss.NewStyle().
-			Foreground(styles.PRIMARY_TEXT),
-	}
+	// Get the style map from the styles package
+	styleMap := styles.GetLipbalmStyleMap()
 
 	r := &LipbamlRenderer{
 		Writer:    w,
