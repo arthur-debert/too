@@ -20,15 +20,10 @@ type mockFormatter struct {
 func (m *mockFormatter) Name() string        { return m.name }
 func (m *mockFormatter) Description() string { return m.desc }
 
-func (m *mockFormatter) RenderAdd(w io.Writer, result *too.AddResult) error               { return nil }
-func (m *mockFormatter) RenderModify(w io.Writer, result *too.ModifyResult) error         { return nil }
+func (m *mockFormatter) RenderChange(w io.Writer, result *too.ChangeResult) error         { return nil }
 func (m *mockFormatter) RenderInit(w io.Writer, result *too.InitResult) error             { return nil }
-func (m *mockFormatter) RenderClean(w io.Writer, result *too.CleanResult) error           { return nil }
 func (m *mockFormatter) RenderSearch(w io.Writer, result *too.SearchResult) error         { return nil }
 func (m *mockFormatter) RenderList(w io.Writer, result *too.ListResult) error             { return nil }
-func (m *mockFormatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error  { return nil }
-func (m *mockFormatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error      { return nil }
-func (m *mockFormatter) RenderMove(w io.Writer, result *too.MoveResult) error             { return nil }
 func (m *mockFormatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error { return nil }
 func (m *mockFormatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error   { return nil }
 func (m *mockFormatter) RenderError(w io.Writer, err error) error                         { return nil }

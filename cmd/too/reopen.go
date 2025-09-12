@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +35,28 @@ var reopenCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return renderer.RenderReopen(results)
+		
+		if len(results) == 0 {
+			return nil
+		}
+		
+		// Collect all affected todos
+		affectedTodos := make([]*models.IDMTodo, len(results))
+		for i, result := range results {
+			affectedTodos[i] = result.Todo
+		}
+		
+		// Use data from the last result
+		lastResult := results[len(results)-1]
+		changeResult := too.NewChangeResult(
+			"reopened",
+			affectedTodos,
+			lastResult.AllTodos,
+			lastResult.TotalCount,
+			lastResult.DoneCount,
+		)
+		
+		return renderer.RenderChange(changeResult)
 	},
 }
 

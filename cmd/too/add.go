@@ -6,6 +6,7 @@ import (
 
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/editor"
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
 )
@@ -140,10 +141,26 @@ var addCmd = &cobra.Command{
 				return err
 			}
 
-			// For now, render each result individually
-			// TODO: Create a batch render method
-			for _, result := range results {
-				if err := renderer.RenderAdd(result); err != nil {
+			// Convert to ChangeResult for rendering
+			if len(results) > 0 {
+				// Collect all affected todos
+				affectedTodos := make([]*models.IDMTodo, len(results))
+				for i, result := range results {
+					result.Todo.PositionPath = result.PositionPath
+					affectedTodos[i] = result.Todo
+				}
+				
+				// Use data from the last result
+				lastResult := results[len(results)-1]
+				changeResult := too.NewChangeResult(
+					"add",
+					affectedTodos,
+					lastResult.AllTodos,
+					lastResult.TotalCount,
+					lastResult.DoneCount,
+				)
+				
+				if err := renderer.RenderChange(changeResult); err != nil {
 					return err
 				}
 			}
@@ -165,7 +182,18 @@ var addCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return renderer.RenderAdd(result)
+		
+		// Convert to ChangeResult
+		result.Todo.PositionPath = result.PositionPath
+		changeResult := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{result.Todo},
+			result.AllTodos,
+			result.TotalCount,
+			result.DoneCount,
+		)
+		
+		return renderer.RenderChange(changeResult)
 	},
 }
 

@@ -20,20 +20,26 @@ func TestMarkdownFormatter(t *testing.T) {
 		assert.Equal(t, "Markdown output for documentation and notes", formatter.Description())
 	})
 
-	t.Run("RenderAdd", func(t *testing.T) {
+	t.Run("RenderChange", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				Text:     "Test todo",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		todo := &models.IDMTodo{
+			Text:     "Test todo",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
 		output := buf.String()
-		assert.Contains(t, output, "Added todo: [ ] Test todo")
+		assert.Contains(t, output, "Added 1 todo(s)")
+		assert.Contains(t, output, "1. [ ] Test todo")
 	})
 
 	t.Run("RenderList with nested todos", func(t *testing.T) {
@@ -105,20 +111,25 @@ func TestMarkdownFormatter(t *testing.T) {
 		assert.Equal(t, "No todos\n", buf.String())
 	})
 
-	t.Run("RenderComplete", func(t *testing.T) {
+	t.Run("RenderChange - Complete", func(t *testing.T) {
 		var buf bytes.Buffer
-		results := []*too.CompleteResult{
-			{
-				Todo: &models.IDMTodo{
-					Text:     "Completed todo",
-					Statuses: map[string]string{"completion": string(models.StatusDone)},
-				},
-			},
+		todo := &models.IDMTodo{
+			Text:     "Completed todo",
+			Statuses: map[string]string{"completion": string(models.StatusDone)},
 		}
+		result := too.NewChangeResult(
+			"completed",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			1,
+		)
 
-		err := formatter.RenderComplete(&buf, results)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
-		assert.Contains(t, buf.String(), "Completed todo: [x] Completed todo")
+		output := buf.String()
+		assert.Contains(t, output, "Completed 1 todo(s)")
+		assert.Contains(t, output, "[x] Completed todo")
 	})
 
 	t.Run("RenderSearch", func(t *testing.T) {
@@ -243,22 +254,27 @@ func TestMarkdownFormatter(t *testing.T) {
 		assert.Contains(t, output, "multiple lines")
 	})
 
-	t.Run("RenderAdd with multiline todo", func(t *testing.T) {
+	t.Run("RenderChange with multiline todo", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				Text:     "New todo with\nmultiple lines",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		todo := &models.IDMTodo{
+			Text:     "New todo with\nmultiple lines",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
 		output := buf.String()
 		// For single-line output commands, we expect the newlines to be preserved
 		// but the helper function should format them correctly
-		assert.Contains(t, output, "Added todo:")
+		assert.Contains(t, output, "Added 1 todo(s)")
 		assert.Contains(t, output, "New todo with")
 		assert.Contains(t, output, "multiple lines")
 	})

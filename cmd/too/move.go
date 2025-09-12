@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/models"
 )
 
 var moveCmd = &cobra.Command{
@@ -32,7 +33,19 @@ var moveCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return renderer.RenderMove(result)
+		
+		// Set the new position path on the todo
+		result.Todo.PositionPath = result.NewPath
+		
+		changeResult := too.NewChangeResult(
+			"moved",
+			[]*models.IDMTodo{result.Todo},
+			result.AllTodos,
+			result.TotalCount,
+			result.DoneCount,
+		)
+		
+		return renderer.RenderChange(changeResult)
 	},
 }
 

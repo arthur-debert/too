@@ -82,24 +82,33 @@ func (f *formatter) renderHierarchicalTodos(todos []*output.HierarchicalTodo, in
 	return result.String()
 }
 
-// RenderAdd renders the add command result as Markdown
-func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
-	checkbox := "[ ]"
-	if result.Todo.GetStatus() == models.StatusDone {
-		checkbox = "[x]"
+// RenderChange renders any command that changes todos as Markdown
+func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
+	// Show affected todos summary
+	if len(result.AffectedTodos) > 0 {
+		verb := result.Command
+		if !strings.HasSuffix(verb, "ed") {
+			verb = verb + "ed"
+		}
+		_, err := fmt.Fprintf(w, "%s %d todo(s)\n\n", strings.Title(verb), len(result.AffectedTodos))
+		if err != nil {
+			return err
+		}
 	}
-	_, err := fmt.Fprintf(w, "Added todo: %s %s\n", checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
-	return err
-}
-
-// RenderModify renders the modify command result as Markdown
-func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
-	checkbox := "[ ]"
-	if result.Todo.GetStatus() == models.StatusDone {
-		checkbox = "[x]"
+	
+	// Render all todos
+	if len(result.AllTodos) > 0 {
+		_, err := fmt.Fprint(w, f.renderTodos(result.AllTodos, 0))
+		if err != nil {
+			return err
+		}
+		
+		// Add summary
+		_, err = fmt.Fprintf(w, "\n---\n%d todo(s), %d done\n", result.TotalCount, result.DoneCount)
+		return err
 	}
-	_, err := fmt.Fprintf(w, "Modified todo: %s %s\n", checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
-	return err
+	
+	return nil
 }
 
 // RenderInit renders the init command result as Markdown
@@ -108,11 +117,6 @@ func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
 	return err
 }
 
-// RenderClean renders the clean command result as Markdown
-func (f *formatter) RenderClean(w io.Writer, result *too.CleanResult) error {
-	_, err := fmt.Fprintf(w, "Removed %d completed todo(s)\n", result.RemovedCount)
-	return err
-}
 
 // RenderSearch renders the search command result as Markdown
 func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
@@ -151,33 +155,6 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 	return err
 }
 
-// RenderComplete renders the complete command results as Markdown
-func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error {
-	for _, result := range results {
-		_, err := fmt.Fprintf(w, "Completed todo: [x] %s\n", formatMultilineMarkdown(result.Todo.Text, ""))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// RenderReopen renders the reopen command results as Markdown
-func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error {
-	for _, result := range results {
-		_, err := fmt.Fprintf(w, "Reopened todo: [ ] %s\n", formatMultilineMarkdown(result.Todo.Text, ""))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// RenderMove renders the move command result as Markdown
-func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
-	_, err := fmt.Fprintf(w, "Moved todo from %s to %s\n", result.OldPath, result.NewPath)
-	return err
-}
 
 // RenderSwap renders the swap command result as Markdown
 

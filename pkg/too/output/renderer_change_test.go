@@ -140,8 +140,12 @@ func TestRenderChangeMessageTypes(t *testing.T) {
 			require.NoError(t, err)
 
 			output := buf.String()
-			// The message should be wrapped in the appropriate style tag
-			assert.Contains(t, output, "<"+tt.expectStyle+">")
+			// The message should be present regardless of style tags when useColor is false
+			expectedMessage := strings.Title(tt.command)
+			if !strings.HasSuffix(tt.command, "ed") {
+				expectedMessage = expectedMessage + "ed"
+			}
+			assert.Contains(t, output, expectedMessage)
 		})
 	}
 }

@@ -34,13 +34,8 @@ func (f *formatter) encode(w io.Writer, v interface{}) error {
 	return encoder.Encode(v)
 }
 
-// RenderAdd renders the add command result as JSON
-func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
-	return f.encode(w, result)
-}
-
-// RenderModify renders the modify command result as JSON
-func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
+// RenderChange renders any command that changes todos as JSON
+func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
 	return f.encode(w, result)
 }
 
@@ -49,10 +44,6 @@ func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
 	return f.encode(w, result)
 }
 
-// RenderClean renders the clean command result as JSON
-func (f *formatter) RenderClean(w io.Writer, result *too.CleanResult) error {
-	return f.encode(w, result)
-}
 
 // RenderSearch renders the search command result as JSON
 func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
@@ -64,20 +55,6 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 	return f.encode(w, result)
 }
 
-// RenderComplete renders the complete command results as JSON
-func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error {
-	return f.encode(w, results)
-}
-
-// RenderReopen renders the reopen command results as JSON
-func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error {
-	return f.encode(w, results)
-}
-
-// RenderMove renders the move command result as JSON
-func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
-	return f.encode(w, result)
-}
 
 // RenderSwap renders the swap command result as JSON
 

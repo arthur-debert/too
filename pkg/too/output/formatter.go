@@ -13,16 +13,11 @@ type Formatter interface {
 	Name() string        // The format identifier used in CLI (e.g., "json", "term")
 	Description() string // Human-readable description for help text
 
-	// Render methods for each command result type
-	RenderAdd(w io.Writer, result *too.AddResult) error
-	RenderModify(w io.Writer, result *too.ModifyResult) error
-	RenderInit(w io.Writer, result *too.InitResult) error
-	RenderClean(w io.Writer, result *too.CleanResult) error
-	RenderSearch(w io.Writer, result *too.SearchResult) error
-	RenderList(w io.Writer, result *too.ListResult) error
-	RenderComplete(w io.Writer, results []*too.CompleteResult) error
-	RenderReopen(w io.Writer, results []*too.ReopenResult) error
-	RenderMove(w io.Writer, result *too.MoveResult) error
+	// Render methods for different result types
+	RenderChange(w io.Writer, result *too.ChangeResult) error    // For all todo-modifying commands
+	RenderInit(w io.Writer, result *too.InitResult) error        // Special case: no todos
+	RenderSearch(w io.Writer, result *too.SearchResult) error    // Special case: filtered view
+	RenderList(w io.Writer, result *too.ListResult) error        // Special case: no message
 	RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error
 	RenderFormats(w io.Writer, result *too.ListFormatsResult) error
 	RenderError(w io.Writer, err error) error

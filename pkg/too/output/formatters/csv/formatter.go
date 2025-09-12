@@ -91,26 +91,30 @@ func (f *formatter) flattenHierarchicalTodos(todos []*output.HierarchicalTodo, p
 	return rows
 }
 
-// RenderAdd renders the add command result as CSV
-func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
-	headers := []string{"id", "parent", "position", "text", "status", "modified"}
-	rows := f.flattenTodos([]*models.IDMTodo{result.Todo}, "")
-	return f.writeCSV(w, headers, rows)
-}
-
-// RenderModify renders the modify command result as CSV
-func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
-	headers := []string{"id", "parent", "position", "text", "status", "modified", "old_text"}
+// RenderChange renders any command that changes todos as CSV
+func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
+	// Write summary
+	headers := []string{"command", "affected_count", "total_count", "done_count"}
 	rows := [][]string{{
-		result.Todo.UID,
-		"",
-		"1", // For single todo output, position is always 1
-		result.Todo.Text,
-		string(result.Todo.GetStatus()),
-		result.Todo.Modified.Format("2006-01-02T15:04:05"),
-		result.OldText,
+		result.Command,
+		fmt.Sprintf("%d", len(result.AffectedTodos)),
+		fmt.Sprintf("%d", result.TotalCount),
+		fmt.Sprintf("%d", result.DoneCount),
 	}}
-	return f.writeCSV(w, headers, rows)
+	
+	if err := f.writeCSV(w, headers, rows); err != nil {
+		return err
+	}
+	
+	// Write a blank line
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	
+	// Write all todos
+	todoHeaders := []string{"id", "parent", "position", "text", "status", "modified"}
+	todoRows := f.flattenTodos(result.AllTodos, "")
+	return f.writeCSV(w, todoHeaders, todoRows)
 }
 
 // RenderInit renders the init command result as CSV
@@ -120,32 +124,6 @@ func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
 	return f.writeCSV(w, headers, rows)
 }
 
-// RenderClean renders the clean command result as CSV
-func (f *formatter) RenderClean(w io.Writer, result *too.CleanResult) error {
-	headers := []string{"operation", "removed_count", "active_count"}
-	rows := [][]string{{
-		"clean",
-		fmt.Sprintf("%d", result.RemovedCount),
-		fmt.Sprintf("%d", result.ActiveCount),
-	}}
-
-	// If there are removed todos, add them
-	if len(result.RemovedTodos) > 0 {
-		if err := f.writeCSV(w, headers, rows); err != nil {
-			return err
-		}
-		// Write a blank line
-		if _, err := fmt.Fprintln(w); err != nil {
-			return err
-		}
-		// Write removed todos
-		todoHeaders := []string{"id", "parent", "position", "text", "status", "modified"}
-		todoRows := f.flattenTodos(result.RemovedTodos, "")
-		return f.writeCSV(w, todoHeaders, todoRows)
-	}
-
-	return f.writeCSV(w, headers, rows)
-}
 
 // RenderSearch renders the search command result as CSV
 func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
@@ -201,44 +179,6 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 	return f.writeCSV(w, headers, rows)
 }
 
-// RenderComplete renders the complete command results as CSV
-func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error {
-	headers := []string{"id", "parent", "position", "text", "status", "modified"}
-	var rows [][]string
-
-	for _, result := range results {
-		todoRows := f.flattenTodos([]*models.IDMTodo{result.Todo}, "")
-		rows = append(rows, todoRows...)
-	}
-
-	return f.writeCSV(w, headers, rows)
-}
-
-// RenderReopen renders the reopen command results as CSV
-func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error {
-	headers := []string{"id", "parent", "position", "text", "status", "modified"}
-	var rows [][]string
-
-	for _, result := range results {
-		todoRows := f.flattenTodos([]*models.IDMTodo{result.Todo}, "")
-		rows = append(rows, todoRows...)
-	}
-
-	return f.writeCSV(w, headers, rows)
-}
-
-// RenderMove renders the move command result as CSV
-func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
-	headers := []string{"id", "text", "old_path", "new_path", "status"}
-	rows := [][]string{{
-		result.Todo.UID,
-		result.Todo.Text,
-		result.OldPath,
-		result.NewPath,
-		string(result.Todo.GetStatus()),
-	}}
-	return f.writeCSV(w, headers, rows)
-}
 
 // RenderDataPath renders the datapath command result as CSV
 func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {

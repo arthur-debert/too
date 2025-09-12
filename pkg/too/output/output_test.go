@@ -18,13 +18,8 @@ type mockTermFormatter struct{}
 func (f *mockTermFormatter) Name() string        { return "term" }
 func (f *mockTermFormatter) Description() string { return "Mock terminal formatter" }
 
-func (f *mockTermFormatter) RenderAdd(w io.Writer, result *too.AddResult) error {
-	_, err := w.Write([]byte("mock add output"))
-	return err
-}
-
-func (f *mockTermFormatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
-	_, err := w.Write([]byte("mock modify output"))
+func (f *mockTermFormatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
+	_, err := w.Write([]byte("mock change output"))
 	return err
 }
 
@@ -33,10 +28,6 @@ func (f *mockTermFormatter) RenderInit(w io.Writer, result *too.InitResult) erro
 	return err
 }
 
-func (f *mockTermFormatter) RenderClean(w io.Writer, result *too.CleanResult) error {
-	_, err := w.Write([]byte("mock clean output"))
-	return err
-}
 
 func (f *mockTermFormatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
 	_, err := w.Write([]byte("mock search output"))
@@ -48,20 +39,6 @@ func (f *mockTermFormatter) RenderList(w io.Writer, result *too.ListResult) erro
 	return err
 }
 
-func (f *mockTermFormatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error {
-	_, err := w.Write([]byte("mock complete output"))
-	return err
-}
-
-func (f *mockTermFormatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error {
-	_, err := w.Write([]byte("mock reopen output"))
-	return err
-}
-
-func (f *mockTermFormatter) RenderMove(w io.Writer, result *too.MoveResult) error {
-	_, err := w.Write([]byte("mock move output"))
-	return err
-}
 
 
 func (f *mockTermFormatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
@@ -130,12 +107,16 @@ func TestRendererMethods(t *testing.T) {
 	buf := &bytes.Buffer{}
 	renderer := NewRenderer(buf)
 
-	t.Run("RenderAdd", func(t *testing.T) {
+	t.Run("RenderChange", func(t *testing.T) {
 		todo := models.NewIDMTodo("Test todo", "")
-		result := &too.AddResult{
-			Todo: todo,
-		}
-		err := renderer.RenderAdd(result)
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
+		err := renderer.RenderChange(result)
 		require.NoError(t, err)
 		// Check that something was written
 		assert.NotEmpty(t, buf.String())

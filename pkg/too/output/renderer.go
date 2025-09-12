@@ -252,32 +252,6 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 	return lipbalm.ExpandTags(buf.String(), r.styles)
 }
 
-// RenderAdd renders the add command result using lipbalm
-func (r *LipbamlRenderer) RenderAdd(result *too.AddResult) error {
-	// Convert to ChangeResult
-	result.Todo.PositionPath = result.PositionPath
-	changeResult := too.NewChangeResult(
-		"added",
-		[]*models.IDMTodo{result.Todo},
-		result.AllTodos,
-		result.TotalCount,
-		result.DoneCount,
-	)
-	return r.RenderChange(changeResult)
-}
-
-// RenderModify renders the modify command result using lipbalm
-func (r *LipbamlRenderer) RenderModify(result *too.ModifyResult) error {
-	// Convert to ChangeResult
-	changeResult := too.NewChangeResult(
-		"modified",
-		[]*models.IDMTodo{result.Todo},
-		result.AllTodos,
-		result.TotalCount,
-		result.DoneCount,
-	)
-	return r.RenderChange(changeResult)
-}
 
 // RenderInit renders the init command result using lipbalm
 func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
@@ -290,17 +264,6 @@ func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
 	return err
 }
 
-// RenderClean renders the clean command result using lipbalm
-func (r *LipbamlRenderer) RenderClean(result *too.CleanResult) error {
-	changeResult := too.NewChangeResult(
-		"cleaned",
-		result.RemovedTodos,
-		result.ActiveTodos,
-		result.ActiveCount,
-		0, // After clean, no done todos remain
-	)
-	return r.RenderChange(changeResult)
-}
 
 // RenderSearch renders the search command result using lipbalm
 func (r *LipbamlRenderer) RenderSearch(result *too.SearchResult) error {
@@ -340,70 +303,8 @@ func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
 	)
 }
 
-// RenderComplete renders the complete command results using lipbalm
-func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
-	if len(results) == 0 {
-		return nil
-	}
-	
-	// Collect all affected todos
-	affectedTodos := make([]*models.IDMTodo, len(results))
-	for i, result := range results {
-		affectedTodos[i] = result.Todo
-	}
-	
-	// Use data from the last result (they all have the same AllTodos after completion)
-	lastResult := results[len(results)-1]
-	changeResult := too.NewChangeResult(
-		"completed",
-		affectedTodos,
-		lastResult.AllTodos,
-		lastResult.TotalCount,
-		lastResult.DoneCount,
-	)
-	
-	return r.RenderChange(changeResult)
-}
 
-// RenderReopen renders the reopen command results using lipbalm
-func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
-	if len(results) == 0 {
-		return nil
-	}
-	
-	// Collect all affected todos
-	affectedTodos := make([]*models.IDMTodo, len(results))
-	for i, result := range results {
-		affectedTodos[i] = result.Todo
-	}
-	
-	// Use data from the last result
-	lastResult := results[len(results)-1]
-	changeResult := too.NewChangeResult(
-		"reopened",
-		affectedTodos,
-		lastResult.AllTodos,
-		lastResult.TotalCount,
-		lastResult.DoneCount,
-	)
-	
-	return r.RenderChange(changeResult)
-}
 
-// RenderMove renders the move command result using lipbalm
-func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
-	// Set the new position path on the todo
-	result.Todo.PositionPath = result.NewPath
-	
-	changeResult := too.NewChangeResult(
-		"moved",
-		[]*models.IDMTodo{result.Todo},
-		result.AllTodos,
-		result.TotalCount,
-		result.DoneCount,
-	)
-	return r.RenderChange(changeResult)
-}
 
 // RenderDataPath renders the datapath command result using lipbalm
 func (r *LipbamlRenderer) RenderDataPath(result *too.ShowDataPathResult) error {

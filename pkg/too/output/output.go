@@ -48,25 +48,17 @@ func NewRendererWithFormat(format string, w io.Writer) (*Renderer, error) {
 	}, nil
 }
 
-// RenderAdd renders the add command result
-func (r *Renderer) RenderAdd(result *too.AddResult) error {
-	return r.formatter.RenderAdd(r.writer, result)
+// RenderChange renders any command that changes todos
+func (r *Renderer) RenderChange(result *too.ChangeResult) error {
+	return r.formatter.RenderChange(r.writer, result)
 }
 
-// RenderModify renders the modify command result
-func (r *Renderer) RenderModify(result *too.ModifyResult) error {
-	return r.formatter.RenderModify(r.writer, result)
-}
 
 // RenderInit renders the init command result
 func (r *Renderer) RenderInit(result *too.InitResult) error {
 	return r.formatter.RenderInit(r.writer, result)
 }
 
-// RenderClean renders the clean command result
-func (r *Renderer) RenderClean(result *too.CleanResult) error {
-	return r.formatter.RenderClean(r.writer, result)
-}
 
 // RenderSearch renders the search command result
 func (r *Renderer) RenderSearch(result *too.SearchResult) error {
@@ -78,20 +70,6 @@ func (r *Renderer) RenderList(result *too.ListResult) error {
 	return r.formatter.RenderList(r.writer, result)
 }
 
-// RenderComplete renders the complete command results
-func (r *Renderer) RenderComplete(results []*too.CompleteResult) error {
-	return r.formatter.RenderComplete(r.writer, results)
-}
-
-// RenderReopen renders the reopen command results
-func (r *Renderer) RenderReopen(results []*too.ReopenResult) error {
-	return r.formatter.RenderReopen(r.writer, results)
-}
-
-// RenderMove renders the move command result
-func (r *Renderer) RenderMove(result *too.MoveResult) error {
-	return r.formatter.RenderMove(r.writer, result)
-}
 
 // RenderDataPath renders the datapath command result
 func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {

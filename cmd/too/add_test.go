@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -284,7 +285,18 @@ func createTestRootCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return renderer.RenderAdd(result)
+			
+			// Convert to ChangeResult
+			result.Todo.PositionPath = result.PositionPath
+			changeResult := too.NewChangeResult(
+				"add",
+				[]*models.IDMTodo{result.Todo},
+				result.AllTodos,
+				result.TotalCount,
+				result.DoneCount,
+			)
+			
+			return renderer.RenderChange(changeResult)
 		},
 	}
 
