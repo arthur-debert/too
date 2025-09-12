@@ -248,15 +248,28 @@ func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*Hierarch
 		prefixLen := len(statusSymbol) + 1 + len(path) + 2 // symbol + space + path + ". "
 		formattedText := formatMultilineTextSimple(todo.Text, indent, prefixLen)
 
-		// Apply muted style if this is not the highlighted todo
-		if highlightID != "" && todo.UID != highlightID {
-			// For non-highlighted todos, wrap entire line in muted tag
-			result.WriteString(fmt.Sprintf("%s<muted>%s %s. %s</muted>\n",
-				indent, statusSymbol, path, formattedText))
+		// Determine style based on status
+		statusStyle := "todo-pending"
+		if todo.IDMTodo.GetStatus() == models.StatusDone {
+			statusStyle = "todo-done"
+		}
+
+		// Apply appropriate styling
+		if highlightID != "" {
+			// We have a highlighted item
+			if todo.UID == highlightID {
+				// This is the highlighted todo
+				result.WriteString(fmt.Sprintf("%s<highlighted-todo><%s>%s</%s> %s. %s</highlighted-todo>\n",
+					indent, statusStyle, statusSymbol, statusStyle, path, formattedText))
+			} else {
+				// This is not the highlighted todo - mute it
+				result.WriteString(fmt.Sprintf("%s<muted>%s %s. %s</muted>\n",
+					indent, statusSymbol, path, formattedText))
+			}
 		} else {
-			// For highlighted todo, wrap everything in highlighted-todo tag for bold
-			result.WriteString(fmt.Sprintf("%s<highlighted-todo>%s %s. %s</highlighted-todo>\n",
-				indent, statusSymbol, path, formattedText))
+			// No highlighting - normal rendering with colored status symbol
+			result.WriteString(fmt.Sprintf("%s<%s>%s</%s> %s. %s\n",
+				indent, statusStyle, statusSymbol, statusStyle, path, formattedText))
 		}
 
 		// Recursively render children
@@ -270,42 +283,7 @@ func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*Hierarch
 
 // renderHierarchicalTodos renders hierarchical todos without highlighting
 func (r *LipbamlRenderer) renderHierarchicalTodos(todos []*HierarchicalTodo, parentPath string, level int) string {
-	var result strings.Builder
-	for i, todo := range todos {
-		// Use array index + 1 as position
-		position := i + 1
-		path := parentPath
-		if path == "" {
-			path = fmt.Sprintf("%d", position)
-		} else {
-			path = fmt.Sprintf("%s.%d", parentPath, position)
-		}
-
-		// Render this todo with its path and indentation
-		indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
-		statusSymbol := getStatusSymbol(todo.IDMTodo, todo.Children)
-		
-		// Determine style based on status
-		statusStyle := "todo-pending"
-		if todo.IDMTodo.GetStatus() == models.StatusDone {
-			statusStyle = "todo-done"
-		}
-
-		// Calculate prefix length for multiline alignment
-		prefixLen := len(statusSymbol) + 1 + len(path) + 2 // symbol + space + path + ". "
-		formattedText := formatMultilineTextSimple(todo.Text, indent, prefixLen)
-		
-		// Render in the format: "○ 1.1. Todo text"
-		result.WriteString(fmt.Sprintf("%s<%s>%s</%s> %s. %s\n",
-			indent, statusStyle, statusSymbol, statusStyle, path, formattedText))
-
-		// Recursively render children
-		if len(todo.Children) > 0 {
-			childrenOutput := r.renderHierarchicalTodos(todo.Children, path, level+1)
-			result.WriteString(childrenOutput)
-		}
-	}
-	return result.String()
+	return r.renderHierarchicalTodosWithHighlight(todos, parentPath, level, "")
 }
 
 // renderTemplate renders a template with the given data
