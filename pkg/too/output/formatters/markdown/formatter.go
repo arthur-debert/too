@@ -51,14 +51,21 @@ func formatMultilineMarkdown(text string, indentStr string) string {
 }
 
 // renderTodos renders a list of todos as nested numbered lists
-func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
+func (f *formatter) renderTodos(todos []*models.IDMTodo, indent int) string {
+	// Build hierarchical structure
+	hierarchical := output.BuildHierarchy(todos)
+	return f.renderHierarchicalTodos(hierarchical, indent)
+}
+
+// renderHierarchicalTodos renders hierarchical todos
+func (f *formatter) renderHierarchicalTodos(todos []*output.HierarchicalTodo, indent int) string {
 	var result strings.Builder
 	indentStr := strings.Repeat("   ", indent) // 3 spaces per indent level
 
 	for i, todo := range todos {
 		// Format: "1. [x] Todo text" or "1. [ ] Todo text"
 		checkbox := "[ ]"
-		if todo.Status == models.StatusDone {
+		if todo.GetStatus() == models.StatusDone {
 			checkbox = "[x]"
 		}
 
@@ -67,8 +74,8 @@ func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
 		result.WriteString(fmt.Sprintf("%s%d. %s %s\n", indentStr, i+1, checkbox, formattedText))
 
 		// Render nested todos
-		if len(todo.Items) > 0 {
-			result.WriteString(f.renderTodos(todo.Items, indent+1))
+		if len(todo.Children) > 0 {
+			result.WriteString(f.renderHierarchicalTodos(todo.Children, indent+1))
 		}
 	}
 
@@ -78,20 +85,20 @@ func (f *formatter) renderTodos(todos []*models.Todo, indent int) string {
 // RenderAdd renders the add command result as Markdown
 func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
 	checkbox := "[ ]"
-	if result.Todo.Status == models.StatusDone {
+	if result.Todo.GetStatus() == models.StatusDone {
 		checkbox = "[x]"
 	}
-	_, err := fmt.Fprintf(w, "Added todo #%d: %s %s\n", result.Todo.Position, checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
+	_, err := fmt.Fprintf(w, "Added todo: %s %s\n", checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
 	return err
 }
 
 // RenderModify renders the modify command result as Markdown
 func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
 	checkbox := "[ ]"
-	if result.Todo.Status == models.StatusDone {
+	if result.Todo.GetStatus() == models.StatusDone {
 		checkbox = "[x]"
 	}
-	_, err := fmt.Fprintf(w, "Modified todo #%d: %s %s\n", result.Todo.Position, checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
+	_, err := fmt.Fprintf(w, "Modified todo: %s %s\n", checkbox, formatMultilineMarkdown(result.Todo.Text, ""))
 	return err
 }
 
@@ -147,7 +154,7 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 // RenderComplete renders the complete command results as Markdown
 func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error {
 	for _, result := range results {
-		_, err := fmt.Fprintf(w, "Completed todo #%d: [x] %s\n", result.Todo.Position, formatMultilineMarkdown(result.Todo.Text, ""))
+		_, err := fmt.Fprintf(w, "Completed todo: [x] %s\n", formatMultilineMarkdown(result.Todo.Text, ""))
 		if err != nil {
 			return err
 		}
@@ -158,7 +165,7 @@ func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) e
 // RenderReopen renders the reopen command results as Markdown
 func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error {
 	for _, result := range results {
-		_, err := fmt.Fprintf(w, "Reopened todo #%d: [ ] %s\n", result.Todo.Position, formatMultilineMarkdown(result.Todo.Text, ""))
+		_, err := fmt.Fprintf(w, "Reopened todo: [ ] %s\n", formatMultilineMarkdown(result.Todo.Text, ""))
 		if err != nil {
 			return err
 		}

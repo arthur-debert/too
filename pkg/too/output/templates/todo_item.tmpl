@@ -1,1 +1,1 @@
-<subdued>{{padPosition .Position}}</subdued> | {{if isDone .}}<todo-done>✓</todo-done>{{else}}<todo-pending>✕</todo-pending>{{end}} {{.Text}}
+{{if isDone .}}<todo-done>✓</todo-done>{{else}}<todo-pending>✕</todo-pending>{{end}} {{.Text}}

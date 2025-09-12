@@ -131,12 +131,9 @@ func TestRendererMethods(t *testing.T) {
 	renderer := NewRenderer(buf)
 
 	t.Run("RenderAdd", func(t *testing.T) {
+		todo := models.NewIDMTodo("Test todo", "")
 		result := &too.AddResult{
-			Todo: &models.Todo{
-				Position: 1,
-				Text:     "Test todo",
-				Status:   models.StatusPending,
-			},
+			Todo: todo,
 		}
 		err := renderer.RenderAdd(result)
 		require.NoError(t, err)
@@ -146,19 +143,11 @@ func TestRendererMethods(t *testing.T) {
 
 	t.Run("RenderList", func(t *testing.T) {
 		buf.Reset()
+		todo1 := models.NewIDMTodo("First todo", "")
+		todo2 := models.NewIDMTodo("Second todo", "")
+		todo2.Statuses["completion"] = string(models.StatusDone)
 		result := &too.ListResult{
-			Todos: []*models.Todo{
-				{
-					Position: 1,
-					Text:     "First todo",
-					Status:   models.StatusPending,
-				},
-				{
-					Position: 2,
-					Text:     "Second todo",
-					Status:   models.StatusDone,
-				},
-			},
+			Todos: []*models.IDMTodo{todo1, todo2},
 			TotalCount: 2,
 			DoneCount:  1,
 		}

@@ -14,50 +14,49 @@ type Options struct {
 
 // Result contains the result of the modify command
 type Result struct {
-	Todo    *models.Todo
+	Todo    *models.IDMTodo
 	OldText string
 	NewText string
 }
 
-// Execute modifies the text of an existing todo
+// Execute modifies the text of an existing todo using the pure IDM manager.
 func Execute(positionStr string, newText string, opts Options) (*Result, error) {
 	if newText == "" {
 		return nil, fmt.Errorf("new todo text cannot be empty")
 	}
 
-	s := store.NewStore(opts.CollectionPath)
+	idmStore := store.NewIDMStore(opts.CollectionPath)
 	
-	var result *Result
-	err := s.Update(func(collection *models.Collection) error {
-		// Create manager from collection for transaction-aware operations
-		manager, err := store.NewManagerFromCollection(collection)
-		if err != nil {
-			return fmt.Errorf("failed to create idm manager: %w", err)
-		}
-
-		uid, err := manager.Registry().ResolvePositionPath(store.RootScope, positionStr)
-		if err != nil {
-			return fmt.Errorf("failed to resolve todo position '%s': %w", positionStr, err)
-		}
-		todo := collection.FindItemByID(uid)
-		if todo == nil {
-			return fmt.Errorf("todo with ID '%s' not found", uid)
-		}
-
-		oldText := todo.Text
-		todo.Text = newText
-
-		result = &Result{
-			Todo:    todo,
-			OldText: oldText,
-			NewText: newText,
-		}
-		return nil
-	})
-
+	// Create pure IDM workflow manager
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
+		return nil, fmt.Errorf("failed to create pure IDM manager: %w", err)
+	}
+
+	// Resolve position to UID
+	uid, err := manager.ResolvePositionPath(store.RootScope, positionStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve todo position '%s': %w", positionStr, err)
+	}
+
+	// Find and modify the todo using PureIDMManager method
+	todo := manager.GetTodoByUID(uid)
+	if todo == nil {
+		return nil, fmt.Errorf("todo with UID '%s' not found", uid)
+	}
+
+	oldText := todo.Text
+	todo.Text = newText
+	todo.SetModified()
+
+	// Save the collection
+	if err := manager.Save(); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &Result{
+		Todo:    todo,
+		OldText: oldText,
+		NewText: newText,
+	}, nil
 }

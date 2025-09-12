@@ -4,11 +4,10 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too/models"
-	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // AssertTodoInList checks if a todo with the given text exists in the list.
-func AssertTodoInList(t *testing.T, todos []*models.Todo, expectedText string) {
+func AssertTodoInList(t *testing.T, todos []*models.IDMTodo, expectedText string) {
 	t.Helper()
 
 	for _, todo := range todos {
@@ -21,7 +20,7 @@ func AssertTodoInList(t *testing.T, todos []*models.Todo, expectedText string) {
 }
 
 // AssertTodoNotInList checks that a todo with the given text does not exist in the list.
-func AssertTodoNotInList(t *testing.T, todos []*models.Todo, unexpectedText string) {
+func AssertTodoNotInList(t *testing.T, todos []*models.IDMTodo, unexpectedText string) {
 	t.Helper()
 
 	for _, todo := range todos {
@@ -32,33 +31,21 @@ func AssertTodoNotInList(t *testing.T, todos []*models.Todo, unexpectedText stri
 	}
 }
 
-// AssertTodoCount checks the total and done counts from a FindResult.
-func AssertTodoCount(t *testing.T, result *store.FindResult, expectedTotal, expectedDone int) {
-	t.Helper()
-
-	if result.TotalCount != expectedTotal {
-		t.Errorf("expected total count %d, got %d", expectedTotal, result.TotalCount)
-	}
-
-	if result.DoneCount != expectedDone {
-		t.Errorf("expected done count %d, got %d", expectedDone, result.DoneCount)
-	}
-}
 
 // AssertTodoHasStatus checks that a todo has the expected status.
-func AssertTodoHasStatus(t *testing.T, todo *models.Todo, expectedStatus models.TodoStatus) {
+func AssertTodoHasStatus(t *testing.T, todo *models.IDMTodo, expectedStatus models.TodoStatus) {
 	t.Helper()
 
-	if todo.Status != expectedStatus {
-		t.Errorf("expected todo %q to have status %q, got %q", todo.Text, expectedStatus, todo.Status)
+	if todo.GetStatus() != expectedStatus {
+		t.Errorf("expected todo %q to have status %q, got %q", todo.Text, expectedStatus, todo.GetStatus())
 	}
 }
 
 // AssertCollectionSize checks that a collection has the expected number of todos.
-func AssertCollectionSize(t *testing.T, collection *models.Collection, expectedSize int) {
+func AssertCollectionSize(t *testing.T, collection *models.IDMCollection, expectedSize int) {
 	t.Helper()
 
-	actualSize := len(collection.Todos)
+	actualSize := len(collection.Items)
 	if actualSize != expectedSize {
 		t.Errorf("expected collection to have %d todos, got %d", expectedSize, actualSize)
 	}
@@ -66,11 +53,11 @@ func AssertCollectionSize(t *testing.T, collection *models.Collection, expectedS
 
 // AssertTodoByID finds a todo by ID and verifies it exists.
 // Returns the todo if found, allowing further assertions.
-func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo {
+func AssertTodoByID(t *testing.T, todos []*models.IDMTodo, id string) *models.IDMTodo {
 	t.Helper()
 
 	for _, todo := range todos {
-		if todo.ID == id {
+		if todo.UID == id {
 			return todo
 		}
 	}
@@ -81,16 +68,17 @@ func AssertTodoByID(t *testing.T, todos []*models.Todo, id string) *models.Todo 
 
 // AssertTodoByPosition finds a todo by position and verifies it exists.
 // Returns the todo if found, allowing further assertions.
-func AssertTodoByPosition(t *testing.T, todos []*models.Todo, position int) *models.Todo {
+// DEPRECATED: Position field has been removed. Use AssertTodoByIndex instead.
+func AssertTodoByPosition(t *testing.T, todos []*models.IDMTodo, position int) *models.IDMTodo {
 	t.Helper()
-
-	for _, todo := range todos {
-		if todo.Position == position {
-			return todo
-		}
+	// Since Position field is removed, we'll use array index as a fallback
+	// This maintains backward compatibility while tests are migrated
+	index := position - 1 // Convert 1-based position to 0-based index
+	if index >= 0 && index < len(todos) {
+		return todos[index]
 	}
 
-	t.Errorf("todo with position %d not found", position)
+	t.Errorf("todo at position %d (index %d) not found", position, index)
 	return nil
 }
 

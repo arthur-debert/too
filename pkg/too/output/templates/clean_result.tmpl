@@ -3,7 +3,7 @@
 {{- else -}}
 <success>Removed {{.RemovedCount}} finished todo(s)</success>
 {{- range .RemovedTodos }}
-  - <subdued>#{{.Position}}</subdued>: {{.Text}}
+  - {{.Text}}
 {{- end }}
 {{- end }}
 <count>{{.ActiveCount}} active todo(s) remaining</count>

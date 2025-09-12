@@ -59,3 +59,7 @@
 //	    return nil
 //	})
 package store
+
+// RootScope is the special scope identifier for the root of the todo tree.
+// It represents the top-level container for all todos in the IDM system.
+const RootScope = "root"

@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
@@ -16,7 +17,7 @@ type Options struct {
 // Result contains the result of the search command
 type Result struct {
 	Query        string
-	MatchedTodos []*models.Todo
+	MatchedTodos []*models.IDMTodo
 	TotalCount   int
 }
 
@@ -26,23 +27,37 @@ func Execute(query string, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("search query cannot be empty")
 	}
 
-	s := store.NewStore(opts.CollectionPath)
-
-	// Build query for Find API
-	q := store.Query{
-		TextContains:  &query,
-		CaseSensitive: opts.CaseSensitive,
-	}
-
-	// Get matching todos and counts using Find
-	findResult, err := s.Find(q)
+	// Create IDM store and manager
+	idmStore := store.NewIDMStore(opts.CollectionPath)
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
+	// Get all todos (both pending and done)
+	allTodos := manager.ListAll()
+	
+	// Search through todos
+	var matchedIDMTodos []*models.IDMTodo
+	searchQuery := query
+	if !opts.CaseSensitive {
+		searchQuery = strings.ToLower(query)
+	}
+	
+	for _, todo := range allTodos {
+		text := todo.Text
+		if !opts.CaseSensitive {
+			text = strings.ToLower(text)
+		}
+		
+		if strings.Contains(text, searchQuery) {
+			matchedIDMTodos = append(matchedIDMTodos, todo)
+		}
+	}
+	
 	return &Result{
 		Query:        query,
-		MatchedTodos: findResult.Todos,
-		TotalCount:   findResult.TotalCount,
+		MatchedTodos: matchedIDMTodos,
+		TotalCount:   len(allTodos), // Total count is all todos, not just matches
 	}, nil
 }

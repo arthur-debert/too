@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/arthur-debert/too/pkg/logging"
-	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/arthur-debert/too/pkg/too/models"
+	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/arthur-debert/too/pkg/too/store"
 )
 
@@ -16,79 +16,84 @@ type Options struct {
 
 // Result contains the result of the reopen command
 type Result struct {
-	Todo      *models.Todo
+	Todo      *models.IDMTodo
 	OldStatus string
 	NewStatus string
 }
 
-// Execute marks a todo as pending by finding it via a user-provided reference,
-// which can be either a position path (e.g., "1.2") or a short ID.
+// Execute marks a todo as pending using the pure IDM manager.
 func Execute(ref string, opts Options) (*Result, error) {
 	logger := logging.GetLogger("too.commands.reopen")
 	logger.Debug().
 		Str("ref", ref).
 		Str("collectionPath", opts.CollectionPath).
-		Msg("executing reopen command")
+		Msg("executing reopen command with pure IDM manager")
 
-	var result *Result
-
-	s := store.NewStore(opts.CollectionPath)
-	err := s.Update(func(collection *models.Collection) error {
-		var todo *models.Todo
-		var err error
-
-		if parser.IsPositionPath(ref) {
-			// Resolve the position path to a UID using transaction-aware manager
-			manager, err := store.NewManagerFromCollection(collection)
-			if err != nil {
-				return fmt.Errorf("failed to create idm manager: %w", err)
-			}
-
-			uid, err := manager.Registry().ResolvePositionPath(store.RootScope, ref)
-			if err != nil {
-				return fmt.Errorf("todo not found: %w", err)
-			}
-			todo = collection.FindItemByID(uid)
-		} else {
-			// Assume it's a short ID
-			todo, err = collection.FindItemByShortID(ref)
-		}
-
-		if err != nil {
-			logger.Error().
-				Err(err).
-				Str("ref", ref).
-				Msg("failed to find todo")
-			return fmt.Errorf("todo not found with reference: %s", ref)
-		}
-		if todo == nil {
-			return fmt.Errorf("todo not found with reference: %s", ref)
-		}
-
-		// Capture old status
-		oldStatus := string(todo.Status)
-
-		// Use the new method which handles status change and position reset
-		todo.MarkPending(collection)
-
-		logger.Debug().
-			Str("todoID", todo.ID).
-			Str("oldStatus", oldStatus).
-			Str("newStatus", string(todo.Status)).
-			Msg("marked todo as pending")
-
-		// Capture result
-		result = &Result{
-			Todo:      todo,
-			OldStatus: oldStatus,
-			NewStatus: string(todo.Status),
-		}
-
-		return nil
-	})
-
+	idmStore := store.NewIDMStore(opts.CollectionPath)
+	
+	// Create pure IDM workflow manager
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
+		return nil, fmt.Errorf("failed to create pure IDM manager: %w", err)
+	}
+
+	var uid string
+
+	// Try to resolve as position path or find by short ID
+	if parser.IsPositionPath(ref) {
+		// Position paths only work for active items
+		uid, err = manager.ResolvePositionPath(store.RootScope, ref)
+		if err != nil {
+			// Try as short ID instead
+			todo, shortErr := manager.GetTodoByShortID(ref)
+			if shortErr != nil || todo == nil {
+				return nil, fmt.Errorf("todo not found with reference: %s", ref)
+			}
+			uid = todo.UID
+		}
+	} else {
+		// Find by short ID using PureIDMManager method
+		todo, err := manager.GetTodoByShortID(ref)
+		if err != nil || todo == nil {
+			return nil, fmt.Errorf("todo not found with reference: %s", ref)
+		}
+		uid = todo.UID
+	}
+
+	// Get the todo for validation using PureIDMManager method
+	todo := manager.GetTodoByUID(uid)
+	if todo == nil {
+		return nil, fmt.Errorf("todo with UID '%s' not found", uid)
+	}
+
+	// Capture old status for result
+	oldStatus, err := manager.GetStatus(uid, "completion")
+	if err != nil {
+		oldStatus = "done" // Assume it was done if we can't get status
+	}
+
+	// Set status to "pending"
+	err = manager.SetStatus(uid, "completion", "pending")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set pending status: %w", err)
+	}
+
+	logger.Debug().
+		Str("todoUID", uid).
+		Str("oldStatus", oldStatus).
+		Str("newStatus", "pending").
+		Msg("marked todo as pending using pure IDM manager")
+
+	// Save changes
+	if err := manager.Save(); err != nil {
 		return nil, err
+	}
+
+	// Capture result
+	result := &Result{
+		Todo:      todo,
+		OldStatus: oldStatus,
+		NewStatus: "pending",
 	}
 
 	logger.Info().

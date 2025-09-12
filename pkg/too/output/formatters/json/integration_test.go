@@ -20,10 +20,9 @@ func TestJSONFormatterBehavior(t *testing.T) {
 		
 		// Test rendering an add result
 		result := &too.AddResult{
-			Todo: &models.Todo{
-				Position: 1,
+			Todo: &models.IDMTodo{
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
 			},
 		}
 

@@ -52,6 +52,11 @@ func (r *Registry) Remove(scope, uid string) {
 	r.scopes[scope] = newUIDs
 }
 
+// RemoveScope completely removes a scope and all its UIDs from the registry.
+func (r *Registry) RemoveScope(scope string) {
+	delete(r.scopes, scope)
+}
+
 // ResolveHID converts a 1-based HID within a given scope to its corresponding UID.
 func (r *Registry) ResolveHID(scope string, hid uint) (string, error) {
 	uids, ok := r.scopes[scope]

@@ -29,8 +29,8 @@ func TestInitCommand(t *testing.T) {
 		assert.Contains(t, result.Message, "Initialized empty too collection")
 
 		// Verify file was created with empty collection
-		s := store.NewStore(dbPath)
-		collection, err := s.Load()
+		s := store.NewIDMStore(dbPath)
+		collection, err := s.LoadIDM()
 		testutil.AssertNoError(t, err)
 		testutil.AssertCollectionSize(t, collection, 0)
 	})
@@ -91,11 +91,11 @@ func TestInitCommand(t *testing.T) {
 		assert.Contains(t, result.Message, "Reinitialized existing too collection")
 
 		// Verify existing todos are preserved
-		collection, err := s.Load()
+		collection, err := s.LoadIDM()
 		testutil.AssertNoError(t, err)
 		testutil.AssertCollectionSize(t, collection, 2)
-		testutil.AssertTodoInList(t, collection.Todos, "Existing todo 1")
-		testutil.AssertTodoInList(t, collection.Todos, "Existing todo 2")
+		testutil.AssertTodoInList(t, collection.Items, "Existing todo 1")
+		testutil.AssertTodoInList(t, collection.Items, "Existing todo 2")
 	})
 
 	t.Run("handles write errors gracefully", func(t *testing.T) {

@@ -93,7 +93,7 @@ func TestSearchCommand(t *testing.T) {
 		pendingCount := 0
 		doneCount := 0
 		for _, todo := range result.MatchedTodos {
-			switch todo.Status {
+			switch todo.GetStatus() {
 			case models.StatusPending:
 				pendingCount++
 			case models.StatusDone:

@@ -15,140 +15,130 @@ type Options struct {
 
 // Result represents the result of a move operation
 type Result struct {
-	Todo      *models.Todo
+	Todo      *models.IDMTodo
 	OldPath   string
 	NewPath   string
-	OldParent *models.Todo
-	NewParent *models.Todo
+	OldParent *models.IDMTodo
+	NewParent *models.IDMTodo
 }
 
-// Execute moves a todo from one parent to another
+// Execute moves a todo from one parent to another using the pure IDM manager.
 func Execute(sourcePath string, destParentPath string, opts Options) (*Result, error) {
 	logger := logging.GetLogger("too.commands.move")
 	logger.Debug().
 		Str("sourcePath", sourcePath).
 		Str("destParentPath", destParentPath).
 		Str("collectionPath", opts.CollectionPath).
-		Msg("executing move command")
+		Msg("executing move command with pure IDM manager")
 
-	s := store.NewStore(opts.CollectionPath)
-	var result *Result
-
-	err := s.Update(func(collection *models.Collection) error {
-		manager, err := store.NewManagerFromCollection(collection)
-		if err != nil {
-			return fmt.Errorf("failed to create idm manager: %w", err)
-		}
-
-		// Find the source todo
-		sourceUID, err := manager.Registry().ResolvePositionPath(store.RootScope, sourcePath)
-		if err != nil {
-			return fmt.Errorf("todo not found at position: %s", sourcePath)
-		}
-		sourceTodo := collection.FindItemByID(sourceUID)
-		if sourceTodo == nil {
-			return fmt.Errorf("todo with ID '%s' not found", sourceUID)
-		}
-
-		// Determine the destination parent UID
-		var destParentUID string = store.RootScope
-		if destParentPath != "" {
-			uid, err := manager.Registry().ResolvePositionPath(store.RootScope, destParentPath)
-			if err != nil {
-				return fmt.Errorf("destination parent not found at position: %s", destParentPath)
-			}
-			destParentUID = uid
-		}
-
-		// Check for circular reference (can't move a parent into its own child)
-		if destParentUID != store.RootScope {
-			destParent := collection.FindItemByID(destParentUID)
-			if destParent != nil && isDescendantOf(destParent, sourceTodo) {
-				logger.Error().
-					Str("sourcePath", sourcePath).
-					Str("destParentPath", destParentPath).
-					Msg("attempted to move parent into its own descendant")
-				return fmt.Errorf("cannot move a parent into its own descendant")
-			}
-		}
-
-		// Store old path for result
-		oldPath := sourcePath
-
-		// Get the old parent UID for the Manager.Move() call
-		oldParentUID := store.RootScope
-		if sourceTodo.ParentID != "" {
-			oldParentUID = sourceTodo.ParentID
-		}
-
-		// Use Manager to handle the move operation
-		err = manager.Move(sourceUID, oldParentUID, destParentUID)
-		if err != nil {
-			return fmt.Errorf("failed to move todo: %w", err)
-		}
-
-		// Get new path using IDM registry
-		adapter, err := store.NewIDMStoreAdapter(s)
-		if err != nil {
-			return fmt.Errorf("failed to create IDM adapter: %w", err)
-		}
-		newPath, err := manager.Registry().GetPositionPath(store.RootScope, sourceUID, adapter)
-		if err != nil {
-			logger.Error().
-				Str("todoID", sourceTodo.ID).
-				Str("todoText", sourceTodo.Text).
-				Str("parentID", sourceTodo.ParentID).
-				Int("position", sourceTodo.Position).
-				Err(err).
-				Msg("failed to get new position path")
-			return fmt.Errorf("failed to determine new position path: %w", err)
-		}
-
-		// Get parent references for the result
-		var oldParent *models.Todo
-		if oldParentUID != store.RootScope {
-			oldParent = collection.FindItemByID(oldParentUID)
-		}
-		
-		var newParent *models.Todo
-		if destParentUID != store.RootScope {
-			newParent = collection.FindItemByID(destParentUID)
-		}
-
-		result = &Result{
-			Todo:      sourceTodo,
-			OldPath:   oldPath,
-			NewPath:   newPath,
-			OldParent: oldParent,
-			NewParent: newParent,
-		}
-
-		logger.Debug().
-			Str("todoID", sourceTodo.ID).
-			Str("oldPath", oldPath).
-			Str("newPath", newPath).
-			Msg("successfully moved todo")
-
-		return nil
-	})
-
+	idmStore := store.NewIDMStore(opts.CollectionPath)
+	
+	// Create pure IDM workflow manager
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
+		return nil, fmt.Errorf("failed to create pure IDM manager: %w", err)
+	}
+
+	// Resolve source todo
+	sourceUID, err := manager.ResolvePositionPath(store.RootScope, sourcePath)
+	if err != nil {
+		return nil, fmt.Errorf("todo not found at position: %s", sourcePath)
+	}
+
+	sourceTodo := manager.GetTodoByUID(sourceUID)
+	if sourceTodo == nil {
+		return nil, fmt.Errorf("todo with UID '%s' not found", sourceUID)
+	}
+
+	// Resolve destination parent
+	var destParentUID = store.RootScope
+	if destParentPath != "" {
+		uid, err := manager.ResolvePositionPath(store.RootScope, destParentPath)
+		if err != nil {
+			return nil, fmt.Errorf("destination parent not found at position: %s", destParentPath)
+		}
+		destParentUID = uid
+	}
+
+	// Check for circular reference
+	if destParentUID != store.RootScope {
+		destParent := manager.GetTodoByUID(destParentUID)
+		if destParent != nil && isIDMDescendantOf(sourceTodo, destParent, manager) {
+			logger.Error().
+				Str("sourcePath", sourcePath).
+				Str("destParentPath", destParentPath).
+				Msg("attempted to move parent into its own descendant")
+			return nil, fmt.Errorf("cannot move a parent into its own descendant")
+		}
+	}
+
+	// Store old path for result
+	oldPath := sourcePath
+
+	// Get old parent UID
+	oldParentUID := store.RootScope
+	if sourceTodo.ParentID != "" {
+		oldParentUID = sourceTodo.ParentID
+	}
+
+	// Get parent references for the result
+	var oldParent *models.IDMTodo
+	if oldParentUID != store.RootScope {
+		oldParent = manager.GetTodoByUID(oldParentUID)
+	}
+	
+	var newParent *models.IDMTodo
+	if destParentUID != store.RootScope {
+		newParent = manager.GetTodoByUID(destParentUID)
+	}
+
+	// Perform the move
+	if err := manager.Move(sourceUID, oldParentUID, destParentUID); err != nil {
+		return nil, fmt.Errorf("failed to move todo: %w", err)
+	}
+
+	// Get new path
+	newPath, err := manager.GetPositionPath(store.RootScope, sourceUID)
+	if err != nil {
+		logger.Error().
+			Str("todoUID", sourceTodo.UID).
+			Str("todoText", sourceTodo.Text).
+			Str("parentID", sourceTodo.ParentID).
+			Err(err).
+			Msg("failed to get new position path")
+		return nil, fmt.Errorf("failed to determine new position path: %w", err)
+	}
+
+	// Save the collection
+	if err := manager.Save(); err != nil {
 		return nil, err
 	}
+
+	result := &Result{
+		Todo:      sourceTodo,
+		OldPath:   oldPath,
+		NewPath:   newPath,
+		OldParent: oldParent,
+		NewParent: newParent,
+	}
+
+	logger.Debug().
+		Str("todoUID", sourceTodo.UID).
+		Str("oldPath", oldPath).
+		Str("newPath", newPath).
+		Msg("successfully moved todo")
 
 	return result, nil
 }
 
-func isDescendantOf(child, parent *models.Todo) bool {
-	// Check all children recursively
-	for _, item := range parent.Items {
-		if item.ID == child.ID {
-			return true
-		}
-		if isDescendantOf(child, item) {
+// isIDMDescendantOf checks if child is a descendant of parent using IDM collection.
+func isIDMDescendantOf(child, parent *models.IDMTodo, manager *store.PureIDMManager) bool {
+	// Get all descendants of the parent
+	descendants := manager.GetCollection().GetDescendants(parent.UID)
+	for _, descendant := range descendants {
+		if descendant.UID == child.UID {
 			return true
 		}
 	}
 	return false
 }
-

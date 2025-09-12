@@ -1,6 +1,8 @@
 package list
 
 import (
+	"fmt"
+
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
 )
@@ -14,52 +16,46 @@ type Options struct {
 
 // Result contains the result of listing todos
 type Result struct {
-	Todos      []*models.Todo
+	Todos      []*models.IDMTodo
 	TotalCount int
 	DoneCount  int
 }
 
-// Execute returns todos from the collection with optional filtering
+// Execute returns todos from the collection using pure IDM.
 func Execute(opts Options) (*Result, error) {
-	s := store.NewStore(opts.CollectionPath)
-
-	// Load the full collection
-	collection, err := s.Load()
+	// Create IDM store and manager
+	idmStore := store.NewIDMStore(opts.CollectionPath)
+	manager, err := store.NewPureIDMManager(idmStore, opts.CollectionPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create manager: %w", err)
 	}
 
-	// Use the new collection APIs for filtering
-	var filteredTodos []*models.Todo
+	// Get todos based on options
+	var idmTodos []*models.IDMTodo
 	if opts.ShowAll {
-		filteredTodos = collection.ListAll()
+		idmTodos = manager.ListAll()
 	} else if opts.ShowDone {
-		filteredTodos = collection.ListArchived()
+		idmTodos = manager.ListArchived()
 	} else {
-		filteredTodos = collection.ListActive()
+		idmTodos = manager.ListActive()
 	}
 
-	// Count totals from the original collection
-	totalCount, doneCount := countTodos(collection.Todos)
+	// Get counts
+	totalCount, doneCount := manager.CountTodos()
+
+	// Build hierarchical structure for display compatibility
+	// Convert IDMTodos to display format with hierarchy
+	todos := make([]*models.IDMTodo, 0)
+	if len(idmTodos) > 0 {
+		// For now, just return flat structure
+		// The display layer will handle hierarchy building if needed
+		todos = idmTodos
+	}
 
 	return &Result{
-		Todos:      filteredTodos,
+		Todos:      todos,
 		TotalCount: totalCount,
 		DoneCount:  doneCount,
 	}, nil
 }
 
-// countTodos recursively counts total and done todos
-func countTodos(todos []*models.Todo) (total int, done int) {
-	for _, todo := range todos {
-		total++
-		if todo.Status == models.StatusDone {
-			done++
-		}
-		// Recursively count children
-		childTotal, childDone := countTodos(todo.Items)
-		total += childTotal
-		done += childDone
-	}
-	return total, done
-}

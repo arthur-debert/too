@@ -24,10 +24,9 @@ func TestYAMLFormatter(t *testing.T) {
 	t.Run("RenderAdd", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.AddResult{
-			Todo: &models.Todo{
-				Position: 1,
+			Todo: &models.IDMTodo{
 				Text:     "Test todo",
-				Status:   models.StatusPending,
+				Statuses: map[string]string{"completion": string(models.StatusPending)},
 			},
 		}
 
@@ -39,22 +38,19 @@ func TestYAMLFormatter(t *testing.T) {
 		err = yaml.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
 		assert.Equal(t, result.Todo.Text, decoded.Todo.Text)
-		assert.Equal(t, result.Todo.Position, decoded.Todo.Position)
 	})
 
 	t.Run("RenderList", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.ListResult{
-			Todos: []*models.Todo{
+			Todos: []*models.IDMTodo{
 				{
-					Position: 1,
 					Text:     "First todo",
-					Status:   models.StatusPending,
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
 				},
 				{
-					Position: 2,
 					Text:     "Second todo",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
 				},
 			},
 			TotalCount: 2,
@@ -91,10 +87,9 @@ func TestYAMLFormatter(t *testing.T) {
 		var buf bytes.Buffer
 		results := []*too.CompleteResult{
 			{
-				Todo: &models.Todo{
-					Position: 1,
+				Todo: &models.IDMTodo{
 					Text:     "Completed todo",
-					Status:   models.StatusDone,
+					Statuses: map[string]string{"completion": string(models.StatusDone)},
 				},
 			},
 		}
@@ -138,18 +133,16 @@ func TestYAMLFormatter(t *testing.T) {
 	t.Run("Nested todos", func(t *testing.T) {
 		var buf bytes.Buffer
 		result := &too.ListResult{
-			Todos: []*models.Todo{
+			Todos: []*models.IDMTodo{
 				{
-					Position: 1,
 					Text:     "Parent todo",
-					Status:   models.StatusPending,
-					Items: []*models.Todo{
-						{
-							Position: 1,
-							Text:     "Child todo",
-							Status:   models.StatusPending,
-						},
-					},
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					ParentID: "",
+				},
+				{
+					Text:     "Child todo",
+					Statuses: map[string]string{"completion": string(models.StatusPending)},
+					ParentID: "parent-uid",
 				},
 			},
 			TotalCount: 2,
@@ -163,8 +156,18 @@ func TestYAMLFormatter(t *testing.T) {
 		var decoded too.ListResult
 		err = yaml.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
-		assert.Len(t, decoded.Todos, 1)
-		assert.Len(t, decoded.Todos[0].Items, 1)
-		assert.Equal(t, "Child todo", decoded.Todos[0].Items[0].Text)
+		// With flat structure, we have both parent and child
+		assert.Len(t, decoded.Todos, 2)
+		// Verify we have both parent and child todos
+		var parentFound, childFound bool
+		for _, todo := range decoded.Todos {
+			if todo.Text == "Parent todo" {
+				parentFound = true
+			} else if todo.Text == "Child todo" {
+				childFound = true
+			}
+		}
+		assert.True(t, parentFound, "Should have parent todo")
+		assert.True(t, childFound, "Should have child todo")
 	})
 }

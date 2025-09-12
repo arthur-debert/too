@@ -50,30 +50,40 @@ func (f *formatter) writeCSV(w io.Writer, headers []string, rows [][]string) err
 }
 
 // flattenTodos converts a hierarchical todo structure to flat CSV rows
-func (f *formatter) flattenTodos(todos []*models.Todo, parentPath string) [][]string {
+func (f *formatter) flattenTodos(todos []*models.IDMTodo, parentPath string) [][]string {
+	// Build hierarchical structure
+	hierarchical := output.BuildHierarchy(todos)
+	return f.flattenHierarchicalTodos(hierarchical, parentPath)
+}
+
+// flattenHierarchicalTodos converts hierarchical todos to flat CSV rows
+func (f *formatter) flattenHierarchicalTodos(todos []*output.HierarchicalTodo, parentPath string) [][]string {
 	var rows [][]string
 
-	for _, todo := range todos {
+	for i, todo := range todos {
 		// Build the current path
 		currentPath := todo.Text
 		if parentPath != "" {
 			currentPath = parentPath + " > " + todo.Text
 		}
 
+		// Use array index + 1 as position
+		position := i + 1
+
 		// Add the current todo as a row
 		row := []string{
-			todo.ID,
+			todo.UID,
 			parentPath, // parent column for hierarchy
-			fmt.Sprintf("%d", todo.Position),
+			fmt.Sprintf("%d", position),
 			todo.Text,
-			string(todo.Status),
+			string(todo.GetStatus()),
 			todo.Modified.Format("2006-01-02T15:04:05"),
 		}
 		rows = append(rows, row)
 
 		// Recursively add child todos
-		if len(todo.Items) > 0 {
-			childRows := f.flattenTodos(todo.Items, currentPath)
+		if len(todo.Children) > 0 {
+			childRows := f.flattenHierarchicalTodos(todo.Children, currentPath)
 			rows = append(rows, childRows...)
 		}
 	}
@@ -84,7 +94,7 @@ func (f *formatter) flattenTodos(todos []*models.Todo, parentPath string) [][]st
 // RenderAdd renders the add command result as CSV
 func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
 	headers := []string{"id", "parent", "position", "text", "status", "modified"}
-	rows := f.flattenTodos([]*models.Todo{result.Todo}, "")
+	rows := f.flattenTodos([]*models.IDMTodo{result.Todo}, "")
 	return f.writeCSV(w, headers, rows)
 }
 
@@ -92,11 +102,11 @@ func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
 func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
 	headers := []string{"id", "parent", "position", "text", "status", "modified", "old_text"}
 	rows := [][]string{{
-		result.Todo.ID,
+		result.Todo.UID,
 		"",
-		fmt.Sprintf("%d", result.Todo.Position),
+		"1", // For single todo output, position is always 1
 		result.Todo.Text,
-		string(result.Todo.Status),
+		string(result.Todo.GetStatus()),
 		result.Todo.Modified.Format("2006-01-02T15:04:05"),
 		result.OldText,
 	}}
@@ -150,25 +160,17 @@ func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
 		}
 
 		row := []string{
-			todo.ID,
+			todo.UID,
 			"",
-			fmt.Sprintf("%d", todo.Position),
+			"1", // For single todo output, position is always 1
 			todo.Text,
-			string(todo.Status),
+			string(todo.GetStatus()),
 			todo.Modified.Format("2006-01-02T15:04:05"),
 			matched,
 		}
 		rows = append(rows, row)
 
-		// Add child todos
-		if len(todo.Items) > 0 {
-			childRows := f.flattenTodos(todo.Items, todo.Text)
-			// Update matched status for children
-			for i := range childRows {
-				childRows[i] = append(childRows[i], "direct")
-			}
-			rows = append(rows, childRows...)
-		}
+		// Note: Child handling moved to flattenTodos which builds hierarchy
 	}
 
 	return f.writeCSV(w, headers, rows)
@@ -205,7 +207,7 @@ func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) e
 	var rows [][]string
 
 	for _, result := range results {
-		todoRows := f.flattenTodos([]*models.Todo{result.Todo}, "")
+		todoRows := f.flattenTodos([]*models.IDMTodo{result.Todo}, "")
 		rows = append(rows, todoRows...)
 	}
 
@@ -218,7 +220,7 @@ func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error
 	var rows [][]string
 
 	for _, result := range results {
-		todoRows := f.flattenTodos([]*models.Todo{result.Todo}, "")
+		todoRows := f.flattenTodos([]*models.IDMTodo{result.Todo}, "")
 		rows = append(rows, todoRows...)
 	}
 
@@ -229,11 +231,11 @@ func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error
 func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
 	headers := []string{"id", "text", "old_path", "new_path", "status"}
 	rows := [][]string{{
-		result.Todo.ID,
+		result.Todo.UID,
 		result.Todo.Text,
 		result.OldPath,
 		result.NewPath,
-		string(result.Todo.Status),
+		string(result.Todo.GetStatus()),
 	}}
 	return f.writeCSV(w, headers, rows)
 }

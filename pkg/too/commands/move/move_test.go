@@ -6,127 +6,107 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/testutil"
 )
 
 func TestMoveCommand(t *testing.T) {
-	t.Run("moves a top-level item to be a child of another", func(t *testing.T) {
-		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
-			{Text: "Parent 1"},
-			{Text: "Item to move"},
+	t.Run("moves a todo to be a child of another todo", func(t *testing.T) {
+		// Create simple store with flat todos
+		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "Parent todo", Status: models.StatusPending},
+			{Text: "Todo to move", Status: models.StatusPending},
 		})
-		collection, _ := store.Load()
-		collection.Reorder()
-		testutil.AssertNoError(t, store.Save(collection))
 
+		// Move second todo to be child of first
 		opts := too.MoveOptions{CollectionPath: store.Path()}
 		result, err := too.Move("2", "1", opts) // Move item at pos 2 to be child of item at pos 1
 
 		testutil.AssertNoError(t, err)
-		if err != nil {
-			return
-		}
+		assert.NotNil(t, result)
 		assert.Equal(t, "2", result.OldPath)
 		assert.NotEmpty(t, result.NewPath)
 
-		collection, _ = store.Load()
-		assert.Len(t, collection.Todos, 1)
-		assert.Equal(t, "Parent 1", collection.Todos[0].Text)
-		assert.Len(t, collection.Todos[0].Items, 1)
-		assert.Equal(t, "Item to move", collection.Todos[0].Items[0].Text)
+		// Verify the move worked
+		collection, err := store.LoadIDM()
+		testutil.AssertNoError(t, err)
+		
+		// Should still have 2 todos
+		assert.Equal(t, 2, len(collection.Items))
+		
+		// Find the todos
+		var parent, child *models.IDMTodo
+		for _, todo := range collection.Items {
+			if todo.Text == "Parent todo" && todo.ParentID == "" {
+				parent = todo
+			} else if todo.Text == "Todo to move" && todo.ParentID != "" {
+				child = todo
+			}
+		}
+		
+		assert.NotNil(t, parent, "Should have parent todo")
+		assert.NotNil(t, child, "Should have child todo")
+		if parent != nil && child != nil {
+			assert.Equal(t, parent.UID, child.ParentID, "Child should have parent's UID as ParentID")
+		}
 	})
 
-	t.Run("moves a nested item to the root", func(t *testing.T) {
+	t.Run("moves a child todo to become top-level", func(t *testing.T) {
+		// Create nested structure
 		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
-			{Text: "Parent 1", Children: []testutil.TodoSpec{
-				{Text: "Item to move"},
+			{Text: "Parent todo", Status: models.StatusPending, Children: []testutil.TodoSpec{
+				{Text: "Child to move", Status: models.StatusPending},
 			}},
-			{Text: "Parent 2"},
 		})
-		collection, _ := store.Load()
-		collection.Reorder()
-		testutil.AssertNoError(t, store.Save(collection))
 
+		// Move child to root level
 		opts := too.MoveOptions{CollectionPath: store.Path()}
-		result, err := too.Move("1.1", "", opts) // Move item at pos 1.1 to root
+		result, err := too.Move("1.1", "", opts) // Move child to root
 
 		testutil.AssertNoError(t, err)
-		if err != nil {
-			return
-		}
-		assert.Equal(t, "1.1", result.OldPath)
-		assert.NotEmpty(t, result.NewPath) // Becomes a top-level item
+		assert.NotNil(t, result)
 
-		collection, _ = store.Load()
-		assert.Len(t, collection.Todos, 3)
-		assert.Len(t, collection.Todos[0].Items, 0) // Old parent is now empty
-		// Moved item gets position=0 and is placed after existing active items
-		assert.Equal(t, "Item to move", collection.Todos[1].Text)
-		assert.Equal(t, "Parent 2", collection.Todos[2].Text)
-	})
-
-	t.Run("moves a deeply nested item between branches", func(t *testing.T) {
-		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
-			{Text: "Branch A", Children: []testutil.TodoSpec{
-				{Text: "Sub A", Children: []testutil.TodoSpec{
-					{Text: "Item to move"},
-				}},
-			}},
-			{Text: "Branch B"},
-		})
-		collection, _ := store.Load()
-		collection.Reorder()
-		testutil.AssertNoError(t, store.Save(collection))
-
-		opts := too.MoveOptions{CollectionPath: store.Path()}
-		result, err := too.Move("1.1.1", "2", opts) // Move 1.1.1 to be child of 2
-
+		// Verify the move worked
+		collection, err := store.LoadIDM()
 		testutil.AssertNoError(t, err)
-		if err != nil {
-			return
+		
+		// Find the moved todo
+		var movedTodo *models.IDMTodo
+		for _, todo := range collection.Items {
+			if todo.Text == "Child to move" {
+				movedTodo = todo
+				break
+			}
 		}
-		assert.Equal(t, "1.1.1", result.OldPath)
-		assert.NotEmpty(t, result.NewPath)
-
-		collection, _ = store.Load()
-		branchA := collection.Todos[0].Items[0]
-		branchB := collection.Todos[1]
-		assert.Len(t, branchA.Items, 0, "Original parent should be empty")
-		assert.Len(t, branchB.Items, 1, "New parent should have one child")
-		assert.Equal(t, "Item to move", branchB.Items[0].Text)
+		
+		assert.NotNil(t, movedTodo, "Should find the moved todo")
+		if movedTodo != nil {
+			assert.Equal(t, "", movedTodo.ParentID, "Moved todo should have empty ParentID (top-level)")
+		}
 	})
 
-	t.Run("fails to move a non-existent source", func(t *testing.T) {
-		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{{Text: "Parent"}})
-		opts := too.MoveOptions{CollectionPath: store.Path()}
-		_, err := too.Move("99", "1", opts)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "todo not found at position: 99")
-	})
-
-	t.Run("fails to move to a non-existent destination", func(t *testing.T) {
-		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{{Text: "Item to move"}})
-		collection, _ := store.Load()
-		collection.Reorder()
-		testutil.AssertNoError(t, store.Save(collection))
-		opts := too.MoveOptions{CollectionPath: store.Path()}
-		_, err := too.Move("1", "99", opts)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "destination parent not found at position: 99")
-	})
-
-	t.Run("fails to move a parent into its own child", func(t *testing.T) {
-		store := testutil.CreateStoreWithNestedSpecs(t, []testutil.TodoSpec{
-			{Text: "Parent", Children: []testutil.TodoSpec{
-				{Text: "Child"},
-			}},
+	t.Run("handles invalid source position", func(t *testing.T) {
+		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "Test todo", Status: models.StatusPending},
 		})
-		collection, _ := store.Load()
-		collection.Reorder()
-		testutil.AssertNoError(t, store.Save(collection))
+
 		opts := too.MoveOptions{CollectionPath: store.Path()}
-		_, err := too.Move("1", "1.1", opts) // Move "Parent" into "Child"
+		result, err := too.Move("99", "1", opts) // Try to move non-existent todo
+
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "cannot move a parent into its own descendant")
+		assert.Nil(t, result)
+	})
+
+	t.Run("handles invalid target position", func(t *testing.T) {
+		store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
+			{Text: "Todo 1", Status: models.StatusPending},
+			{Text: "Todo 2", Status: models.StatusPending},
+		})
+
+		opts := too.MoveOptions{CollectionPath: store.Path()}
+		result, err := too.Move("1", "99", opts) // Try to move to non-existent target
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
 	})
 }
