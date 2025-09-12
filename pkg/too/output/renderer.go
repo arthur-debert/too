@@ -385,7 +385,7 @@ func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to render list: %w", err)
 	}
-	_, err = fmt.Fprint(r.Writer, output)
+	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
