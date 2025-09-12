@@ -174,6 +174,28 @@ func formatMultilineText(text string, baseIndent string, columnWidth int) string
 	return result.String()
 }
 
+// formatMultilineTextSimple formats text with newlines for the new format
+func formatMultilineTextSimple(text string, baseIndent string, prefixLen int) string {
+	lines := strings.Split(text, "\n")
+	if len(lines) <= 1 {
+		return text
+	}
+
+	// For continuation lines, indent to align with the text after "○ 1.1. "
+	continuationIndent := baseIndent + strings.Repeat(" ", prefixLen)
+
+	// Build the result with proper indentation
+	var result strings.Builder
+	for i, line := range lines {
+		if i == 0 {
+			result.WriteString(line)
+		} else {
+			result.WriteString("\n" + continuationIndent + line)
+		}
+	}
+	return result.String()
+}
+
 // templateFuncs returns custom functions for templates
 func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 	return map[string]interface{}{
@@ -184,9 +206,8 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 			return fmt.Sprintf("%6d", pos)
 		},
 		"getIndent": func(level int) string {
-			config := too.GetConfig()
-			indent := strings.Repeat(config.Display.IndentString, config.Display.IndentSize)
-			return strings.Repeat(indent, level)
+			// Use 2 spaces per level for indentation
+			return strings.Repeat("  ", level)
 		},
 		"formatMultiline": func(text string, indent int) string {
 			// For use in templates where we don't have the full context
@@ -223,18 +244,19 @@ func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*Hierarch
 		indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
 		statusSymbol := getStatusSymbol(todo.IDMTodo, todo.Children)
 
-		// Format the todo text with proper indentation for multi-line content
-		formattedText := formatMultilineText(todo.Text, indent, 6)
+		// Calculate prefix length for multiline alignment: "○ 1.1. "
+		prefixLen := len(statusSymbol) + 1 + len(path) + 2 // symbol + space + path + ". "
+		formattedText := formatMultilineTextSimple(todo.Text, indent, prefixLen)
 
 		// Apply muted style if this is not the highlighted todo
 		if highlightID != "" && todo.UID != highlightID {
 			// For non-highlighted todos, wrap entire line in muted tag
-			result.WriteString(fmt.Sprintf("%s<muted>%6s | %s %s</muted>\n",
-				indent, path, statusSymbol, formattedText))
+			result.WriteString(fmt.Sprintf("%s<muted>%s %s. %s</muted>\n",
+				indent, statusSymbol, path, formattedText))
 		} else {
 			// For highlighted todo, wrap everything in highlighted-todo tag for bold
-			result.WriteString(fmt.Sprintf("%s<highlighted-todo>%6s | %s %s</highlighted-todo>\n",
-				indent, path, statusSymbol, formattedText))
+			result.WriteString(fmt.Sprintf("%s<highlighted-todo>%s %s. %s</highlighted-todo>\n",
+				indent, statusSymbol, path, formattedText))
 		}
 
 		// Recursively render children
@@ -269,10 +291,13 @@ func (r *LipbamlRenderer) renderHierarchicalTodos(todos []*HierarchicalTodo, par
 			statusStyle = "todo-done"
 		}
 
-		// Format the todo text with proper indentation for multi-line content
-		formattedText := formatMultilineText(todo.Text, indent, 6)
-		result.WriteString(fmt.Sprintf("%s<subdued>%6s</subdued> | <%s>%s</%s> %s\n",
-			indent, path, statusStyle, statusSymbol, statusStyle, formattedText))
+		// Calculate prefix length for multiline alignment
+		prefixLen := len(statusSymbol) + 1 + len(path) + 2 // symbol + space + path + ". "
+		formattedText := formatMultilineTextSimple(todo.Text, indent, prefixLen)
+		
+		// Render in the format: "○ 1.1. Todo text"
+		result.WriteString(fmt.Sprintf("%s<%s>%s</%s> %s. %s\n",
+			indent, statusStyle, statusSymbol, statusStyle, path, formattedText))
 
 		// Recursively render children
 		if len(todo.Children) > 0 {
