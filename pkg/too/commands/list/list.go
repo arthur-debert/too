@@ -40,6 +40,17 @@ func Execute(opts Options) (*Result, error) {
 		idmTodos = manager.ListActive()
 	}
 
+	// CRITICAL: Attach IDM position paths BEFORE any further processing
+	// For active-only view, use consecutive position IDs (1, 2, 3...) with no gaps
+	// For all/done views, use complete position paths to maintain consistency
+	if opts.ShowAll || opts.ShowDone {
+		// Use complete position paths for consistency when showing completed todos
+		manager.AttachPositionPaths(idmTodos)
+	} else {
+		// Use active-only position paths for consecutive IDs in main list view
+		manager.AttachActiveOnlyPositionPaths(idmTodos)
+	}
+
 	// Get counts
 	totalCount, doneCount := manager.CountTodos()
 

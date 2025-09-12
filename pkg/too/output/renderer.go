@@ -230,14 +230,12 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 // renderHierarchicalTodosWithHighlight renders hierarchical todos with optional highlighting
 func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*HierarchicalTodo, parentPath string, level int, highlightID string) string {
 	var result strings.Builder
-	for i, todo := range todos {
-		// Use array index + 1 as position
-		position := i + 1
-		path := parentPath
+	for _, todo := range todos {
+		// Use IDM-calculated position path for consistent IDs
+		path := todo.PositionPath
 		if path == "" {
-			path = fmt.Sprintf("%d", position)
-		} else {
-			path = fmt.Sprintf("%s.%d", parentPath, position)
+			// Fallback to UID if position path is not set
+			path = todo.UID
 		}
 
 		// Render this todo with its path and indentation
@@ -274,7 +272,7 @@ func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*Hierarch
 
 		// Recursively render children
 		if len(todo.Children) > 0 {
-			childrenOutput := r.renderHierarchicalTodosWithHighlight(todo.Children, path, level+1, highlightID)
+			childrenOutput := r.renderHierarchicalTodosWithHighlight(todo.Children, "", level+1, highlightID)
 			result.WriteString(childrenOutput)
 		}
 	}

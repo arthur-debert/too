@@ -20,11 +20,12 @@ const (
 // This eliminates the hierarchical Items field in favor of IDM-managed parent-child relationships.
 // The IDM Registry maintains all positional and hierarchical information separately.
 type IDMTodo struct {
-	UID      string            `json:"uid"`                // Stable unique identifier (same as old ID)
-	ParentID string            `json:"parentId,omitempty"` // Parent UID, empty for root items
-	Text     string            `json:"text"`               // Todo content
-	Statuses map[string]string `json:"statuses,omitempty"` // Multi-dimensional workflow statuses
-	Modified time.Time         `json:"modified"`           // Last modification timestamp
+	UID          string            `json:"uid"`                // Stable unique identifier (same as old ID)
+	ParentID     string            `json:"parentId,omitempty"` // Parent UID, empty for root items
+	Text         string            `json:"text"`               // Todo content
+	Statuses     map[string]string `json:"statuses,omitempty"` // Multi-dimensional workflow statuses
+	Modified     time.Time         `json:"modified"`           // Last modification timestamp
+	PositionPath string            `json:"-"`                  // IDM-calculated position path (computed field, not persisted)
 	// NO Items field - hierarchy is managed by IDM Registry scopes
 }
 
