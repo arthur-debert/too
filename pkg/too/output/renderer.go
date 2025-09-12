@@ -75,44 +75,6 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	return r, nil
 }
 
-// getStatusSymbol returns the appropriate unicode symbol based on todo status
-// ○ scheduled -> start status (pending)
-// ◐ in progress -> parent with mixed completion states
-// ● done -> completed
-// ⊘ deleted -> deleted (if supported)
-func getStatusSymbol(todo *models.IDMTodo, children []*HierarchicalTodo) string {
-	// Check if deleted status exists
-	if status, exists := todo.GetWorkflowStatus("status"); exists && status == "deleted" {
-		return "⊘"
-	}
-	
-	// Check completion status
-	if todo.GetStatus() == models.StatusDone {
-		return "●"
-	}
-	
-	// Check if this todo has children with mixed completion states
-	if len(children) > 0 {
-		hasComplete := false
-		hasPending := false
-		
-		for _, child := range children {
-			if child.IDMTodo.GetStatus() == models.StatusDone {
-				hasComplete = true
-			} else {
-				hasPending = true
-			}
-			
-			if hasComplete && hasPending {
-				return "◐" // In progress - mixed states
-			}
-		}
-	}
-	
-	// Default to scheduled/pending
-	return "○"
-}
-
 // formatMultilineText formats text with newlines, indenting subsequent lines
 func formatMultilineText(text string, baseIndent string, columnWidth int) string {
 	lines := strings.Split(text, "\n")
@@ -202,7 +164,7 @@ func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*Hierarch
 
 		// Render this todo with its path and indentation
 		indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
-		statusSymbol := getStatusSymbol(todo.IDMTodo, todo.Children)
+		statusSymbol := styles.GetStatusSymbol(todo.EffectiveStatus)
 
 		// Calculate prefix length for multiline alignment: "○ 1.1. "
 		prefixLen := len(statusSymbol) + 1 + len(path) + 2 // symbol + space + path + ". "
