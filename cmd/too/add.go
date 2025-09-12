@@ -68,15 +68,17 @@ var addCmd = &cobra.Command{
 
 			text = editedText
 		} else {
-			// Regular mode - parse args as before
+			// Regular mode - parse args
 			// If --to wasn't explicitly set and we have at least 2 args
 			if parentPath == "" && len(args) >= 2 {
-				// Check if first arg matches position path pattern (e.g., "1", "1.2", "1.2.3")
-				if parser.IsPositionPath(args[0]) {
-					parentPath = args[0]
-					text = strings.Join(args[1:], " ")
+				// Check LAST arg for position path pattern
+				lastArg := args[len(args)-1]
+				if parser.IsPositionPath(lastArg) {
+					// Last arg is position path, everything else is text
+					parentPath = lastArg
+					text = strings.Join(args[:len(args)-1], " ")
 				} else {
-					// Normal case: all args are the todo text
+					// No position path found, all args are text
 					text = strings.Join(args, " ")
 				}
 			} else {

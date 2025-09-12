@@ -12,9 +12,14 @@ const (
 	msgRootVersion = "too version {{.Version}}\n"
 
 	// Add command
-	msgAddUse   = "add <text>"
+	msgAddUse   = "add <text> [parent-position]"
 	msgAddShort = "Add a new todo"
-	msgAddLong  = "Add a new todo with the specified text."
+	msgAddLong  = `Add a new todo with the specified text.
+
+You can specify a parent in three ways:
+  too add "Buy milk" 1        # Add as child of todo #1
+  too add "Buy milk" 1.2      # Add as child of todo #1.2
+  too add "Buy milk" --to 1   # Using the --to flag`
 
 	// Clean command
 	msgCleanUse   = "clean"
