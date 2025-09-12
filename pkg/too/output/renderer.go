@@ -113,6 +113,44 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	return r, nil
 }
 
+// getStatusSymbol returns the appropriate unicode symbol based on todo status
+// ○ scheduled -> start status (pending)
+// ◐ in progress -> parent with mixed completion states
+// ● done -> completed
+// ⊘ deleted -> deleted (if supported)
+func getStatusSymbol(todo *models.IDMTodo, children []*HierarchicalTodo) string {
+	// Check if deleted status exists
+	if status, exists := todo.GetWorkflowStatus("status"); exists && status == "deleted" {
+		return "⊘"
+	}
+	
+	// Check completion status
+	if todo.GetStatus() == models.StatusDone {
+		return "●"
+	}
+	
+	// Check if this todo has children with mixed completion states
+	if len(children) > 0 {
+		hasComplete := false
+		hasPending := false
+		
+		for _, child := range children {
+			if child.IDMTodo.GetStatus() == models.StatusDone {
+				hasComplete = true
+			} else {
+				hasPending = true
+			}
+			
+			if hasComplete && hasPending {
+				return "◐" // In progress - mixed states
+			}
+		}
+	}
+	
+	// Default to scheduled/pending
+	return "○"
+}
+
 // formatMultilineText formats text with newlines, indenting subsequent lines
 func formatMultilineText(text string, baseIndent string, columnWidth int) string {
 	lines := strings.Split(text, "\n")
@@ -183,11 +221,7 @@ func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*Hierarch
 
 		// Render this todo with its path and indentation
 		indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
-		isDone := r.templateFuncs()["isDone"].(func(*models.IDMTodo) bool)(todo.IDMTodo)
-		statusSymbol := "✕"
-		if isDone {
-			statusSymbol = "✓"
-		}
+		statusSymbol := getStatusSymbol(todo.IDMTodo, todo.Children)
 
 		// Format the todo text with proper indentation for multi-line content
 		formattedText := formatMultilineText(todo.Text, indent, 6)
@@ -227,11 +261,11 @@ func (r *LipbamlRenderer) renderHierarchicalTodos(todos []*HierarchicalTodo, par
 
 		// Render this todo with its path and indentation
 		indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
-		isDone := r.templateFuncs()["isDone"].(func(*models.IDMTodo) bool)(todo.IDMTodo)
-		statusSymbol := "✕"
+		statusSymbol := getStatusSymbol(todo.IDMTodo, todo.Children)
+		
+		// Determine style based on status
 		statusStyle := "todo-pending"
-		if isDone {
-			statusSymbol = "✓"
+		if todo.IDMTodo.GetStatus() == models.StatusDone {
 			statusStyle = "todo-done"
 		}
 
