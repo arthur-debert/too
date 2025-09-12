@@ -55,6 +55,9 @@ func Execute(query string, opts Options) (*Result, error) {
 		}
 	}
 	
+	// CRITICAL: Attach IDM position paths for consistent display
+	manager.AttachPositionPaths(matchedIDMTodos)
+	
 	return &Result{
 		Query:        query,
 		MatchedTodos: matchedIDMTodos,

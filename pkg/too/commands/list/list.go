@@ -40,6 +40,10 @@ func Execute(opts Options) (*Result, error) {
 		idmTodos = manager.ListActive()
 	}
 
+	// CRITICAL: Attach IDM position paths BEFORE any further processing
+	// This ensures consistent position IDs regardless of filtering or display context
+	manager.AttachPositionPaths(idmTodos)
+
 	// Get counts
 	totalCount, doneCount := manager.CountTodos()
 

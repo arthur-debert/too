@@ -187,6 +187,89 @@ func (m *PureIDMManager) GetPositionPath(scope, uid string) (string, error) {
 	return m.registry.GetPositionPath(scope, uid, adapter)
 }
 
+// AttachPositionPaths calculates and attaches IDM position paths to all todos in the slice.
+// This ensures consistent position IDs regardless of filtering or display context.
+func (m *PureIDMManager) AttachPositionPaths(todos []*models.IDMTodo) {
+	// Create a temporary registry that includes ALL todos (active + completed) for position calculation
+	tempRegistry := idm.NewRegistry()
+	allTodosAdapter := &pureIDMAdapterAllItems{collection: m.collection}
+	
+	// Build registry with all items
+	tempRegistry.RebuildScope(allTodosAdapter, RootScope)
+	for _, item := range m.collection.Items {
+		if len(m.collection.GetChildren(item.UID)) > 0 {
+			tempRegistry.RebuildScope(allTodosAdapter, item.UID)
+		}
+	}
+	
+	// Calculate position paths using the complete registry
+	for _, todo := range todos {
+		if path, err := tempRegistry.GetPositionPath(RootScope, todo.UID, allTodosAdapter); err == nil {
+			todo.PositionPath = path
+		} else {
+			// If position path calculation fails, use UID as fallback
+			todo.PositionPath = todo.UID
+		}
+	}
+}
+
+// pureIDMAdapterAllItems is like pureIDMAdapter but includes ALL todos (active + completed)
+// for position path calculation. This ensures completed todos get consistent position paths.
+type pureIDMAdapterAllItems struct {
+	collection *models.IDMCollection
+}
+
+func (a *pureIDMAdapterAllItems) GetChildren(parentUID string) ([]string, error) {
+	// Map RootScope to empty string for the data model
+	var parentID string
+	if parentUID == RootScope {
+		parentID = ""
+	} else {
+		parentID = parentUID
+	}
+	
+	children := a.collection.GetChildren(parentID)
+	
+	// Return ALL children (active + completed) for position calculation
+	var allChildren []string
+	for _, child := range children {
+		allChildren = append(allChildren, child.UID)
+	}
+	
+	return allChildren, nil
+}
+
+func (a *pureIDMAdapterAllItems) GetParent(uid string) (string, error) {
+	todo := a.collection.FindByUID(uid)
+	if todo == nil {
+		return "", fmt.Errorf("todo with UID %s not found", uid)
+	}
+	
+	if todo.ParentID == "" {
+		return RootScope, nil
+	}
+	
+	return todo.ParentID, nil
+}
+
+func (a *pureIDMAdapterAllItems) GetScopes() ([]string, error) {
+	scopes := []string{RootScope}
+	for _, item := range a.collection.Items {
+		if len(a.collection.GetChildren(item.UID)) > 0 {
+			scopes = append(scopes, item.UID)
+		}
+	}
+	return scopes, nil
+}
+
+func (a *pureIDMAdapterAllItems) GetAllUIDs() ([]string, error) {
+	var uids []string
+	for _, item := range a.collection.Items {
+		uids = append(uids, item.UID)
+	}
+	return uids, nil
+}
+
 // ListActive returns only active (pending) todos whose entire parent chain is also active.
 // This ensures that children under done parents are not considered "active".
 func (m *PureIDMManager) ListActive() []*models.IDMTodo {
