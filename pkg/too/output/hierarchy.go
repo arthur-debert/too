@@ -42,8 +42,20 @@ func BuildHierarchy(todos []*models.IDMTodo) []*HierarchicalTodo {
 	}
 
 	// Third pass: compute effective status for each node
-	for _, htodo := range todoMap {
+	// We need to do this recursively from leaves to roots
+	var computeStatusRecursive func(*HierarchicalTodo)
+	computeStatusRecursive = func(htodo *HierarchicalTodo) {
+		// First compute status for all children
+		for _, child := range htodo.Children {
+			computeStatusRecursive(child)
+		}
+		// Then compute this node's effective status
 		htodo.EffectiveStatus = computeEffectiveStatus(htodo)
+	}
+	
+	// Start from roots
+	for _, root := range roots {
+		computeStatusRecursive(root)
 	}
 
 	return roots
