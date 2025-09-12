@@ -364,7 +364,16 @@ func (r *LipbamlRenderer) RenderAdd(result *too.AddResult) error {
 
 // RenderModify renders the modify command result using lipbalm
 func (r *LipbamlRenderer) RenderModify(result *too.ModifyResult) error {
-	output, err := r.renderTemplate("modify_result", result)
+	// Use list rendering with highlight on modified todo
+	wrapped := &TodoListWithMessage{
+		Message:     fmt.Sprintf("Modified todo: %s", result.Todo.Text),
+		MessageType: "info",
+		Todos:       result.AllTodos,
+		TotalCount:  result.TotalCount,
+		DoneCount:   result.DoneCount,
+		HighlightID: result.Todo.UID,
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to render modify result: %w", err)
 	}
@@ -498,7 +507,16 @@ func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
 // RenderReopen renders the reopen command results using lipbalm
 func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
 	for _, result := range results {
-		output, err := r.renderTemplate("reopen_result", result)
+		// Use list rendering with highlight on reopened todo
+		wrapped := &TodoListWithMessage{
+			Message:     fmt.Sprintf("○ Reopened: %s", result.Todo.Text),
+			MessageType: "warning",
+			Todos:       result.AllTodos,
+			TotalCount:  result.TotalCount,
+			DoneCount:   result.DoneCount,
+			HighlightID: result.Todo.UID,
+		}
+		output, err := r.renderTemplate("todo_list", wrapped)
 		if err != nil {
 			return fmt.Errorf("failed to render reopen result: %w", err)
 		}
@@ -512,7 +530,16 @@ func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
 
 // RenderMove renders the move command result using lipbalm
 func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
-	output, err := r.renderTemplate("move_result", result)
+	// Use list rendering with highlight on moved todo
+	wrapped := &TodoListWithMessage{
+		Message:     fmt.Sprintf("Moved todo from %s to %s: %s", result.OldPath, result.NewPath, result.Todo.Text),
+		MessageType: "success",
+		Todos:       result.AllTodos,
+		TotalCount:  result.TotalCount,
+		DoneCount:   result.DoneCount,
+		HighlightID: result.Todo.UID,
+	}
+	output, err := r.renderTemplate("todo_list", wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to render move result: %w", err)
 	}
