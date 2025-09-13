@@ -28,6 +28,7 @@ func TestMarkdownFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
@@ -119,6 +120,7 @@ func TestMarkdownFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"completed",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
@@ -266,6 +268,7 @@ func TestMarkdownFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,

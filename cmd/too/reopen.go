@@ -49,6 +49,7 @@ var reopenCmd = &cobra.Command{
 		// Use data from the last result
 		lastResult := results[len(results)-1]
 		changeResult := too.NewChangeResult(
+			"placeholder",
 			"reopened",
 			affectedTodos,
 			lastResult.AllTodos,

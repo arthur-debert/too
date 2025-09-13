@@ -4,6 +4,8 @@
 package too
 
 import (
+	"fmt"
+	
 	"github.com/arthur-debert/too/pkg/too/models"
 	cmdAdd "github.com/arthur-debert/too/pkg/too/commands/add"
 	cmdClean "github.com/arthur-debert/too/pkg/too/commands/clean"
@@ -71,7 +73,8 @@ func AddAsChange(text string, opts AddOptions) (*ChangeResult, error) {
 	result.Todo.PositionPath = result.PositionPath
 	
 	return NewChangeResult(
-		"added",
+		"add",
+		fmt.Sprintf("Added todo: %s", result.PositionPath),
 		[]*models.IDMTodo{result.Todo},
 		result.AllTodos,
 		result.TotalCount,

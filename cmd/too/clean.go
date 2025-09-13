@@ -30,6 +30,7 @@ var cleanCmd = &cobra.Command{
 		}
 		
 		changeResult := too.NewChangeResult(
+			"placeholder",
 			"cleaned",
 			result.RemovedTodos,
 			result.ActiveTodos,

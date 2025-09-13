@@ -74,8 +74,42 @@ func TestRenderChange(t *testing.T) {
 				{UID: "1", Text: "Todo 1"},
 				{UID: "2", Text: "Todo 2"},
 			}
+			// Generate expected message based on command
+			var message string
+			switch tt.command {
+			case "add":
+				if len(tt.affectedTodos) > 0 {
+					message = "Added todo: " + tt.affectedTodos[0].PositionPath
+				}
+			case "completed":
+				if len(tt.affectedTodos) > 0 {
+					positions := make([]string, len(tt.affectedTodos))
+					for i, todo := range tt.affectedTodos {
+						positions[i] = todo.PositionPath
+					}
+					message = "Completed todos: " + strings.Join(positions, ", ")
+				}
+			case "modified":
+				if len(tt.affectedTodos) > 0 {
+					message = "Modified todo: " + tt.affectedTodos[0].PositionPath
+				}
+			case "cleaned":
+				if len(tt.affectedTodos) == 0 {
+					message = "Cleaned: no todos affected"
+				}
+			case "reopened":
+				if len(tt.affectedTodos) > 0 {
+					positions := make([]string, len(tt.affectedTodos))
+					for i, todo := range tt.affectedTodos {
+						positions[i] = todo.PositionPath
+					}
+					message = "Reopened todos: " + strings.Join(positions, ", ")
+				}
+			}
+
 			result := too.NewChangeResult(
 				tt.command,
+				message,
 				tt.affectedTodos,
 				allTodos,
 				2,
@@ -128,8 +162,26 @@ func TestRenderChangeMessageTypes(t *testing.T) {
 			renderer, err := NewLipbamlRenderer(&buf, false)
 			require.NoError(t, err)
 
+			// Generate expected message based on command
+			var message string
+			switch tt.command {
+			case "add":
+				message = "Added todo: 1"
+			case "completed":
+				message = "Completed todo: 1"
+			case "modified":
+				message = "Modified todo: 1"
+			case "reopened":
+				message = "Reopened todo: 1"
+			case "cleaned":
+				message = "Cleaned todo: 1"
+			case "moved":
+				message = "Moved todo: 1"
+			}
+
 			result := too.NewChangeResult(
 				tt.command,
+				message,
 				[]*models.IDMTodo{{UID: "1", Text: "Test", PositionPath: "1"}},
 				[]*models.IDMTodo{{UID: "1", Text: "Test"}},
 				1,

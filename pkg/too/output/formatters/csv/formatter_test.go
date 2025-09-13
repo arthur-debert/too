@@ -31,6 +31,7 @@ func TestCSVFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
@@ -217,6 +218,7 @@ func TestCSVFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
@@ -249,6 +251,7 @@ func TestCSVFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
@@ -280,6 +283,7 @@ func TestCSVFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"moved",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,

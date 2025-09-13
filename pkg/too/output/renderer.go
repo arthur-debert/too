@@ -95,44 +95,15 @@ func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos [
 
 // RenderChange renders any command that changes todos
 func (r *LipbamlRenderer) RenderChange(result *too.ChangeResult) error {
-	// Build message with proper pluralization
-	var message string
-	affectedCount := len(result.AffectedTodos)
-	
-	if affectedCount == 0 {
-		message = fmt.Sprintf("%s: no todos affected", strings.Title(result.Command))
-	} else {
-		// Get position paths for affected todos
-		positions := make([]string, affectedCount)
-		for i, todo := range result.AffectedTodos {
-			if todo.PositionPath != "" {
-				positions[i] = todo.PositionPath
-			} else {
-				positions[i] = todo.UID[:7] // fallback to short UID
-			}
-		}
-		
-		todoWord := "todo"
-		if affectedCount > 1 {
-			todoWord = "todos"
-		}
-		
-		verb := strings.Title(result.Command)
-		if !strings.HasSuffix(result.Command, "ed") {
-			verb = verb + "ed"
-		}
-		message = fmt.Sprintf("%s %s: %s", verb, todoWord, strings.Join(positions, ", "))
-	}
-	
 	// Determine message type based on command
 	messageType := "success"
 	switch result.Command {
-	case "modified":
+	case "edit", "modify":
 		messageType = "info"
-	case "reopened":
+	case "reopen":
 		messageType = "warning"
-	case "cleaned":
-		if affectedCount == 0 {
+	case "clean":
+		if len(result.AffectedTodos) == 0 {
 			messageType = "warning"
 		}
 	}
@@ -144,7 +115,7 @@ func (r *LipbamlRenderer) RenderChange(result *too.ChangeResult) error {
 	}
 	
 	return r.renderTodoCommand(
-		message,
+		result.Message,
 		messageType,
 		result.AllTodos,
 		result.TotalCount,

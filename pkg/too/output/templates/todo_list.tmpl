@@ -5,11 +5,10 @@
 <count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
 {{- else if not .Message -}}
 <warning>No todos found</warning>
-{{- end -}}
-{{- if .Message -}}
-
+{{- end }}
+{{- if .Message }}
 <{{.MessageType}}>{{.Message}}</{{.MessageType}}>
-{{- end -}}
+{{- end }}
 
 {{- define "todoItem" -}}
 {{- range .Todos -}}

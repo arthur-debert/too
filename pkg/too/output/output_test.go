@@ -107,6 +107,7 @@ func TestRendererMethods(t *testing.T) {
 		todo := models.NewIDMTodo("Test todo", "")
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,

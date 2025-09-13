@@ -38,6 +38,7 @@ var moveCmd = &cobra.Command{
 		result.Todo.PositionPath = result.NewPath
 		
 		changeResult := too.NewChangeResult(
+			"placeholder",
 			"moved",
 			[]*models.IDMTodo{result.Todo},
 			result.AllTodos,
