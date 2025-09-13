@@ -1,0 +1,29 @@
+#!/usr/bin/env zsh
+
+# Define export_history function that reads captured commands
+function export_history() {
+    if [[ -f "TEMP_DIR_PLACEHOLDER/.command_history" ]]; then
+        grep -v 'export_history' "TEMP_DIR_PLACEHOLDER/.command_history" 2>/dev/null || true
+    else
+        echo "# No history available"
+    fi
+}
+
+# Set up color codes
+GRAY=$'\033[38;5;245m'
+NC=$'\033[0m'
+
+# Read and execute the script line by line
+while IFS= read -r line; do
+    # Skip comments and empty lines
+    if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
+        continue
+    fi
+    
+    # Echo the command in gray
+    echo 
+    echo "${GRAY}$ ${line}${NC}"
+    
+    # Execute the command
+    eval "$line"
+done < "$1"

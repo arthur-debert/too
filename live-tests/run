@@ -5,6 +5,7 @@ set -euo pipefail
 # Get the project root directory (where this script is located)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+LIVE_TESTS_DIR="${SCRIPT_DIR}"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -219,34 +220,9 @@ launch_shell() {
             true # Ignore grep failures
         fi
 
-        # Create a wrapper script that includes our functions
-        cat >"${TEMP_DIR}/.wrapper.zsh" <<EOF
-#!/usr/bin/env zsh
-
-# Define export_history function that reads captured commands
-function export_history() {
-    if [[ -f "${TEMP_DIR}/.command_history" ]]; then
-        grep -v 'export_history' "${TEMP_DIR}/.command_history" 2>/dev/null || true
-    else
-        echo "# No history available"
-    fi
-}
-
-# Read and execute the script line by line
-while IFS= read -r line; do
-    # Skip comments and empty lines
-    if [[ "\$line" =~ ^[[:space:]]*# ]] || [[ -z "\$line" ]]; then
-        continue
-    fi
-    
-    # Echo the command in gray
-    echo 
-    echo -e "${GRAY}$ \$line${NC}"
-    
-    # Execute the command
-    eval "\$line"
-done < "\$1"
-EOF
+        # Copy and customize the wrapper script
+        sed -e "s|TEMP_DIR_PLACEHOLDER|${TEMP_DIR}|g" \
+            "${LIVE_TESTS_DIR}/.wrapper" >"${TEMP_DIR}/.wrapper.zsh"
         chmod +x "${TEMP_DIR}/.wrapper.zsh"
 
         # Run zsh with no rc files to avoid user config interference
@@ -262,19 +238,10 @@ EOF
 
     if [[ "${start_interactive_shell}" == "true" ]]; then
         # Start interactive shell
-        echo -e "\n${YELLOW}Type 'exit' or press Ctrl+D to leave and cleanup${NC}\n"
+        echo -e "\n${YELLOW}$(cat "${LIVE_TESTS_DIR}/.welcome")${NC}\n"
 
-        # Create a custom prompt to indicate test environment
-        export PS1="[too-test] $ "
-
-        # Create zshrc with vi mode
-        cat >"${TEMP_DIR}/.zshrc" <<'EOF'
-# Set vi mode
-bindkey -v
-
-# Set custom prompt
-PS1="[too-test] $ "
-EOF
+        # Copy zshrc to temp directory
+        cp "${LIVE_TESTS_DIR}/.zshrc" "${TEMP_DIR}/.zshrc"
 
         # Start a new shell with custom config
         ZDOTDIR="${TEMP_DIR}" zsh
