@@ -42,3 +42,4 @@ coverage.*
 CLAUDE.md
 GEMINI.md
 tmp
+.padz/
