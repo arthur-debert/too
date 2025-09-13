@@ -50,30 +50,18 @@ func (f *formatter) Description() string {
 	return "Rich terminal output with colors and formatting (default)"
 }
 
-// RenderAdd renders the add command result
-func (f *formatter) RenderAdd(w io.Writer, result *too.AddResult) error {
-	// Update renderer's writer for this render
+// RenderChange renders any command that changes todos
+func (f *formatter) RenderChange(w io.Writer, result *too.ChangeResult) error {
 	f.renderer.Writer = w
-	return f.renderer.RenderAdd(result)
+	return f.renderer.RenderChange(result)
 }
 
-// RenderModify renders the modify command result
-func (f *formatter) RenderModify(w io.Writer, result *too.ModifyResult) error {
+// RenderMessage renders a message result
+func (f *formatter) RenderMessage(w io.Writer, result *too.MessageResult) error {
 	f.renderer.Writer = w
-	return f.renderer.RenderModify(result)
+	return f.renderer.RenderMessage(result)
 }
 
-// RenderInit renders the init command result
-func (f *formatter) RenderInit(w io.Writer, result *too.InitResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderInit(result)
-}
-
-// RenderClean renders the clean command result
-func (f *formatter) RenderClean(w io.Writer, result *too.CleanResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderClean(result)
-}
 
 // RenderSearch renders the search command result
 func (f *formatter) RenderSearch(w io.Writer, result *too.SearchResult) error {
@@ -87,29 +75,7 @@ func (f *formatter) RenderList(w io.Writer, result *too.ListResult) error {
 	return f.renderer.RenderList(result)
 }
 
-// RenderComplete renders the complete command results
-func (f *formatter) RenderComplete(w io.Writer, results []*too.CompleteResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderComplete(results)
-}
 
-// RenderReopen renders the reopen command results
-func (f *formatter) RenderReopen(w io.Writer, results []*too.ReopenResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderReopen(results)
-}
-
-// RenderMove renders the move command result
-func (f *formatter) RenderMove(w io.Writer, result *too.MoveResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderMove(result)
-}
-
-// RenderDataPath renders the datapath command result
-func (f *formatter) RenderDataPath(w io.Writer, result *too.ShowDataPathResult) error {
-	f.renderer.Writer = w
-	return f.renderer.RenderDataPath(result)
-}
 
 // RenderFormats renders the formats command result
 func (f *formatter) RenderFormats(w io.Writer, result *too.ListFormatsResult) error {

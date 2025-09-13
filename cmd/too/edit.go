@@ -6,6 +6,7 @@ import (
 
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/editor"
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/spf13/cobra"
 )
 
@@ -79,7 +80,17 @@ var editCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return renderer.RenderModify(result)
+		
+		// Convert to ChangeResult
+		changeResult := too.NewChangeResult(
+			"modified",
+			[]*models.IDMTodo{result.Todo},
+			result.AllTodos,
+			result.TotalCount,
+			result.DoneCount,
+		)
+		
+		return renderer.RenderChange(changeResult)
 	},
 }
 

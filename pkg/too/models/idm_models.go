@@ -197,3 +197,45 @@ func (c *IDMCollection) AllItems() []*IDMTodo {
 func (c *IDMCollection) Count() int {
 	return len(c.Items)
 }
+
+// GetEffectiveStatus returns the effective status considering children's states.
+// Returns "done" if all children are done, "pending" if all are pending,
+// or "mixed" if children have different states.
+func (t *IDMTodo) GetEffectiveStatus(collection *IDMCollection) string {
+	// Check if deleted
+	if status, exists := t.GetWorkflowStatus("status"); exists && status == "deleted" {
+		return "deleted"
+	}
+	
+	// Get direct children
+	children := collection.GetChildren(t.UID)
+	if len(children) == 0 {
+		// No children, return own status
+		if t.GetStatus() == StatusDone {
+			return "done"
+		}
+		return "pending"
+	}
+	
+	// Check children's states
+	hasComplete := false
+	hasPending := false
+	
+	for _, child := range children {
+		if child.GetStatus() == StatusDone {
+			hasComplete = true
+		} else {
+			hasPending = true
+		}
+		
+		if hasComplete && hasPending {
+			return "mixed"
+		}
+	}
+	
+	// All children have same state
+	if hasComplete {
+		return "done"
+	}
+	return "pending"
+}

@@ -18,22 +18,29 @@ func TestJSONFormatterBehavior(t *testing.T) {
 		buf := &bytes.Buffer{}
 		formatter := New()
 		
-		// Test rendering an add result
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				Text:     "Test todo",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		// Test rendering a change result
+		todo := &models.IDMTodo{
+			Text:     "Test todo",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(buf, result)
+		err := formatter.RenderChange(buf, result)
 		require.NoError(t, err)
 
 		// Verify JSON output
-		var decoded too.AddResult
+		var decoded too.ChangeResult
 		err = json.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
-		assert.Equal(t, "Test todo", decoded.Todo.Text)
+		assert.Equal(t, "add", decoded.Command)
+		assert.Len(t, decoded.AffectedTodos, 1)
+		assert.Equal(t, "Test todo", decoded.AffectedTodos[0].Text)
 	})
 	
 	t.Run("JSON formatter has correct metadata", func(t *testing.T) {

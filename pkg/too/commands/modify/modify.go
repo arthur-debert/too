@@ -14,9 +14,12 @@ type Options struct {
 
 // Result contains the result of the modify command
 type Result struct {
-	Todo    *models.IDMTodo
-	OldText string
-	NewText string
+	Todo       *models.IDMTodo
+	OldText    string
+	NewText    string
+	AllTodos   []*models.IDMTodo // All todos for display
+	TotalCount int               // Total count for display
+	DoneCount  int               // Done count for display
 }
 
 // Execute modifies the text of an existing todo using the pure IDM manager.
@@ -53,10 +56,21 @@ func Execute(positionStr string, newText string, opts Options) (*Result, error) 
 	if err := manager.Save(); err != nil {
 		return nil, err
 	}
+	
+	// Set the position path that was used to find it
+	todo.PositionPath = positionStr
+
+	// Get all todos for display
+	allTodos := manager.ListActive()
+	manager.AttachActiveOnlyPositionPaths(allTodos)
+	totalCount, doneCount := manager.CountTodos()
 
 	return &Result{
-		Todo:    todo,
-		OldText: oldText,
-		NewText: newText,
+		Todo:       todo,
+		OldText:    oldText,
+		NewText:    newText,
+		AllTodos:   allTodos,
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
 	}, nil
 }

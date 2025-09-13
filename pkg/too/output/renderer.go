@@ -44,46 +44,8 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	}
 	lipbalm.SetDefaultRenderer(lipglossRenderer)
 
-	// Define the style map with semantic names
-	styleMap := lipbalm.StyleMap{
-		// Status and result styles
-		"success": lipgloss.NewStyle().
-			Foreground(styles.SUCCESS_COLOR),
-		"error": lipgloss.NewStyle().
-			Foreground(styles.ERROR_COLOR).
-			Bold(true),
-		"warning": lipgloss.NewStyle().
-			Foreground(styles.WARNING_COLOR),
-		"info": lipgloss.NewStyle().
-			Foreground(styles.INFO_COLOR),
-
-		// Todo state styles
-		"todo-done": lipgloss.NewStyle().
-			Foreground(styles.SUCCESS_COLOR).
-			Bold(true),
-		"todo-pending": lipgloss.NewStyle().
-			Foreground(styles.ERROR_COLOR).
-			Bold(true),
-
-		// UI element styles
-		"position": lipgloss.NewStyle().
-			Foreground(styles.SUBDUED_TEXT),
-		"muted": lipgloss.NewStyle().
-			Foreground(styles.VERY_FAINT_TEXT).
-			Faint(true),
-		"highlighted-todo": lipgloss.NewStyle().
-			Bold(true),
-		"subdued": lipgloss.NewStyle().
-			Foreground(styles.SUBDUED_TEXT),
-		"accent": lipgloss.NewStyle().
-			Foreground(styles.ACCENT_COLOR),
-		"count": lipgloss.NewStyle().
-			Foreground(styles.INFO_COLOR),
-		"label": lipgloss.NewStyle().
-			Foreground(styles.SUBDUED_TEXT),
-		"value": lipgloss.NewStyle().
-			Foreground(styles.PRIMARY_TEXT),
-	}
+	// Get the style map from the styles package
+	styleMap := styles.GetLipbalmStyleMap()
 
 	r := &LipbamlRenderer{
 		Writer:    w,
@@ -113,176 +75,137 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	return r, nil
 }
 
-// getStatusSymbol returns the appropriate unicode symbol based on todo status
-// ○ scheduled -> start status (pending)
-// ◐ in progress -> parent with mixed completion states
-// ● done -> completed
-// ⊘ deleted -> deleted (if supported)
-func getStatusSymbol(todo *models.IDMTodo, children []*HierarchicalTodo) string {
-	// Check if deleted status exists
-	if status, exists := todo.GetWorkflowStatus("status"); exists && status == "deleted" {
-		return "⊘"
+// renderTodoCommand is a unified method for rendering todo commands with the todo_list template
+func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos []*models.IDMTodo, totalCount, doneCount int, highlightID string) error {
+	wrapped := &TodoListWithMessage{
+		Message:     message,
+		MessageType: messageType,
+		Todos:       todos,
+		TotalCount:  totalCount,
+		DoneCount:   doneCount,
+		HighlightID: highlightID,
 	}
-	
-	// Check completion status
-	if todo.GetStatus() == models.StatusDone {
-		return "●"
+	output, err := r.renderTemplate("todo_list", wrapped)
+	if err != nil {
+		return fmt.Errorf("failed to render todo command: %w", err)
 	}
+	_, err = fmt.Fprintln(r.Writer, output)
+	return err
+}
+
+// RenderChange renders any command that changes todos
+func (r *LipbamlRenderer) RenderChange(result *too.ChangeResult) error {
+	// Build message with proper pluralization
+	var message string
+	affectedCount := len(result.AffectedTodos)
 	
-	// Check if this todo has children with mixed completion states
-	if len(children) > 0 {
-		hasComplete := false
-		hasPending := false
-		
-		for _, child := range children {
-			if child.IDMTodo.GetStatus() == models.StatusDone {
-				hasComplete = true
+	if affectedCount == 0 {
+		message = fmt.Sprintf("%s: no todos affected", strings.Title(result.Command))
+	} else {
+		// Get position paths for affected todos
+		positions := make([]string, affectedCount)
+		for i, todo := range result.AffectedTodos {
+			if todo.PositionPath != "" {
+				positions[i] = todo.PositionPath
 			} else {
-				hasPending = true
+				positions[i] = todo.UID[:7] // fallback to short UID
 			}
-			
-			if hasComplete && hasPending {
-				return "◐" // In progress - mixed states
-			}
+		}
+		
+		todoWord := "todo"
+		if affectedCount > 1 {
+			todoWord = "todos"
+		}
+		
+		verb := strings.Title(result.Command)
+		if !strings.HasSuffix(result.Command, "ed") {
+			verb = verb + "ed"
+		}
+		message = fmt.Sprintf("%s %s: %s", verb, todoWord, strings.Join(positions, ", "))
+	}
+	
+	// Determine message type based on command
+	messageType := "success"
+	switch result.Command {
+	case "modified":
+		messageType = "info"
+	case "reopened":
+		messageType = "warning"
+	case "cleaned":
+		if affectedCount == 0 {
+			messageType = "warning"
 		}
 	}
 	
-	// Default to scheduled/pending
-	return "○"
+	// Get first affected todo's UID for highlighting (if any)
+	highlightID := ""
+	if len(result.AffectedTodos) > 0 {
+		highlightID = result.AffectedTodos[0].UID
+	}
+	
+	return r.renderTodoCommand(
+		message,
+		messageType,
+		result.AllTodos,
+		result.TotalCount,
+		result.DoneCount,
+		highlightID,
+	)
 }
 
-// formatMultilineText formats text with newlines, indenting subsequent lines
-func formatMultilineText(text string, baseIndent string, columnWidth int) string {
-	lines := strings.Split(text, "\n")
-	if len(lines) <= 1 {
-		return text
-	}
-
-	// Calculate the indentation for continuation lines
-	// baseIndent + position column (6) + " | " (3) + status symbol (1) + " " (1) = baseIndent + 11
-	continuationIndent := baseIndent + strings.Repeat(" ", columnWidth+11)
-
-	// Build the result with proper indentation
-	var result strings.Builder
-	for i, line := range lines {
-		if i == 0 {
-			result.WriteString(line)
-		} else {
-			result.WriteString("\n" + continuationIndent + line)
-		}
-	}
-	return result.String()
-}
-
-// formatMultilineTextSimple formats text with newlines for the new format
-func formatMultilineTextSimple(text string, baseIndent string, prefixLen int) string {
-	lines := strings.Split(text, "\n")
-	if len(lines) <= 1 {
-		return text
-	}
-
-	// For continuation lines, indent to align with the text after "○ 1.1. "
-	continuationIndent := baseIndent + strings.Repeat(" ", prefixLen)
-
-	// Build the result with proper indentation
-	var result strings.Builder
-	for i, line := range lines {
-		if i == 0 {
-			result.WriteString(line)
-		} else {
-			result.WriteString("\n" + continuationIndent + line)
-		}
-	}
-	return result.String()
-}
 
 // templateFuncs returns custom functions for templates
 func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"isDone": func(todo *models.IDMTodo) bool {
-			return todo.GetStatus() == models.StatusDone
+		"isDone": func(todo interface{}) bool {
+			switch t := todo.(type) {
+			case *models.IDMTodo:
+				return t.GetStatus() == models.StatusDone
+			case *HierarchicalTodo:
+				return t.IDMTodo.GetStatus() == models.StatusDone
+			default:
+				return false
+			}
 		},
-		"padPosition": func(pos int) string {
-			return fmt.Sprintf("%6d", pos)
-		},
-		"getIndent": func(level int) string {
+		"indent": func(level int) string {
 			// Use 2 spaces per level for indentation
 			return strings.Repeat("  ", level)
 		},
-		"formatMultiline": func(text string, indent int) string {
-			// For use in templates where we don't have the full context
-			baseIndent := strings.Repeat(" ", indent)
-			return formatMultilineText(text, baseIndent, 6)
+		"lines": func(text string) []string {
+			return strings.Split(text, "\n")
 		},
-		"renderNestedTodosWithHighlight": func(todos []*models.IDMTodo, parentPath string, level int, highlightID string) string {
-			// Build hierarchical structure from flat list
-			hierarchical := BuildHierarchy(todos)
-			return r.renderHierarchicalTodosWithHighlight(hierarchical, parentPath, level, highlightID)
+		"getSymbol": func(status string) string {
+			return styles.GetStatusSymbol(status)
 		},
-		"renderNestedTodos": func(todos []*models.IDMTodo, parentPath string, level int) string {
-			// Build hierarchical structure from flat list
-			hierarchical := BuildHierarchy(todos)
-			return r.renderHierarchicalTodos(hierarchical, parentPath, level)
+		"add": func(a, b int) int {
+			return a + b
 		},
-	}
-}
-
-// renderHierarchicalTodosWithHighlight renders hierarchical todos with optional highlighting
-func (r *LipbamlRenderer) renderHierarchicalTodosWithHighlight(todos []*HierarchicalTodo, parentPath string, level int, highlightID string) string {
-	var result strings.Builder
-	for _, todo := range todos {
-		// Use IDM-calculated position path for consistent IDs
-		path := todo.PositionPath
-		if path == "" {
-			// Fallback to UID if position path is not set
-			path = todo.UID
-		}
-
-		// Render this todo with its path and indentation
-		indent := r.templateFuncs()["getIndent"].(func(int) string)(level)
-		statusSymbol := getStatusSymbol(todo.IDMTodo, todo.Children)
-
-		// Calculate prefix length for multiline alignment: "○ 1.1. "
-		prefixLen := len(statusSymbol) + 1 + len(path) + 2 // symbol + space + path + ". "
-		formattedText := formatMultilineTextSimple(todo.Text, indent, prefixLen)
-
-		// Determine style based on status
-		statusStyle := "todo-pending"
-		if todo.IDMTodo.GetStatus() == models.StatusDone {
-			statusStyle = "todo-done"
-		}
-
-		// Apply appropriate styling
-		if highlightID != "" {
-			// We have a highlighted item
-			if todo.UID == highlightID {
-				// This is the highlighted todo
-				result.WriteString(fmt.Sprintf("%s<highlighted-todo><%s>%s</%s> %s. %s</highlighted-todo>\n",
-					indent, statusStyle, statusSymbol, statusStyle, path, formattedText))
-			} else {
-				// This is not the highlighted todo - mute it
-				result.WriteString(fmt.Sprintf("%s<muted>%s %s. %s</muted>\n",
-					indent, statusSymbol, path, formattedText))
+		"len": func(s string) int {
+			return len(s)
+		},
+		"repeat": func(s string, n int) string {
+			return strings.Repeat(s, n)
+		},
+		"buildHierarchy": func(todos []*models.IDMTodo) []*HierarchicalTodo {
+			return BuildHierarchy(todos)
+		},
+		"dict": func(values ...interface{}) map[string]interface{} {
+			if len(values)%2 != 0 {
+				panic("dict requires even number of arguments")
 			}
-		} else {
-			// No highlighting - normal rendering with colored status symbol
-			result.WriteString(fmt.Sprintf("%s<%s>%s</%s> %s. %s\n",
-				indent, statusStyle, statusSymbol, statusStyle, path, formattedText))
-		}
-
-		// Recursively render children
-		if len(todo.Children) > 0 {
-			childrenOutput := r.renderHierarchicalTodosWithHighlight(todo.Children, "", level+1, highlightID)
-			result.WriteString(childrenOutput)
-		}
+			dict := make(map[string]interface{})
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					panic(fmt.Sprintf("dict keys must be strings, got %T", values[i]))
+				}
+				dict[key] = values[i+1]
+			}
+			return dict
+		},
 	}
-	return result.String()
 }
 
-// renderHierarchicalTodos renders hierarchical todos without highlighting
-func (r *LipbamlRenderer) renderHierarchicalTodos(todos []*HierarchicalTodo, parentPath string, level int) string {
-	return r.renderHierarchicalTodosWithHighlight(todos, parentPath, level, "")
-}
 
 // renderTemplate renders a template with the given data
 func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) (string, error) {
@@ -329,115 +252,63 @@ func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) 
 	return lipbalm.ExpandTags(buf.String(), r.styles)
 }
 
-// RenderAdd renders the add command result using lipbalm
-func (r *LipbamlRenderer) RenderAdd(result *too.AddResult) error {
-	output, err := r.renderTemplate("add_result", result)
+
+// RenderMessage renders a simple message result
+func (r *LipbamlRenderer) RenderMessage(result *too.MessageResult) error {
+	message := &Message{
+		Text:  result.Text,
+		Level: result.Level,
+	}
+	output, err := r.renderTemplate("message", message)
 	if err != nil {
-		return fmt.Errorf("failed to render add result: %w", err)
+		return fmt.Errorf("failed to render message: %w", err)
 	}
 	_, err = fmt.Fprintln(r.Writer, output)
 	return err
 }
 
-// RenderModify renders the modify command result using lipbalm
-func (r *LipbamlRenderer) RenderModify(result *too.ModifyResult) error {
-	output, err := r.renderTemplate("modify_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render modify result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
-
-// RenderInit renders the init command result using lipbalm
-func (r *LipbamlRenderer) RenderInit(result *too.InitResult) error {
-	output, err := r.renderTemplate("init_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render init result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
-
-// RenderClean renders the clean command result using lipbalm
-func (r *LipbamlRenderer) RenderClean(result *too.CleanResult) error {
-	output, err := r.renderTemplate("clean_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render clean result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
 
 // RenderSearch renders the search command result using lipbalm
 func (r *LipbamlRenderer) RenderSearch(result *too.SearchResult) error {
-	output, err := r.renderTemplate("search_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render search result: %w", err)
+	matchCount := len(result.MatchedTodos)
+	message := fmt.Sprintf("Found %d match", matchCount)
+	if matchCount != 1 {
+		message = fmt.Sprintf("Found %d matches", matchCount)
 	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
+	if result.Query != "" {
+		message += fmt.Sprintf(" for \"%s\"", result.Query)
+	}
+	
+	messageType := "info"
+	if matchCount == 0 {
+		messageType = "warning"
+	}
+	
+	return r.renderTodoCommand(
+		message,
+		messageType,
+		result.MatchedTodos,
+		result.TotalCount,
+		0, // Search doesn't track done count separately
+		"", // No highlight
+	)
 }
 
 // RenderList renders the list command result using lipbalm
 func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
-	output, err := r.renderTemplate("todo_list", result)
-	if err != nil {
-		return fmt.Errorf("failed to render list: %w", err)
-	}
-	_, err = fmt.Fprint(r.Writer, output)
-	return err
+	return r.renderTodoCommand(
+		"", // No message for basic list
+		"",
+		result.Todos,
+		result.TotalCount,
+		result.DoneCount,
+		"", // No highlight
+	)
 }
 
-// RenderComplete renders the complete command results using lipbalm
-func (r *LipbamlRenderer) RenderComplete(results []*too.CompleteResult) error {
-	for _, result := range results {
-		output, err := r.renderTemplate("complete_result", result)
-		if err != nil {
-			return fmt.Errorf("failed to render complete result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.Writer, output)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
-// RenderReopen renders the reopen command results using lipbalm
-func (r *LipbamlRenderer) RenderReopen(results []*too.ReopenResult) error {
-	for _, result := range results {
-		output, err := r.renderTemplate("reopen_result", result)
-		if err != nil {
-			return fmt.Errorf("failed to render reopen result: %w", err)
-		}
-		_, err = fmt.Fprintln(r.Writer, output)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
-// RenderMove renders the move command result using lipbalm
-func (r *LipbamlRenderer) RenderMove(result *too.MoveResult) error {
-	output, err := r.renderTemplate("move_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render move result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
 
-// RenderDataPath renders the datapath command result using lipbalm
-func (r *LipbamlRenderer) RenderDataPath(result *too.ShowDataPathResult) error {
-	output, err := r.renderTemplate("datapath_result", result)
-	if err != nil {
-		return fmt.Errorf("failed to render datapath result: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
 
 // RenderFormats renders the formats command result using lipbalm
 func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {
@@ -451,7 +322,11 @@ func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {
 
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
-	output, renderErr := r.renderTemplate("error", err.Error())
+	message := &Message{
+		Text:  "Error: " + err.Error(),
+		Level: "error",
+	}
+	output, renderErr := r.renderTemplate("message", message)
 	if renderErr != nil {
 		return renderErr
 	}

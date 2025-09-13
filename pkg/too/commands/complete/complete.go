@@ -10,7 +10,6 @@ import (
 // Options contains options for the complete command
 type Options struct {
 	CollectionPath string
-	Mode           string // Output mode: "short" or "long"
 }
 
 // Result contains the result of the complete command
@@ -18,10 +17,9 @@ type Result struct {
 	Todo       *models.IDMTodo
 	OldStatus  string
 	NewStatus  string
-	Mode       string           // Output mode passed from options
-	AllTodos   []*models.IDMTodo // All todos for long mode
-	TotalCount int              // Total count for long mode
-	DoneCount  int              // Done count for long mode
+	AllTodos   []*models.IDMTodo // All todos after the operation
+	TotalCount int               // Total count after the operation
+	DoneCount  int               // Done count after the operation
 }
 
 // Execute marks a todo as complete using pure IDM.
@@ -61,21 +59,24 @@ func Execute(positionPath string, opts Options) (*Result, error) {
 	if idmTodo == nil {
 		return nil, fmt.Errorf("todo not found after update")
 	}
+	
+	// Set the position path that was used to find it
+	idmTodo.PositionPath = positionPath
+
+	// Get all todos and counts
+	allTodos := manager.ListActive()
+	// CRITICAL: Use active-only position paths for consecutive IDs in command output
+	manager.AttachActiveOnlyPositionPaths(allTodos)
+	totalCount, doneCount := manager.CountTodos()
 
 	// Build result
 	result := &Result{
-		Todo:      idmTodo,
-		OldStatus: oldStatus,
-		NewStatus: newStatus,
-		Mode:      opts.Mode,
-	}
-
-	// Add long mode data if requested
-	if opts.Mode == "long" {
-		result.AllTodos = manager.ListActive()
-		// CRITICAL: Use active-only position paths for consecutive IDs in command output
-		manager.AttachActiveOnlyPositionPaths(result.AllTodos)
-		result.TotalCount, result.DoneCount = manager.CountTodos()
+		Todo:       idmTodo,
+		OldStatus:  oldStatus,
+		NewStatus:  newStatus,
+		AllTodos:   allTodos,
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
 	}
 
 	return result, nil

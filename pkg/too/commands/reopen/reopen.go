@@ -16,9 +16,12 @@ type Options struct {
 
 // Result contains the result of the reopen command
 type Result struct {
-	Todo      *models.IDMTodo
-	OldStatus string
-	NewStatus string
+	Todo       *models.IDMTodo
+	OldStatus  string
+	NewStatus  string
+	AllTodos   []*models.IDMTodo // All todos for display
+	TotalCount int               // Total count for display
+	DoneCount  int               // Done count for display
 }
 
 // Execute marks a todo as pending using the pure IDM manager.
@@ -89,11 +92,22 @@ func Execute(ref string, opts Options) (*Result, error) {
 		return nil, err
 	}
 
+	// Set the position path that was used to find it
+	todo.PositionPath = ref
+
+	// Get all todos for display
+	allTodos := manager.ListActive()
+	manager.AttachActiveOnlyPositionPaths(allTodos)
+	totalCount, doneCount := manager.CountTodos()
+
 	// Capture result
 	result := &Result{
-		Todo:      todo,
-		OldStatus: oldStatus,
-		NewStatus: "pending",
+		Todo:       todo,
+		OldStatus:  oldStatus,
+		NewStatus:  "pending",
+		AllTodos:   allTodos,
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
 	}
 
 	logger.Info().

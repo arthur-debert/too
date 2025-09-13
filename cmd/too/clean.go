@@ -28,7 +28,16 @@ var cleanCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return renderer.RenderClean(result)
+		
+		changeResult := too.NewChangeResult(
+			"cleaned",
+			result.RemovedTodos,
+			result.ActiveTodos,
+			result.ActiveCount,
+			0, // After clean, no done todos remain
+		)
+		
+		return renderer.RenderChange(changeResult)
 	},
 }
 

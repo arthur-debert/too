@@ -22,34 +22,47 @@ func TestCSVFormatter(t *testing.T) {
 		assert.Equal(t, "CSV output for spreadsheet applications", formatter.Description())
 	})
 
-	t.Run("RenderAdd", func(t *testing.T) {
+	t.Run("RenderChange", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				UID:      "123",
-				Text:     "Test todo",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		todo := &models.IDMTodo{
+			UID:      "123",
+			Text:     "Test todo",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
-		// Parse CSV
-		reader := csv.NewReader(&buf)
-		records, err := reader.ReadAll()
+		// CSV has two sections separated by blank line
+		content := buf.String()
+		sections := strings.Split(content, "\n\n")
+		require.Len(t, sections, 2)
+
+		// Parse summary section
+		summaryReader := csv.NewReader(strings.NewReader(sections[0]))
+		summaryRecords, err := summaryReader.ReadAll()
 		require.NoError(t, err)
+		assert.Equal(t, []string{"command", "affected_count", "total_count", "done_count"}, summaryRecords[0])
+		assert.Equal(t, "add", summaryRecords[1][0])
+		assert.Equal(t, "1", summaryRecords[1][1])
+		assert.Equal(t, "1", summaryRecords[1][2])
+		assert.Equal(t, "0", summaryRecords[1][3])
 
-		// Check headers
-		assert.Equal(t, []string{"id", "parent", "position", "text", "status", "modified"}, records[0])
-
-		// Check data
-		assert.Len(t, records, 2) // header + 1 row
-		assert.Equal(t, "123", records[1][0])
-		assert.Equal(t, "", records[1][1]) // no parent
-		assert.Equal(t, "1", records[1][2])
-		assert.Equal(t, "Test todo", records[1][3])
-		assert.Equal(t, "pending", records[1][4])
+		// Parse data section
+		dataReader := csv.NewReader(strings.NewReader(sections[1]))
+		dataRecords, err := dataReader.ReadAll()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id", "parent", "position", "text", "status", "modified"}, dataRecords[0])
+		assert.Equal(t, "123", dataRecords[1][0])
+		assert.Equal(t, "Test todo", dataRecords[1][3])
+		assert.Equal(t, "pending", dataRecords[1][4])
 	})
 
 	t.Run("RenderList", func(t *testing.T) {
@@ -197,19 +210,29 @@ func TestCSVFormatter(t *testing.T) {
 
 	t.Run("Text with newlines", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				UID:      "123",
-				Text:     "Todo with\nnewline",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		todo := &models.IDMTodo{
+			UID:      "123",
+			Text:     "Todo with\nnewline",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
-		// Parse CSV - the CSV package should handle newlines properly
-		reader := csv.NewReader(&buf)
+		// Parse CSV - should have summary + blank line + data
+		content := buf.String()
+		sections := strings.Split(content, "\n\n")
+		require.Len(t, sections, 2)
+		
+		// Parse data section
+		reader := csv.NewReader(strings.NewReader(sections[1]))
 		records, err := reader.ReadAll()
 		require.NoError(t, err)
 
@@ -219,19 +242,28 @@ func TestCSVFormatter(t *testing.T) {
 
 	t.Run("Special characters", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				UID:      "123",
-				Text:     `Todo with "quotes", commas, and 'apostrophes'`,
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		todo := &models.IDMTodo{
+			UID:      "123",
+			Text:     `Todo with "quotes", commas, and 'apostrophes'`,
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
-		// Parse CSV
-		reader := csv.NewReader(&buf)
+		// Parse data section
+		content := buf.String()
+		sections := strings.Split(content, "\n\n")
+		require.Len(t, sections, 2)
+		
+		reader := csv.NewReader(strings.NewReader(sections[1]))
 		records, err := reader.ReadAll()
 		require.NoError(t, err)
 
@@ -239,28 +271,41 @@ func TestCSVFormatter(t *testing.T) {
 		assert.Equal(t, `Todo with "quotes", commas, and 'apostrophes'`, records[1][3])
 	})
 
-	t.Run("RenderMove", func(t *testing.T) {
+	t.Run("RenderChange - Move", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.MoveResult{
-			Todo: &models.IDMTodo{
-				UID:      "123",
-				Text:     "Moved todo",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
-			OldPath: "1",
-			NewPath: "3",
+		todo := &models.IDMTodo{
+			UID:      "123",
+			Text:     "Moved todo",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"moved",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderMove(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
-		// Parse CSV
-		reader := csv.NewReader(&buf)
-		records, err := reader.ReadAll()
-		require.NoError(t, err)
+		// CSV has two sections separated by blank line
+		content := buf.String()
+		sections := strings.Split(content, "\n\n")
+		require.Len(t, sections, 2)
 
-		assert.Equal(t, []string{"id", "text", "old_path", "new_path", "status"}, records[0])
-		assert.Equal(t, "1", records[1][2]) // old path
-		assert.Equal(t, "3", records[1][3]) // new path
+		// Parse summary section
+		summaryReader := csv.NewReader(strings.NewReader(sections[0]))
+		summaryRecords, err := summaryReader.ReadAll()
+		require.NoError(t, err)
+		assert.Equal(t, "moved", summaryRecords[1][0])
+
+		// Parse data section
+		dataReader := csv.NewReader(strings.NewReader(sections[1]))
+		dataRecords, err := dataReader.ReadAll()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"id", "parent", "position", "text", "status", "modified"}, dataRecords[0])
+		assert.Equal(t, "123", dataRecords[1][0])
+		assert.Equal(t, "Moved todo", dataRecords[1][3])
 	})
 }

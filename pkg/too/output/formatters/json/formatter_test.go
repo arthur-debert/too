@@ -21,23 +21,30 @@ func TestJSONFormatter(t *testing.T) {
 		assert.Equal(t, "JSON output for programmatic consumption", formatter.Description())
 	})
 
-	t.Run("RenderAdd", func(t *testing.T) {
+	t.Run("RenderChange", func(t *testing.T) {
 		var buf bytes.Buffer
-		result := &too.AddResult{
-			Todo: &models.IDMTodo{
-				Text:     "Test todo",
-				Statuses: map[string]string{"completion": string(models.StatusPending)},
-			},
+		todo := &models.IDMTodo{
+			Text:     "Test todo",
+			Statuses: map[string]string{"completion": string(models.StatusPending)},
 		}
+		result := too.NewChangeResult(
+			"add",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			0,
+		)
 
-		err := formatter.RenderAdd(&buf, result)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
 		// Verify it's valid JSON
-		var decoded too.AddResult
+		var decoded too.ChangeResult
 		err = json.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
-		assert.Equal(t, result.Todo.Text, decoded.Todo.Text)
+		assert.Equal(t, "add", decoded.Command)
+		assert.Len(t, decoded.AffectedTodos, 1)
+		assert.Equal(t, todo.Text, decoded.AffectedTodos[0].Text)
 	})
 
 	t.Run("RenderList", func(t *testing.T) {
@@ -83,26 +90,30 @@ func TestJSONFormatter(t *testing.T) {
 		assert.Equal(t, testErr.Error(), decoded["error"])
 	})
 
-	t.Run("RenderComplete", func(t *testing.T) {
+	t.Run("RenderChange - Complete", func(t *testing.T) {
 		var buf bytes.Buffer
-		results := []*too.CompleteResult{
-			{
-				Todo: &models.IDMTodo{
-					Text:     "Completed todo",
-					Statuses: map[string]string{"completion": string(models.StatusDone)},
-				},
-			},
+		todo := &models.IDMTodo{
+			Text:     "Completed todo",
+			Statuses: map[string]string{"completion": string(models.StatusDone)},
 		}
+		result := too.NewChangeResult(
+			"completed",
+			[]*models.IDMTodo{todo},
+			[]*models.IDMTodo{todo},
+			1,
+			1,
+		)
 
-		err := formatter.RenderComplete(&buf, results)
+		err := formatter.RenderChange(&buf, result)
 		require.NoError(t, err)
 
-		// Verify it's valid JSON array
-		var decoded []*too.CompleteResult
+		// Verify it's valid JSON
+		var decoded too.ChangeResult
 		err = json.Unmarshal(buf.Bytes(), &decoded)
 		require.NoError(t, err)
-		assert.Len(t, decoded, 1)
-		assert.Equal(t, results[0].Todo.Text, decoded[0].Todo.Text)
+		assert.Equal(t, "completed", decoded.Command)
+		assert.Len(t, decoded.AffectedTodos, 1)
+		assert.Equal(t, todo.Text, decoded.AffectedTodos[0].Text)
 	})
 
 	t.Run("RenderFormats", func(t *testing.T) {

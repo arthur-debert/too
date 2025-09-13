@@ -4,6 +4,7 @@
 package too
 
 import (
+	"github.com/arthur-debert/too/pkg/too/models"
 	cmdAdd "github.com/arthur-debert/too/pkg/too/commands/add"
 	cmdClean "github.com/arthur-debert/too/pkg/too/commands/clean"
 	cmdComplete "github.com/arthur-debert/too/pkg/too/commands/complete"
@@ -57,6 +58,25 @@ func Init(opts InitOptions) (*InitResult, error) {
 // Add adds a new todo to the collection
 func Add(text string, opts AddOptions) (*AddResult, error) {
 	return cmdAdd.Execute(text, opts)
+}
+
+// AddAsChange executes Add and returns a unified ChangeResult
+func AddAsChange(text string, opts AddOptions) (*ChangeResult, error) {
+	result, err := cmdAdd.Execute(text, opts)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Set position path on the todo for display
+	result.Todo.PositionPath = result.PositionPath
+	
+	return NewChangeResult(
+		"added",
+		[]*models.IDMTodo{result.Todo},
+		result.AllTodos,
+		result.TotalCount,
+		result.DoneCount,
+	), nil
 }
 
 // Modify modifies the text of an existing todo by position

@@ -1,9 +1,0 @@
-{{- if eq .RemovedCount 0 -}}
-<warning>No finished todos to clean</warning>
-{{- else -}}
-<success>Removed {{.RemovedCount}} finished todo(s)</success>
-{{- range .RemovedTodos }}
-  - {{.Text}}
-{{- end }}
-{{- end }}
-<count>{{.ActiveCount}} active todo(s) remaining</count>

@@ -15,11 +15,14 @@ type Options struct {
 
 // Result represents the result of a move operation
 type Result struct {
-	Todo      *models.IDMTodo
-	OldPath   string
-	NewPath   string
-	OldParent *models.IDMTodo
-	NewParent *models.IDMTodo
+	Todo       *models.IDMTodo
+	OldPath    string
+	NewPath    string
+	OldParent  *models.IDMTodo
+	NewParent  *models.IDMTodo
+	AllTodos   []*models.IDMTodo // All todos for display
+	TotalCount int               // Total count for display
+	DoneCount  int               // Done count for display
 }
 
 // Execute moves a todo from one parent to another using the pure IDM manager.
@@ -114,12 +117,23 @@ func Execute(sourcePath string, destParentPath string, opts Options) (*Result, e
 		return nil, err
 	}
 
+	// Set the position path that was used to find it
+	sourceTodo.PositionPath = sourcePath
+
+	// Get all todos for display
+	allTodos := manager.ListActive()
+	manager.AttachActiveOnlyPositionPaths(allTodos)
+	totalCount, doneCount := manager.CountTodos()
+
 	result := &Result{
-		Todo:      sourceTodo,
-		OldPath:   oldPath,
-		NewPath:   newPath,
-		OldParent: oldParent,
-		NewParent: newParent,
+		Todo:       sourceTodo,
+		OldPath:    oldPath,
+		NewPath:    newPath,
+		OldParent:  oldParent,
+		NewParent:  newParent,
+		AllTodos:   allTodos,
+		TotalCount: totalCount,
+		DoneCount:  doneCount,
 	}
 
 	logger.Debug().

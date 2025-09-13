@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +43,19 @@ Examples:
 		if err != nil {
 			return err
 		}
-		return renderer.RenderMove(result)
+		
+		// Set the new position path on the todo
+		result.Todo.PositionPath = result.NewPath
+		
+		changeResult := too.NewChangeResult(
+			"swapped",
+			[]*models.IDMTodo{result.Todo},
+			result.AllTodos,
+			result.TotalCount,
+			result.DoneCount,
+		)
+		
+		return renderer.RenderChange(changeResult)
 	},
 }
 
