@@ -49,7 +49,8 @@ var completeCmd = &cobra.Command{
 		// Use data from the last result
 		lastResult := results[len(results)-1]
 		changeResult := too.NewChangeResult(
-			"completed",
+			"complete",
+			"Completed todos",  // Placeholder message
 			affectedTodos,
 			lastResult.AllTodos,
 			lastResult.TotalCount,

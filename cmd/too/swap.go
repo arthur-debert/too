@@ -48,6 +48,7 @@ Examples:
 		result.Todo.PositionPath = result.NewPath
 		
 		changeResult := too.NewChangeResult(
+			"placeholder",
 			"swapped",
 			[]*models.IDMTodo{result.Todo},
 			result.AllTodos,

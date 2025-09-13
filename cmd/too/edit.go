@@ -83,6 +83,7 @@ var editCmd = &cobra.Command{
 		
 		// Convert to ChangeResult
 		changeResult := too.NewChangeResult(
+			"placeholder",
 			"modified",
 			[]*models.IDMTodo{result.Todo},
 			result.AllTodos,

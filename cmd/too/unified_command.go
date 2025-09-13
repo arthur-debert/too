@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
@@ -77,7 +78,7 @@ func createUnifiedCommand(def *too.CommandDef) *cobra.Command {
 		}
 
 		// Get renderer
-		renderer, err := getFormatterForCommand(cmd)
+		renderer, err := getRendererForCommand(cmd)
 		if err != nil {
 			return err
 		}
@@ -98,17 +99,24 @@ func createUnifiedCommand(def *too.CommandDef) *cobra.Command {
 	return cmd
 }
 
-// getFormatterForCommand gets the appropriate formatter based on format flag
-func getFormatterForCommand(cmd *cobra.Command) (output.Formatter, error) {
+// getRendererForCommand gets the appropriate renderer based on format flag
+func getRendererForCommand(cmd *cobra.Command) (*output.Renderer, error) {
 	format, _ := cmd.Flags().GetString("format")
 	if format == "" {
 		format = "term"
 	}
 
-	formatter, err := output.GetFormatter(format)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get formatter: %w", err)
+	// Validate the format
+	if !output.HasFormatter(format) {
+		availableFormats := output.List()
+		return nil, fmt.Errorf("invalid format %q. Available formats: %v", format, availableFormats)
 	}
 
-	return formatter, nil
+	// Create renderer with specified format
+	renderer, err := output.NewRendererWithFormat(format, os.Stdout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create renderer: %w", err)
+	}
+
+	return renderer, nil
 }

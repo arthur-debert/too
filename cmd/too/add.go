@@ -188,6 +188,7 @@ var addCmd = &cobra.Command{
 		result.Todo.PositionPath = result.PositionPath
 		changeResult := too.NewChangeResult(
 			"add",
+			fmt.Sprintf("Added todo: %s", result.PositionPath),
 			[]*models.IDMTodo{result.Todo},
 			result.AllTodos,
 			result.TotalCount,
