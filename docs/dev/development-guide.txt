@@ -203,23 +203,38 @@ covering quick start, conventions, and architecture including the IDM system.
 
     Integration Testing:
     
-        Use scripts/run-integration-env.sh for isolated testing:
+        Use live-tests/run for isolated end-to-end testing:
         
         -- bash
-        # Start with a fresh .todos file
-        ./scripts/run-integration-env.sh
+        # Start interactive shell with fresh .todos file
+        ./live-tests/run
         
-        # Start with existing data
-        ./scripts/run-integration-env.sh ~/.todos.json
+        # Execute a test script
+        ./live-tests/run ./live-tests/example.sh
+        
+        # Execute script then stay in interactive mode
+        ./live-tests/run --interactive ./my-test.sh
+        
+        # Use different output format
+        ./live-tests/run --format json ./test-json.sh
         --
         
         Features:
         
-        • Creates isolated temporary directory
-        • Separate .todos file that won't affect your real data
-        • Drops you into a shell with too in PATH
+        • Creates isolated temporary directory with fresh .todos file
+        • Runs too commands without affecting your real data
+        • Shows each command before execution (in gray)
+        • Supports both interactive exploration and scripted testing
+        • Custom prompt "[too-test] $ " with vi key bindings
+        • export_history function outputs all commands from session
         • Automatically cleans up on exit
-        • Custom prompt "[too-test]" to indicate test environment
+        
+        The live-tests directory contains:
+        
+        • run - Main script for launching test environment
+        • example.sh - Example test script showing common patterns
+        • usage.txt - Detailed usage information
+        • Hidden files (.wrapper, .zshrc, .welcome) used internally
 
     IDM Testing Patterns:
     
