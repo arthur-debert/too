@@ -14,9 +14,26 @@ GRAY=$'\033[38;5;245m'
 NC=$'\033[0m'
 
 # Read and execute the script line by line
+prev_was_comment=false
 while IFS= read -r line; do
-    # Skip comments and empty lines
-    if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
+    # Handle comments - display them in gray
+    if [[ "$line" =~ ^[[:space:]]*# ]]; then
+        # Extract comment text (remove # and leading whitespace)
+        comment_text="$(echo "$line" | sed 's/^[[:space:]]*#[[:space:]]*//')"
+        if [[ -n "$comment_text" ]]; then
+            # Only add newline if previous line wasn't a comment
+            if [[ "$prev_was_comment" == false ]]; then
+                echo
+            fi
+            echo "${GRAY}${comment_text}${NC}"
+        fi
+        prev_was_comment=true
+        continue
+    fi
+    
+    # Skip empty lines
+    if [[ -z "$line" ]]; then
+        prev_was_comment=false
         continue
     fi
     
@@ -26,4 +43,5 @@ while IFS= read -r line; do
     
     # Execute the command
     eval "$line"
+    prev_was_comment=false
 done < "$1"
