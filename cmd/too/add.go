@@ -154,6 +154,7 @@ var addCmd = &cobra.Command{
 				lastResult := results[len(results)-1]
 				changeResult := too.NewChangeResult(
 					"add",
+					fmt.Sprintf("Added %d todos", len(affectedTodos)),
 					affectedTodos,
 					lastResult.AllTodos,
 					lastResult.TotalCount,
