@@ -15,7 +15,7 @@ func init() {
 		
 		// Convert format names to Info structs
 		var infos []*formatter.Info
-		for _, format := range engine.ListFormats() {
+		for _, format := range engine.GetLipbalmEngine().ListFormats() {
 			info := &formatter.Info{
 				Name:        format,
 				Description: getFormatDescription(format),

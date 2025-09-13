@@ -115,34 +115,30 @@ func (r *LipbamlRenderer) RenderChange(result *too.ChangeResult) error {
 }
 
 
-// templateFuncs returns custom functions for templates (domain-specific only)
-// Note: Basic functions like add, repeat, dict are provided by Sprig automatically
+// templateFuncs returns too-specific template functions
 func templateFuncs() template.FuncMap {
-	return template.FuncMap{
-		"isDone": func(todo interface{}) bool {
-			switch t := todo.(type) {
-			case *models.IDMTodo:
-				return t.GetStatus() == models.StatusDone
-			case *HierarchicalTodo:
-				return t.IDMTodo.GetStatus() == models.StatusDone
-			default:
-				return false
-			}
-		},
-		"indent": func(level int) string {
-			// Use 2 spaces per level for indentation  
-			return strings.Repeat("  ", level)
-		},
-		"lines": func(text string) []string {
-			return strings.Split(text, "\n")
-		},
-		"getSymbol": func(status string) string {
-			return styles.GetStatusSymbol(status)
-		},
-		"buildHierarchy": func(todos []*models.IDMTodo) []*HierarchicalTodo {
-			return BuildHierarchy(todos)
-		},
+	// Start with lipbalm's default functions
+	funcs := lipbalm.DefaultTemplateFuncs()
+	
+	// Add too-specific functions
+	funcs["isDone"] = func(todo interface{}) bool {
+		switch t := todo.(type) {
+		case *models.IDMTodo:
+			return t.GetStatus() == models.StatusDone
+		case *HierarchicalTodo:
+			return t.IDMTodo.GetStatus() == models.StatusDone
+		default:
+			return false
+		}
 	}
+	funcs["getSymbol"] = func(status string) string {
+		return styles.GetStatusSymbol(status)
+	}
+	funcs["buildHierarchy"] = func(todos []*models.IDMTodo) []*HierarchicalTodo {
+		return BuildHierarchy(todos)
+	}
+	
+	return funcs
 }
 
 
@@ -150,17 +146,12 @@ func templateFuncs() template.FuncMap {
 
 // RenderMessage renders a simple message result
 func (r *LipbamlRenderer) RenderMessage(result *too.MessageResult) error {
-	message := &Message{
-		Text:  result.Text,
-		Level: result.Level,
-	}
-	
 	template, ok := r.templateManager.GetTemplate("message")
 	if !ok {
 		return fmt.Errorf("template 'message' not found")
 	}
 	
-	output, err := lipbalm.Render(template, message, r.templateManager.GetStyles(), templateFuncs())
+	output, err := lipbalm.Render(template, result, r.templateManager.GetStyles(), templateFuncs())
 	if err != nil {
 		return fmt.Errorf("failed to render message: %w", err)
 	}
@@ -228,10 +219,7 @@ func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {
 
 // RenderError renders an error message
 func (r *LipbamlRenderer) RenderError(err error) error {
-	message := &Message{
-		Text:  "Error: " + err.Error(),
-		Level: "error",
-	}
+	message := lipbalm.NewErrorMessage("Error: " + err.Error())
 	
 	template, ok := r.templateManager.GetTemplate("message")
 	if !ok {

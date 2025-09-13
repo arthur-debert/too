@@ -67,7 +67,7 @@ func NewEngine() (*Engine, error) {
 					}
 					return &TodoListWithMessage{
 						Message:     v.Message,
-						MessageType: messageTypeForCommand(v.Command, v.AffectedTodos),
+						MessageType: v.MessageType(),
 						Todos:       v.AllTodos,
 						TotalCount:  v.TotalCount,
 						DoneCount:   v.DoneCount,
@@ -119,29 +119,9 @@ func NewEngine() (*Engine, error) {
 	}, nil
 }
 
-// Render renders data in the specified format
-func (e *Engine) Render(w io.Writer, format string, data interface{}) error {
-	return e.lipbalmEngine.Render(w, format, data)
-}
-
-// RenderError renders an error
-func (e *Engine) RenderError(w io.Writer, format string, err error) error {
-	return e.lipbalmEngine.RenderError(w, format, err)
-}
-
-// SetFormat sets the default format
-func (e *Engine) SetFormat(format string) error {
-	return e.lipbalmEngine.SetFormat(format)
-}
-
-// GetFormat returns the current default format
-func (e *Engine) GetFormat() string {
-	return e.lipbalmEngine.GetFormat()
-}
-
-// ListFormats returns available formats
-func (e *Engine) ListFormats() []string {
-	return e.lipbalmEngine.ListFormats()
+// GetLipbalmEngine returns the underlying lipbalm engine for direct use
+func (e *Engine) GetLipbalmEngine() *lipbalm.RenderEngine {
+	return e.lipbalmEngine
 }
 
 // Helper functions
@@ -160,21 +140,6 @@ func messageTypeForCount(count int) string {
 	return "info"
 }
 
-func messageTypeForCommand(command string, affected []*models.IDMTodo) string {
-	switch command {
-	case "edit", "modify":
-		return "info"
-	case "reopen":
-		return "warning"
-	case "clean":
-		if len(affected) == 0 {
-			return "warning"
-		}
-		return "success"
-	default:
-		return "success"
-	}
-}
 
 // Markdown rendering functions
 
@@ -311,24 +276,4 @@ func GetGlobalEngine() (*Engine, error) {
 		}
 	}
 	return globalEngine, nil
-}
-
-// Quick render functions for convenience
-
-// QuickRender renders data using the global engine
-func QuickRender(format string, data interface{}) error {
-	engine, err := GetGlobalEngine()
-	if err != nil {
-		return err
-	}
-	return engine.Render(os.Stdout, format, data)
-}
-
-// QuickRenderError renders an error using the global engine
-func QuickRenderError(format string, err error) error {
-	engine, renderErr := GetGlobalEngine()
-	if renderErr != nil {
-		return renderErr
-	}
-	return engine.RenderError(os.Stdout, format, err)
 }

@@ -44,7 +44,7 @@ func NewRendererWithFormat(format string, w io.Writer) (*Renderer, error) {
 	}
 
 	// Validate format
-	formats := engine.ListFormats()
+	formats := engine.GetLipbalmEngine().ListFormats()
 	found := false
 	for _, f := range formats {
 		if f == format {
@@ -65,12 +65,12 @@ func NewRendererWithFormat(format string, w io.Writer) (*Renderer, error) {
 
 // RenderChange renders any command that changes todos
 func (r *Renderer) RenderChange(result *too.ChangeResult) error {
-	return r.engine.Render(r.writer, r.format, result)
+	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderMessage renders a message result
 func (r *Renderer) RenderMessage(result *too.MessageResult) error {
-	return r.engine.Render(r.writer, r.format, result)
+	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderInit renders the init command result
@@ -81,12 +81,12 @@ func (r *Renderer) RenderInit(result *too.InitResult) error {
 
 // RenderSearch renders the search command result
 func (r *Renderer) RenderSearch(result *too.SearchResult) error {
-	return r.engine.Render(r.writer, r.format, result)
+	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderList renders the list command result
 func (r *Renderer) RenderList(result *too.ListResult) error {
-	return r.engine.Render(r.writer, r.format, result)
+	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderDataPath renders the datapath command result
@@ -97,12 +97,12 @@ func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
 
 // RenderFormats renders the formats command result
 func (r *Renderer) RenderFormats(result *too.ListFormatsResult) error {
-	return r.engine.Render(r.writer, r.format, result)
+	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderError renders an error message
 func (r *Renderer) RenderError(err error) error {
-	return r.engine.RenderError(r.writer, r.format, err)
+	return r.engine.GetLipbalmEngine().RenderError(r.writer, r.format, err)
 }
 
 // HasFormatter checks if a formatter is available
@@ -112,7 +112,7 @@ func HasFormatter(name string) bool {
 		return false
 	}
 	
-	for _, format := range engine.ListFormats() {
+	for _, format := range engine.GetLipbalmEngine().ListFormats() {
 		if format == name {
 			return true
 		}
@@ -127,5 +127,5 @@ func List() []string {
 		return []string{}
 	}
 	
-	return engine.ListFormats()
+	return engine.GetLipbalmEngine().ListFormats()
 }
