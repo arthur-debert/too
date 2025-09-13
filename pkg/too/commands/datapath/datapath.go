@@ -25,19 +25,49 @@ func Execute(opts Options) (*Result, error) {
 		// Use explicit path if provided
 		storePath = opts.CollectionPath
 	} else {
-		// Use default path logic similar to init command
-		// Check if ~/.todos.json exists (home directory default)
-		home, err := os.UserHomeDir()
+		// Search upward for .todos file (like git does for .git)
+		dir, err := os.Getwd()
 		if err == nil {
-			homeDefault := filepath.Join(home, ".todos.json")
-			if _, err := os.Stat(homeDefault); err == nil {
-				storePath = homeDefault
-			} else {
-				// Default to current directory
-				storePath = ".todos"
+			found := false
+			for {
+				todosPath := filepath.Join(dir, ".todos")
+				if _, err := os.Stat(todosPath); err == nil {
+					storePath = todosPath
+					found = true
+					break
+				}
+				
+				parent := filepath.Dir(dir)
+				if parent == dir {
+					// Reached root directory
+					break
+				}
+				dir = parent
+			}
+			
+			if !found {
+				// Check TODO_DB_PATH environment variable
+				if envPath := os.Getenv("TODO_DB_PATH"); envPath != "" {
+					storePath = envPath
+				} else {
+					// Check if ~/.todos.json exists (home directory default)
+					home, err := os.UserHomeDir()
+					if err == nil {
+						homeDefault := filepath.Join(home, ".todos.json")
+						if _, err := os.Stat(homeDefault); err == nil {
+							storePath = homeDefault
+						} else {
+							// Default to current directory
+							storePath = ".todos"
+						}
+					} else {
+						// Fallback to current directory if can't get home
+						storePath = ".todos"
+					}
+				}
 			}
 		} else {
-			// Fallback to current directory if can't get home
+			// Fallback to current directory if can't get working directory
 			storePath = ".todos"
 		}
 	}
