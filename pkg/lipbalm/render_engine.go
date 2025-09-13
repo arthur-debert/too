@@ -116,6 +116,11 @@ func (e *RenderEngine) Render(w io.Writer, format string, data interface{}) erro
 		output = e.config.Callbacks.PostProcess(format, output)
 	}
 
+	// Ensure output ends with a newline for terminal format
+	if format == "term" && len(output) > 0 && output[len(output)-1] != '\n' {
+		output += "\n"
+	}
+
 	_, err = w.Write([]byte(output))
 	return err
 }
