@@ -25,6 +25,7 @@ func TestJSONFormatterBehavior(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,

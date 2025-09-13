@@ -29,6 +29,7 @@ func TestJSONFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"add",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
@@ -98,6 +99,7 @@ func TestJSONFormatter(t *testing.T) {
 		}
 		result := too.NewChangeResult(
 			"completed",
+			"",
 			[]*models.IDMTodo{todo},
 			[]*models.IDMTodo{todo},
 			1,
