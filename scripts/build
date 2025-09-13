@@ -9,6 +9,48 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# Usage function
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Build the too CLI binary and run tests.
+
+Options:
+  --skip-tests      Skip running tests after building (default: run tests)
+  -h, --help        Show this help message and exit
+
+Examples:
+  # Build and run tests (default)
+  $(basename "$0")
+
+  # Build only, skip tests
+  $(basename "$0") --skip-tests
+
+EOF
+}
+
+# Parse command line arguments
+SKIP_TESTS=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-tests)
+            SKIP_TESTS=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Error: Unknown option '$1'${NC}" >&2
+            usage
+            exit 1
+            ;;
+    esac
+done
+
 # Build output directory (using bin/ to avoid conflicts with goreleaser's dist/)
 BIN_DIR="bin"
 
@@ -175,7 +217,7 @@ chmod +x "${BIN_DIR}/too"
 echo -e "${GREEN}✅ Multi-arch wrapper created${NC}"
 
 # Run tests if not skipped
-if [[ "${SKIP_TESTS:-}" != "true" ]]; then
+if [[ "$SKIP_TESTS" != "true" ]]; then
     echo
     echo -e "${YELLOW}Running tests...${NC}"
     TEST_CMD="go test ./... -short"
@@ -190,7 +232,7 @@ if [[ "${SKIP_TESTS:-}" != "true" ]]; then
     fi
 else
     echo
-    echo -e "${YELLOW}⚠️  Tests skipped (SKIP_TESTS=true)${NC}"
+    echo -e "${YELLOW}⚠️  Tests skipped (--skip-tests flag provided)${NC}"
 fi
 
 # Verify the binary works

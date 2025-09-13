@@ -138,11 +138,15 @@ mkdir -p "$TMP_BASE"
 # Create a unique temporary directory
 TEMP_DIR=$(mktemp -d "$TMP_BASE/too-test-XXXXXX")
 
-# Build too if needed
+# Always build a fresh binary to ensure we're testing the latest code
 TOO_BIN="$PROJECT_ROOT/bin/too"
+echo -e "${YELLOW}Building fresh too binary (using build cache if possible)...${NC}"
+(cd "$PROJECT_ROOT" && ./scripts/build --skip-tests)
+
+# Verify the binary exists and is executable
 if [[ ! -x "$TOO_BIN" ]]; then
-    echo -e "${YELLOW}Building too...${NC}"
-    (cd "$PROJECT_ROOT" && ./scripts/build)
+    echo -e "${RED}Error: Binary build failed or binary not found at $TOO_BIN${NC}" >&2
+    exit 1
 fi
 
 # Function to cleanup on exit
