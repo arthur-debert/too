@@ -12,7 +12,7 @@
 
 {{- define "todoItem" -}}
 {{- range .Todos -}}
-{{- $indent := indent $.Level -}}
+{{- $indent := indent (int $.Level) -}}
 {{- $symbol := getSymbol .EffectiveStatus -}}
 {{- $lines := lines .Text -}}
 {{- $path := .PositionPath -}}
@@ -21,7 +21,7 @@
 {{- $symbolLen := len $symbol -}}
 {{- $pathLen := len $path -}}
 {{- $prefixLen := add (add $symbolLen 1) (add $pathLen 2) -}}
-{{- $lineIndent := repeat " " $prefixLen -}}
+{{- $lineIndent := repeat (int $prefixLen) " " -}}
 {{- $statusStyle := "todo-pending" -}}
 {{- if isDone . -}}
 {{- $statusStyle = "todo-done" -}}
@@ -46,7 +46,7 @@
 {{- end -}}
 {{- end -}}
 {{- if .Children -}}
-{{- template "todoItem" dict "Todos" .Children "Level" (add $.Level 1) "HighlightID" $.HighlightID -}}
+{{- template "todoItem" dict "Todos" .Children "Level" (int (add $.Level 1)) "HighlightID" $.HighlightID -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

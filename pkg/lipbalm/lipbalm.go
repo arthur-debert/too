@@ -2,10 +2,16 @@ package lipbalm
 
 import (
 	"bytes"
+	"embed"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/beevik/etree"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -13,6 +19,90 @@ import (
 
 // StyleMap defines a map of tag names to lipgloss styles.
 type StyleMap map[string]lipgloss.Style
+
+// TemplateManager manages template loading and caching
+type TemplateManager struct {
+	templates map[string]string
+	styles    StyleMap
+	funcs     template.FuncMap
+}
+
+// NewTemplateManager creates a new template manager
+func NewTemplateManager(styles StyleMap, funcs template.FuncMap) *TemplateManager {
+	return &TemplateManager{
+		templates: make(map[string]string),
+		styles:    styles,
+		funcs:     funcs,
+	}
+}
+
+// AddTemplatesFromEmbed loads templates from an embedded filesystem
+func (tm *TemplateManager) AddTemplatesFromEmbed(embedFS embed.FS, dir string) error {
+	return tm.addTemplatesFromFS(embedFS, dir)
+}
+
+// AddTemplatesFromDir loads templates from a filesystem directory
+func (tm *TemplateManager) AddTemplatesFromDir(dir string) error {
+	return tm.addTemplatesFromFS(os.DirFS(dir), ".")
+}
+
+// addTemplatesFromFS loads templates from any filesystem
+func (tm *TemplateManager) addTemplatesFromFS(fsys fs.FS, dir string) error {
+	return fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() || !strings.HasSuffix(path, ".tmpl") {
+			return nil
+		}
+
+		content, err := fs.ReadFile(fsys, path)
+		if err != nil {
+			return fmt.Errorf("failed to read template %s: %w", path, err)
+		}
+
+		// Use filename without extension as template name
+		name := strings.TrimSuffix(filepath.Base(path), ".tmpl")
+		tm.templates[name] = string(content)
+		return nil
+	})
+}
+
+// AddTemplate adds a template by name and content
+func (tm *TemplateManager) AddTemplate(name, content string) {
+	tm.templates[name] = content
+}
+
+// RenderTemplate renders a template by name
+func (tm *TemplateManager) RenderTemplate(name string, data interface{}) (string, error) {
+	templateString, ok := tm.templates[name]
+	if !ok {
+		return "", fmt.Errorf("template '%s' not found", name)
+	}
+
+	return Render(templateString, data, tm.styles, tm.funcs)
+}
+
+// ListTemplates returns all loaded template names
+func (tm *TemplateManager) ListTemplates() []string {
+	names := make([]string, 0, len(tm.templates))
+	for name := range tm.templates {
+		names = append(names, name)
+	}
+	return names
+}
+
+// GetTemplate returns a template by name and whether it exists
+func (tm *TemplateManager) GetTemplate(name string) (string, bool) {
+	template, ok := tm.templates[name]
+	return template, ok
+}
+
+// GetStyles returns the style map
+func (tm *TemplateManager) GetStyles() StyleMap {
+	return tm.styles
+}
 
 var defaultRenderer = lipgloss.NewRenderer(os.Stdout)
 
@@ -24,9 +114,21 @@ func SetDefaultRenderer(renderer *lipgloss.Renderer) {
 
 // Render processes a template string, first with Go's text/template engine,
 // and then applies lipgloss styles based on the XML-like tags.
-func Render(templateString string, data interface{}, styles StyleMap) (string, error) {
+// Optional template functions can be provided as the last parameter.
+// Automatically includes Sprig functions for enhanced template capabilities.
+func Render(templateString string, data interface{}, styles StyleMap, funcs ...template.FuncMap) (string, error) {
 	// Phase 1: Go template expansion
-	tmpl, err := template.New("lipbalm").Parse(templateString)
+	tmpl := template.New("lipbalm")
+	
+	// Add Sprig functions first
+	tmpl = tmpl.Funcs(sprig.FuncMap())
+	
+	// Add custom functions if provided (these override Sprig functions with same names)
+	if len(funcs) > 0 {
+		tmpl = tmpl.Funcs(funcs[0])
+	}
+	
+	tmpl, err := tmpl.Parse(templateString)
 	if err != nil {
 		return "", err
 	}

@@ -1,7 +1,6 @@
 package output
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
 	"io"
@@ -22,10 +21,9 @@ var templateFS embed.FS
 
 // LipbamlRenderer is a renderer that uses lipbalm for styled output
 type LipbamlRenderer struct {
-	Writer    io.Writer // Exported to allow formatter to update it
-	useColor  bool
-	styles    lipbalm.StyleMap
-	templates map[string]string
+	Writer         io.Writer // Exported to allow formatter to update it
+	useColor       bool
+	templateManager *lipbalm.TemplateManager
 }
 
 // NewLipbamlRenderer creates a new lipbalm-based renderer
@@ -44,35 +42,20 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 	}
 	lipbalm.SetDefaultRenderer(lipglossRenderer)
 
-	// Get the style map from the styles package
+	// Get the style map and create template manager
 	styleMap := styles.GetLipbalmStyleMap()
+	tm := lipbalm.NewTemplateManager(styleMap, nil)
 
-	r := &LipbamlRenderer{
-		Writer:    w,
-		useColor:  useColor,
-		styles:    styleMap,
-		templates: make(map[string]string),
+	// Load templates from embedded filesystem
+	if err := tm.AddTemplatesFromEmbed(templateFS, "templates"); err != nil {
+		return nil, fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	// Load all templates
-	entries, err := templateFS.ReadDir("templates")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read templates directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".tmpl") {
-			content, err := templateFS.ReadFile("templates/" + entry.Name())
-			if err != nil {
-				return nil, fmt.Errorf("failed to read template %s: %w", entry.Name(), err)
-			}
-			// Store without .tmpl extension
-			templateName := strings.TrimSuffix(entry.Name(), ".tmpl")
-			r.templates[templateName] = string(content)
-		}
-	}
-
-	return r, nil
+	return &LipbamlRenderer{
+		Writer:          w,
+		useColor:        useColor,
+		templateManager: tm,
+	}, nil
 }
 
 // renderTodoCommand is a unified method for rendering todo commands with the todo_list template
@@ -85,7 +68,14 @@ func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos [
 		DoneCount:   doneCount,
 		HighlightID: highlightID,
 	}
-	output, err := r.renderTemplate("todo_list", wrapped)
+	
+	// Get template content and render with domain-specific functions
+	template, ok := r.templateManager.GetTemplate("todo_list")
+	if !ok {
+		return fmt.Errorf("template 'todo_list' not found")
+	}
+	
+	output, err := lipbalm.Render(template, wrapped, r.templateManager.GetStyles(), templateFuncs())
 	if err != nil {
 		return fmt.Errorf("failed to render todo command: %w", err)
 	}
@@ -125,9 +115,10 @@ func (r *LipbamlRenderer) RenderChange(result *too.ChangeResult) error {
 }
 
 
-// templateFuncs returns custom functions for templates
-func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
-	return map[string]interface{}{
+// templateFuncs returns custom functions for templates (domain-specific only)
+// Note: Basic functions like add, repeat, dict are provided by Sprig automatically
+func templateFuncs() template.FuncMap {
+	return template.FuncMap{
 		"isDone": func(todo interface{}) bool {
 			switch t := todo.(type) {
 			case *models.IDMTodo:
@@ -139,7 +130,7 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 			}
 		},
 		"indent": func(level int) string {
-			// Use 2 spaces per level for indentation
+			// Use 2 spaces per level for indentation  
 			return strings.Repeat("  ", level)
 		},
 		"lines": func(text string) []string {
@@ -148,80 +139,13 @@ func (r *LipbamlRenderer) templateFuncs() map[string]interface{} {
 		"getSymbol": func(status string) string {
 			return styles.GetStatusSymbol(status)
 		},
-		"add": func(a, b int) int {
-			return a + b
-		},
-		"len": func(s string) int {
-			return len(s)
-		},
-		"repeat": func(s string, n int) string {
-			return strings.Repeat(s, n)
-		},
 		"buildHierarchy": func(todos []*models.IDMTodo) []*HierarchicalTodo {
 			return BuildHierarchy(todos)
 		},
-		"dict": func(values ...interface{}) map[string]interface{} {
-			if len(values)%2 != 0 {
-				panic("dict requires even number of arguments")
-			}
-			dict := make(map[string]interface{})
-			for i := 0; i < len(values); i += 2 {
-				key, ok := values[i].(string)
-				if !ok {
-					panic(fmt.Sprintf("dict keys must be strings, got %T", values[i]))
-				}
-				dict[key] = values[i+1]
-			}
-			return dict
-		},
 	}
 }
 
 
-// renderTemplate renders a template with the given data
-func (r *LipbamlRenderer) renderTemplate(templateName string, data interface{}) (string, error) {
-	tmplContent, ok := r.templates[templateName]
-	if !ok {
-		return "", fmt.Errorf("template '%s' not found", templateName)
-	}
-
-	// For templates that use other templates, we need to process all of them together
-	if strings.Contains(tmplContent, "{{template") {
-		// Combine all templates into one for parsing
-		var allTemplates strings.Builder
-		for name, content := range r.templates {
-			allTemplates.WriteString(fmt.Sprintf(`{{define "%s.tmpl"}}%s{{end}}`, name, content))
-		}
-
-		// Parse and execute with custom functions using standard template package
-		tmpl, err := template.New("combined").Funcs(template.FuncMap(r.templateFuncs())).Parse(allTemplates.String())
-		if err != nil {
-			return "", fmt.Errorf("failed to parse templates: %w", err)
-		}
-
-		var buf bytes.Buffer
-		if err := tmpl.ExecuteTemplate(&buf, templateName+".tmpl", data); err != nil {
-			return "", fmt.Errorf("failed to execute template: %w", err)
-		}
-
-		// Now expand the lipbalm tags
-		return lipbalm.ExpandTags(buf.String(), r.styles)
-	}
-
-	// For simple templates, we need to parse with functions first, then use lipbalm
-	tmpl, err := template.New(templateName).Funcs(template.FuncMap(r.templateFuncs())).Parse(tmplContent)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse template: %w", err)
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	// Now expand the lipbalm tags
-	return lipbalm.ExpandTags(buf.String(), r.styles)
-}
 
 
 // RenderMessage renders a simple message result
@@ -230,7 +154,13 @@ func (r *LipbamlRenderer) RenderMessage(result *too.MessageResult) error {
 		Text:  result.Text,
 		Level: result.Level,
 	}
-	output, err := r.renderTemplate("message", message)
+	
+	template, ok := r.templateManager.GetTemplate("message")
+	if !ok {
+		return fmt.Errorf("template 'message' not found")
+	}
+	
+	output, err := lipbalm.Render(template, message, r.templateManager.GetStyles(), templateFuncs())
 	if err != nil {
 		return fmt.Errorf("failed to render message: %w", err)
 	}
@@ -283,7 +213,12 @@ func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
 
 // RenderFormats renders the formats command result using lipbalm
 func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {
-	output, err := r.renderTemplate("formats_result", result)
+	template, ok := r.templateManager.GetTemplate("formats_result")
+	if !ok {
+		return fmt.Errorf("template 'formats_result' not found")
+	}
+	
+	output, err := lipbalm.Render(template, result, r.templateManager.GetStyles(), templateFuncs())
 	if err != nil {
 		return fmt.Errorf("failed to render formats result: %w", err)
 	}
@@ -297,7 +232,13 @@ func (r *LipbamlRenderer) RenderError(err error) error {
 		Text:  "Error: " + err.Error(),
 		Level: "error",
 	}
-	output, renderErr := r.renderTemplate("message", message)
+	
+	template, ok := r.templateManager.GetTemplate("message")
+	if !ok {
+		return fmt.Errorf("template 'message' not found")
+	}
+	
+	output, renderErr := lipbalm.Render(template, message, r.templateManager.GetStyles(), templateFuncs())
 	if renderErr != nil {
 		return renderErr
 	}
