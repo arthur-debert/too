@@ -28,5 +28,6 @@ Description:
 
 Examples:
   live-tests/run.sh # Start with a fresh .todos file in interactive mode
-  live-tests/run.sh test-script.sh # Execute a test script in the environment
-  live-tests/run.sh --interactive test-script.sh # Execute a script then stay in interactive mode
+  live-tests/run live-tests/example.sh # Execute a test script in the environment
+  live-tests/run --interactive live-tests/example.sh # Execute a script then stay in interactive mode
+  live-tests/run live-tests/example.sh --format json # Execute a test script in the environment, with json outptu, great for auto parsing

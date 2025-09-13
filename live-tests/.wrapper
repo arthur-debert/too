@@ -30,18 +30,18 @@ while IFS= read -r line; do
         prev_was_comment=true
         continue
     fi
-    
+
     # Skip empty lines
     if [[ -z "$line" ]]; then
         prev_was_comment=false
         continue
     fi
-    
+
     # Echo the command in gray
-    echo 
+    echo
     echo "${GRAY}$ ${line}${NC}"
-    
+
     # Execute the command
     eval "$line"
     prev_was_comment=false
-done < "$1"
+done <"$1"
