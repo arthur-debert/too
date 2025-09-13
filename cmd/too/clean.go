@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/spf13/cobra"
 )
@@ -29,16 +31,24 @@ var cleanCmd = &cobra.Command{
 			return err
 		}
 		
-		changeResult := too.NewChangeResult(
-			"placeholder",
-			"cleaned",
-			result.RemovedTodos,
-			result.ActiveTodos,
-			result.ActiveCount,
-			0, // After clean, no done todos remain
-		)
+		// Get unified change result
+		unifiedResult, err := too.ExecuteUnifiedCommand("clean", []string{}, map[string]interface{}{
+			"collectionPath": collectionPath,
+		})
+		if err != nil {
+			// Fallback to legacy result if unified command fails
+			changeResult := too.NewChangeResult(
+				"clean",
+				fmt.Sprintf("Cleaned %d todos", len(result.RemovedTodos)),
+				result.RemovedTodos,
+				result.ActiveTodos,
+				result.ActiveCount,
+				0, // After clean, no done todos remain
+			)
+			return renderer.RenderChange(changeResult)
+		}
 		
-		return renderer.RenderChange(changeResult)
+		return renderer.RenderChange(unifiedResult)
 	},
 }
 

@@ -34,19 +34,25 @@ var moveCmd = &cobra.Command{
 			return err
 		}
 		
-		// Set the new position path on the todo
-		result.Todo.PositionPath = result.NewPath
+		// Get unified change result
+		unifiedResult, err := too.ExecuteUnifiedCommand("move", []string{sourcePath, destParentPath}, map[string]interface{}{
+			"collectionPath": collectionPath,
+		})
+		if err != nil {
+			// Fallback to legacy result if unified command fails
+			result.Todo.PositionPath = result.NewPath
+			changeResult := too.NewChangeResult(
+				"move",
+				"Moved todo: " + result.NewPath,
+				[]*models.IDMTodo{result.Todo},
+				result.AllTodos,
+				result.TotalCount,
+				result.DoneCount,
+			)
+			return renderer.RenderChange(changeResult)
+		}
 		
-		changeResult := too.NewChangeResult(
-			"placeholder",
-			"moved",
-			[]*models.IDMTodo{result.Todo},
-			result.AllTodos,
-			result.TotalCount,
-			result.DoneCount,
-		)
-		
-		return renderer.RenderChange(changeResult)
+		return renderer.RenderChange(unifiedResult)
 	},
 }
 

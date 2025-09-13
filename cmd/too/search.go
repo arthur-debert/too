@@ -34,7 +34,21 @@ var searchCmd = &cobra.Command{
 			return err
 		}
 
-		// Render output
+		// Get unified change result
+		unifiedResult, err := too.ExecuteUnifiedCommand("search", []string{query}, map[string]interface{}{
+			"collectionPath": collectionPath,
+			"query":          query,
+		})
+		if err == nil {
+			// Use unified renderer
+			renderer, err := getRenderer()
+			if err != nil {
+				return err
+			}
+			return renderer.RenderChange(unifiedResult)
+		}
+		
+		// Fallback to legacy renderer
 		renderer, err := getRenderer()
 		if err != nil {
 			return err

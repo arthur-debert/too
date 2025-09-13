@@ -1,56 +1,135 @@
-// Package too provides a api facede for the actual api.
+// Package too provides a api facade for the actual api.
 // This is intended to facilitate integration with the cli and other tools.
-// As not holding any implementation details, this package has no tests .
 package too
 
 import (
 	"fmt"
 	
 	"github.com/arthur-debert/too/pkg/too/models"
-	cmdAdd "github.com/arthur-debert/too/pkg/too/commands/add"
-	cmdClean "github.com/arthur-debert/too/pkg/too/commands/clean"
-	cmdComplete "github.com/arthur-debert/too/pkg/too/commands/complete"
+	// Keep these imports for now for backward compatibility
 	cmdDataPath "github.com/arthur-debert/too/pkg/too/commands/datapath"
 	cmdFormats "github.com/arthur-debert/too/pkg/too/commands/formats"
 	cmdInit "github.com/arthur-debert/too/pkg/too/commands/init"
-	cmdList "github.com/arthur-debert/too/pkg/too/commands/list"
-	cmdModify "github.com/arthur-debert/too/pkg/too/commands/modify"
-	cmdMove "github.com/arthur-debert/too/pkg/too/commands/move"
-	cmdReopen "github.com/arthur-debert/too/pkg/too/commands/reopen"
-	cmdSearch "github.com/arthur-debert/too/pkg/too/commands/search"
 )
 
-// Re-export command option types for backward compatibility
+// Command option types
 type (
+	// Keep these for special commands that aren't unified yet
 	InitOptions         = cmdInit.Options
-	AddOptions          = cmdAdd.Options
-	ModifyOptions       = cmdModify.Options
-	CompleteOptions     = cmdComplete.Options
-	ReopenOptions       = cmdReopen.Options
-	CleanOptions        = cmdClean.Options
-	SearchOptions       = cmdSearch.Options
-	ListOptions         = cmdList.Options
-	MoveOptions         = cmdMove.Options
-	SwapOptions         = cmdMove.Options
 	ShowDataPathOptions = cmdDataPath.Options
 	ListFormatsOptions  = cmdFormats.Options
+	
+	// Simplified option types for unified commands
+	AddOptions struct {
+		CollectionPath string
+		ParentPath     string
+	}
+	
+	ModifyOptions struct {
+		CollectionPath string
+	}
+	
+	CompleteOptions struct {
+		CollectionPath string
+	}
+	
+	ReopenOptions struct {
+		CollectionPath string
+	}
+	
+	CleanOptions struct {
+		CollectionPath string
+	}
+	
+	SearchOptions struct {
+		CollectionPath string
+		CaseSensitive  bool
+	}
+	
+	ListOptions struct {
+		CollectionPath string
+		ShowDone       bool
+		ShowAll        bool
+	}
+	
+	MoveOptions struct {
+		CollectionPath string
+	}
+	
+	SwapOptions = MoveOptions
 )
 
-// Re-export command result types for backward compatibility
+// Command result types - using unified ChangeResult for most commands
 type (
+	// Keep these for special commands
 	InitResult         = cmdInit.Result
-	AddResult          = cmdAdd.Result
-	ModifyResult       = cmdModify.Result
-	CompleteResult     = cmdComplete.Result
-	ReopenResult       = cmdReopen.Result
-	CleanResult        = cmdClean.Result
-	SearchResult       = cmdSearch.Result
-	ListResult         = cmdList.Result
-	MoveResult         = cmdMove.Result
-	SwapResult         = cmdMove.Result
 	ShowDataPathResult = cmdDataPath.Result
 	ListFormatsResult  = cmdFormats.Result
 	FormatInfo         = cmdFormats.Format
+	
+	// Legacy result types for backward compatibility
+	AddResult struct {
+		Todo         *models.IDMTodo
+		PositionPath string
+		AllTodos     []*models.IDMTodo
+		TotalCount   int
+		DoneCount    int
+	}
+	
+	ModifyResult struct {
+		Todo       *models.IDMTodo
+		OldText    string
+		NewText    string
+		AllTodos   []*models.IDMTodo
+		TotalCount int
+		DoneCount  int
+	}
+	
+	CompleteResult struct {
+		Todo       *models.IDMTodo
+		OldStatus  string
+		NewStatus  string
+		AllTodos   []*models.IDMTodo
+		TotalCount int
+		DoneCount  int
+	}
+	
+	ReopenResult = CompleteResult
+	
+	CleanResult struct {
+		RemovedTodos []*models.IDMTodo
+		RemovedCount int
+		ActiveCount  int                // Number of active todos remaining
+		ActiveTodos  []*models.IDMTodo  // Active todos for display
+		AllTodos     []*models.IDMTodo  // Alias for ActiveTodos
+		TotalCount   int
+		DoneCount    int
+	}
+	
+	SearchResult struct {
+		Query        string
+		MatchedTodos []*models.IDMTodo
+		TotalCount   int
+	}
+	
+	ListResult struct {
+		Todos      []*models.IDMTodo
+		TotalCount int
+		DoneCount  int
+	}
+	
+	MoveResult struct {
+		Todo         *models.IDMTodo
+		OldParentUID string
+		NewParentUID string
+		OldPath      string  // For compatibility
+		NewPath      string  // For compatibility
+		AllTodos     []*models.IDMTodo
+		TotalCount   int
+		DoneCount    int
+	}
+	
+	SwapResult = MoveResult
 )
 
 // Init initializes a new todo collection
@@ -60,67 +139,215 @@ func Init(opts InitOptions) (*InitResult, error) {
 
 // Add adds a new todo to the collection
 func Add(text string, opts AddOptions) (*AddResult, error) {
-	return cmdAdd.Execute(text, opts)
-}
-
-// AddAsChange executes Add and returns a unified ChangeResult
-func AddAsChange(text string, opts AddOptions) (*ChangeResult, error) {
-	result, err := cmdAdd.Execute(text, opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+		"parent":         opts.ParentPath,
+	}
+	
+	result, err := ExecuteUnifiedCommand("add", []string{text}, changeOpts)
 	if err != nil {
 		return nil, err
 	}
 	
-	// Set position path on the todo for display
-	result.Todo.PositionPath = result.PositionPath
+	// Convert to legacy AddResult
+	if len(result.AffectedTodos) == 0 {
+		return nil, fmt.Errorf("no todo created")
+	}
 	
-	return NewChangeResult(
-		"add",
-		fmt.Sprintf("Added todo: %s", result.PositionPath),
-		[]*models.IDMTodo{result.Todo},
-		result.AllTodos,
-		result.TotalCount,
-		result.DoneCount,
-	), nil
+	todo := result.AffectedTodos[0]
+	return &AddResult{
+		Todo:         todo,
+		PositionPath: todo.PositionPath,
+		AllTodos:     result.AllTodos,
+		TotalCount:   result.TotalCount,
+		DoneCount:    result.DoneCount,
+	}, nil
+}
+
+// AddAsChange executes Add and returns a unified ChangeResult
+func AddAsChange(text string, opts AddOptions) (*ChangeResult, error) {
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+		"parent":         opts.ParentPath,
+	}
+	
+	return ExecuteUnifiedCommand("add", []string{text}, changeOpts)
 }
 
 // Modify modifies the text of an existing todo by position
 func Modify(position string, newText string, opts ModifyOptions) (*ModifyResult, error) {
-	return cmdModify.Execute(position, newText, opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+	}
+	
+	result, err := ExecuteUnifiedCommand("edit", []string{position, newText}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Convert to legacy ModifyResult
+	if len(result.AffectedTodos) == 0 {
+		return nil, fmt.Errorf("no todo modified")
+	}
+	
+	todo := result.AffectedTodos[0]
+	return &ModifyResult{
+		Todo:       todo,
+		OldText:    "", // Not tracked in unified version
+		NewText:    todo.Text,
+		AllTodos:   result.AllTodos,
+		TotalCount: result.TotalCount,
+		DoneCount:  result.DoneCount,
+	}, nil
 }
 
 // Complete marks a todo as complete by position path
 func Complete(positionPath string, opts CompleteOptions) (*CompleteResult, error) {
-	return cmdComplete.Execute(positionPath, opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+	}
+	
+	result, err := ExecuteUnifiedCommand("complete", []string{positionPath}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Convert to legacy CompleteResult
+	if len(result.AffectedTodos) == 0 {
+		return nil, fmt.Errorf("no todo completed")
+	}
+	
+	todo := result.AffectedTodos[0]
+	return &CompleteResult{
+		Todo:       todo,
+		OldStatus:  string(models.StatusPending),
+		NewStatus:  string(models.StatusDone),
+		AllTodos:   result.AllTodos,
+		TotalCount: result.TotalCount,
+		DoneCount:  result.DoneCount,
+	}, nil
 }
 
 // Reopen marks a todo as pending by position path
 func Reopen(positionPath string, opts ReopenOptions) (*ReopenResult, error) {
-	return cmdReopen.Execute(positionPath, opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+	}
+	
+	result, err := ExecuteUnifiedCommand("reopen", []string{positionPath}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Convert to legacy ReopenResult
+	if len(result.AffectedTodos) == 0 {
+		return nil, fmt.Errorf("no todo reopened")
+	}
+	
+	todo := result.AffectedTodos[0]
+	return &ReopenResult{
+		Todo:       todo,
+		OldStatus:  string(models.StatusDone),
+		NewStatus:  string(models.StatusPending),
+		AllTodos:   result.AllTodos,
+		TotalCount: result.TotalCount,
+		DoneCount:  result.DoneCount,
+	}, nil
 }
 
 // Clean removes finished todos from the collection
 func Clean(opts CleanOptions) (*CleanResult, error) {
-	return cmdClean.Execute(opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+	}
+	
+	result, err := ExecuteUnifiedCommand("clean", []string{}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &CleanResult{
+		RemovedTodos: result.AffectedTodos,
+		RemovedCount: len(result.AffectedTodos),
+		ActiveCount:  len(result.AllTodos),  // Active todos remaining
+		ActiveTodos:  result.AllTodos,       // Active todos for display
+		AllTodos:     result.AllTodos,       // Alias
+		TotalCount:   result.TotalCount,
+		DoneCount:    result.DoneCount,
+	}, nil
 }
 
 // Search searches for todos containing the query string
 func Search(query string, opts SearchOptions) (*SearchResult, error) {
-	return cmdSearch.Execute(query, opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+		"query":          query,
+	}
+	
+	result, err := ExecuteUnifiedCommand("search", []string{query}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &SearchResult{
+		Query:        query,
+		MatchedTodos: result.AllTodos, // Search filters AllTodos
+		TotalCount:   result.TotalCount,
+	}, nil
 }
 
 // List returns todos from the collection with optional filtering
 func List(opts ListOptions) (*ListResult, error) {
-	return cmdList.Execute(opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+		"done":           opts.ShowDone,
+		"all":            opts.ShowAll,
+	}
+	
+	result, err := ExecuteUnifiedCommand("list", []string{}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &ListResult{
+		Todos:      result.AllTodos,
+		TotalCount: result.TotalCount,
+		DoneCount:  result.DoneCount,
+	}, nil
 }
 
 // Move moves a todo from one parent to another
 func Move(sourcePath string, destParentPath string, opts MoveOptions) (*MoveResult, error) {
-	return cmdMove.Execute(sourcePath, destParentPath, opts)
+	changeOpts := map[string]interface{}{
+		"collectionPath": opts.CollectionPath,
+	}
+	
+	result, err := ExecuteUnifiedCommand("move", []string{sourcePath, destParentPath}, changeOpts)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Convert to legacy MoveResult
+	if len(result.AffectedTodos) == 0 {
+		return nil, fmt.Errorf("no todo moved")
+	}
+	
+	todo := result.AffectedTodos[0]
+	return &MoveResult{
+		Todo:         todo,
+		OldParentUID: "", // Not tracked in unified version
+		NewParentUID: todo.ParentID,
+		OldPath:      sourcePath,
+		NewPath:      todo.PositionPath,
+		AllTodos:     result.AllTodos,
+		TotalCount:   result.TotalCount,
+		DoneCount:    result.DoneCount,
+	}, nil
 }
 
 // Swap moves a todo from one parent to another (alias for Move)
 func Swap(sourcePath string, destParentPath string, opts SwapOptions) (*SwapResult, error) {
-	return cmdMove.Execute(sourcePath, destParentPath, opts)
+	return Move(sourcePath, destParentPath, opts)
 }
 
 // ShowDataPath shows the path to the data file
