@@ -110,20 +110,14 @@ func (e *CommandEngine) Add(text string, parentRef string) (string, error) {
 }
 
 // Clean removes completed todos
-func (e *CommandEngine) Clean() ([]string, error) {
+func (e *CommandEngine) Clean() ([]*models.IDMTodo, error) {
 	// Use the manager's integrated clean operation
 	removedTodos, _, err := e.manager.CleanFinishedTodos()
 	if err != nil {
 		return nil, fmt.Errorf("failed to clean finished todos: %w", err)
 	}
 	
-	// Collect UIDs
-	uids := make([]string, len(removedTodos))
-	for i, todo := range removedTodos {
-		uids[i] = todo.UID
-	}
-	
-	return uids, nil
+	return removedTodos, nil
 }
 
 // Save persists changes

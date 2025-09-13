@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +39,7 @@ var cleanCmd = &cobra.Command{
 			// Fallback to legacy result if unified command fails
 			changeResult := too.NewChangeResult(
 				"clean",
-				"Cleaned " + string(len(result.RemovedTodos)) + " todos",
+				fmt.Sprintf("Cleaned %d todos", len(result.RemovedTodos)),
 				result.RemovedTodos,
 				result.ActiveTodos,
 				result.ActiveCount,

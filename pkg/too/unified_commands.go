@@ -230,6 +230,7 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 	
 	// Execute command
 	var affectedUIDs []string
+	var affectedTodos []*models.IDMTodo
 	
 	switch cmdName {
 	case "add":
@@ -248,9 +249,16 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 		
 	case "clean":
 		// Special case: remove completed todos
-		affectedUIDs, err = engine.Clean()
+		var removedTodos []*models.IDMTodo
+		removedTodos, err = engine.Clean()
 		if err != nil {
 			return nil, err
+		}
+		// Store removed todos directly as affected todos
+		affectedTodos = removedTodos
+		// Also collect UIDs for consistency
+		for _, todo := range removedTodos {
+			affectedUIDs = append(affectedUIDs, todo.UID)
 		}
 		
 	default:
@@ -303,8 +311,8 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 	todos := engine.GetTodos(filter)
 	
 	// Get affected todos from all todos (not filtered)
-	var affectedTodos []*models.IDMTodo
-	if len(affectedUIDs) > 0 {
+	// Skip this for clean command as we already have the removed todos
+	if cmdName != "clean" && len(affectedUIDs) > 0 {
 		allTodos := engine.GetTodos(nil)  // Get all todos
 		affectedMap := make(map[string]bool)
 		for _, uid := range affectedUIDs {
