@@ -2,8 +2,11 @@ package lipbalm_test
 
 import (
 	"bytes"
+	"embed"
 	"io"
+	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -12,6 +15,9 @@ import (
 
 	"github.com/arthur-debert/too/pkg/lipbalm"
 )
+
+//go:embed testdata/*.tmpl
+var testTemplateFS embed.FS
 
 var testStyles = lipbalm.StyleMap{
 	"title": lipgloss.NewStyle().Bold(true),
@@ -40,6 +46,93 @@ func TestRender(t *testing.T) {
 		template := `<title>{{.Title</title>`
 		_, err := lipbalm.Render(template, nil, testStyles)
 		assert.Error(t, err)
+	})
+
+	t.Run("with custom template functions", func(t *testing.T) {
+		renderer.SetColorProfile(termenv.TrueColor)
+		funcs := template.FuncMap{
+			"upper": strings.ToUpper,
+			"repeat": func(s string, n int) string { return strings.Repeat(s, n) },
+		}
+		template := `<title>{{upper .Title}}</title> <date>{{repeat "*" 3}}</date>`
+		data := struct{ Title string }{Title: "hello"}
+		expected := testStyles["title"].Render("HELLO") + " " + testStyles["date"].Render("***")
+		actual, err := lipbalm.Render(template, data, testStyles, funcs)
+		require.NoError(t, err)
+		assert.Equal(t, expected, actual)
+	})
+}
+
+func TestTemplateManager(t *testing.T) {
+	// a buffer to render to
+	var buf bytes.Buffer
+	renderer := lipgloss.NewRenderer(&buf)
+	lipbalm.SetDefaultRenderer(renderer)
+
+	t.Run("basic template management", func(t *testing.T) {
+		renderer.SetColorProfile(termenv.TrueColor)
+		
+		funcs := template.FuncMap{
+			"upper": strings.ToUpper,
+		}
+		tm := lipbalm.NewTemplateManager(testStyles, funcs)
+		
+		// Add a template manually
+		tm.AddTemplate("test", `<title>{{upper .Title}}</title>`)
+		
+		// Render the template
+		data := struct{ Title string }{Title: "hello"}
+		expected := testStyles["title"].Render("HELLO")
+		actual, err := tm.RenderTemplate("test", data)
+		require.NoError(t, err)
+		assert.Equal(t, expected, actual)
+		
+		// Check template listing
+		templates := tm.ListTemplates()
+		assert.Contains(t, templates, "test")
+	})
+
+	t.Run("template not found", func(t *testing.T) {
+		tm := lipbalm.NewTemplateManager(testStyles, nil)
+		_, err := tm.RenderTemplate("nonexistent", nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "template 'nonexistent' not found")
+	})
+
+	t.Run("load templates from embedded filesystem", func(t *testing.T) {
+		renderer.SetColorProfile(termenv.TrueColor)
+		
+		tm := lipbalm.NewTemplateManager(testStyles, nil)
+		
+		// Load templates from embedded filesystem
+		err := tm.AddTemplatesFromEmbed(testTemplateFS, "testdata")
+		require.NoError(t, err)
+		
+		// Check that templates were loaded
+		templates := tm.ListTemplates()
+		assert.Contains(t, templates, "greeting")
+		assert.Contains(t, templates, "simple")
+		
+		// Test rendering a loaded template
+		data := struct {
+			Name    string
+			Message string
+		}{
+			Name:    "alice",
+			Message: "Hello, World!",
+		}
+		
+		expected := testStyles["title"].Render("ALICE") + " says " + testStyles["body"].Render("Hello, World!")
+		actual, err := tm.RenderTemplate("greeting", data)
+		require.NoError(t, err)
+		assert.Equal(t, expected, actual)
+		
+		// Test the simple template
+		dateData := struct{ Date string }{Date: "2025-01-01"}
+		expectedDate := testStyles["date"].Render("Today is 2025-01-01")
+		actualDate, err := tm.RenderTemplate("simple", dateData)
+		require.NoError(t, err)
+		assert.Equal(t, expectedDate, actualDate)
 	})
 }
 
