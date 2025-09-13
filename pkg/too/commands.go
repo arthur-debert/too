@@ -50,6 +50,7 @@ type (
 	SwapResult         = cmdMove.Result
 	ShowDataPathResult = cmdDataPath.Result
 	ListFormatsResult  = cmdFormats.Result
+	FormatInfo         = cmdFormats.Format
 )
 
 // Init initializes a new todo collection

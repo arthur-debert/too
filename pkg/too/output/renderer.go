@@ -70,9 +70,9 @@ func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos [
 	}
 	
 	// Get template content and render with domain-specific functions
-	template, ok := r.templateManager.GetTemplate("todo_list")
+	template, ok := r.templateManager.GetTemplate("todo_list_with_message")
 	if !ok {
-		return fmt.Errorf("template 'todo_list' not found")
+		return fmt.Errorf("template 'todo_list_with_message' not found")
 	}
 	
 	output, err := lipbalm.Render(template, wrapped, r.templateManager.GetStyles(), templateFuncs())

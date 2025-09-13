@@ -9,10 +9,11 @@ import (
 )
 
 // Renderer is the main output renderer for too
-// It wraps a Formatter to provide backward compatibility with existing code
+// Now it wraps the Engine to provide backward compatibility
 type Renderer struct {
-	formatter Formatter
-	writer    io.Writer
+	engine *Engine
+	format string
+	writer io.Writer
 }
 
 // NewRenderer creates a new renderer with default settings
@@ -22,12 +23,12 @@ func NewRenderer(w io.Writer) *Renderer {
 		w = os.Stdout
 	}
 
-	// Default to terminal formatter for backward compatibility
-	formatter, _ := Get("term")
-
+	engine, _ := GetGlobalEngine()
+	
 	return &Renderer{
-		formatter: formatter,
-		writer:    w,
+		engine: engine,
+		format: "term",
+		writer: w,
 	}
 }
 
@@ -37,26 +38,39 @@ func NewRendererWithFormat(format string, w io.Writer) (*Renderer, error) {
 		w = os.Stdout
 	}
 
-	formatter, err := Get(format)
+	engine, err := GetGlobalEngine()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get formatter %q: %w", format, err)
+		return nil, fmt.Errorf("failed to get engine: %w", err)
+	}
+
+	// Validate format
+	formats := engine.ListFormats()
+	found := false
+	for _, f := range formats {
+		if f == format {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf("invalid format %q. Available formats: %v", format, formats)
 	}
 
 	return &Renderer{
-		formatter: formatter,
-		writer:    w,
+		engine: engine,
+		format: format,
+		writer: w,
 	}, nil
 }
 
 // RenderChange renders any command that changes todos
 func (r *Renderer) RenderChange(result *too.ChangeResult) error {
-	return r.formatter.RenderChange(r.writer, result)
+	return r.engine.Render(r.writer, r.format, result)
 }
-
 
 // RenderMessage renders a message result
 func (r *Renderer) RenderMessage(result *too.MessageResult) error {
-	return r.formatter.RenderMessage(r.writer, result)
+	return r.engine.Render(r.writer, r.format, result)
 }
 
 // RenderInit renders the init command result
@@ -65,17 +79,15 @@ func (r *Renderer) RenderInit(result *too.InitResult) error {
 	return r.RenderMessage(msg)
 }
 
-
 // RenderSearch renders the search command result
 func (r *Renderer) RenderSearch(result *too.SearchResult) error {
-	return r.formatter.RenderSearch(r.writer, result)
+	return r.engine.Render(r.writer, r.format, result)
 }
 
 // RenderList renders the list command result
 func (r *Renderer) RenderList(result *too.ListResult) error {
-	return r.formatter.RenderList(r.writer, result)
+	return r.engine.Render(r.writer, r.format, result)
 }
-
 
 // RenderDataPath renders the datapath command result
 func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
@@ -85,10 +97,35 @@ func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
 
 // RenderFormats renders the formats command result
 func (r *Renderer) RenderFormats(result *too.ListFormatsResult) error {
-	return r.formatter.RenderFormats(r.writer, result)
+	return r.engine.Render(r.writer, r.format, result)
 }
 
 // RenderError renders an error message
 func (r *Renderer) RenderError(err error) error {
-	return r.formatter.RenderError(r.writer, err)
+	return r.engine.RenderError(r.writer, r.format, err)
+}
+
+// HasFormatter checks if a formatter is available
+func HasFormatter(name string) bool {
+	engine, err := GetGlobalEngine()
+	if err != nil {
+		return false
+	}
+	
+	for _, format := range engine.ListFormats() {
+		if format == name {
+			return true
+		}
+	}
+	return false
+}
+
+// List returns all available format names
+func List() []string {
+	engine, err := GetGlobalEngine()
+	if err != nil {
+		return []string{}
+	}
+	
+	return engine.ListFormats()
 }

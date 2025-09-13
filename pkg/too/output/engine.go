@@ -26,11 +26,18 @@ func NewEngine() (*Engine, error) {
 	// Get too's style map
 	styleMap := styles.GetLipbalmStyleMap()
 
-	// Create lipbalm engine with templates
-	lipbalmEngine, err := lipbalm.WithTemplates(engineTemplateFS, "templates", styleMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create lipbalm engine: %w", err)
+	// Create template manager with domain-specific functions
+	tm := lipbalm.NewTemplateManager(styleMap, templateFuncs())
+	if err := tm.AddTemplatesFromEmbed(engineTemplateFS, "templates"); err != nil {
+		return nil, fmt.Errorf("failed to load templates: %w", err)
 	}
+
+	// Create lipbalm engine with custom config
+	lipbalmEngine := lipbalm.New(&lipbalm.Config{
+		AutoDetectTerminal: true,
+		Styles:             styleMap,
+		TemplateManager:    tm,
+	})
 
 	// Configure too-specific callbacks
 	lipbalmEngine.Config().Callbacks = lipbalm.RenderCallbacks{

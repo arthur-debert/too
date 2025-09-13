@@ -1,17 +1,18 @@
 {{- if .Todos -}}
 {{- $hierarchy := buildHierarchy .Todos -}}
 {{- $highlightID := .HighlightID -}}
-{{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID -}}
+{{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID }}
 <count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
 {{- else if not .Message -}}
 <warning>No todos found</warning>
-{{- end }}
+{{- end -}}
 {{- if .Message }}
+
 <{{.MessageType}}>{{.Message}}</{{.MessageType}}>
 {{- end }}
 
 {{- define "todoItem" -}}
-{{- range .Todos -}}
+{{- range .Todos }}
 {{- $indent := indent (int $.Level) -}}
 {{- $symbol := getSymbol .EffectiveStatus -}}
 {{- $lines := lines .Text -}}
@@ -27,26 +28,26 @@
 {{- $statusStyle = "todo-done" -}}
 {{- end -}}
 {{- range $i, $line := $lines -}}
-{{- if eq $i 0 -}}
-{{- if $isHighlighted -}}
+{{- if eq $i 0 }}
+{{- if $isHighlighted }}
 {{$indent}}<highlighted-todo><{{$statusStyle}}>{{$symbol}}</{{$statusStyle}}> {{$path}}. {{$line}}</highlighted-todo>
-{{- else if ne $.HighlightID "" -}}
+{{- else if ne $.HighlightID "" }}
 {{$indent}}<muted>{{$symbol}} {{$path}}. {{$line}}</muted>
-{{- else -}}
+{{- else }}
 {{$indent}}<{{$statusStyle}}>{{$symbol}}</{{$statusStyle}}> {{$path}}. {{$line}}
-{{- end -}}
-{{- else -}}
-{{- if $isHighlighted -}}
+{{- end }}
+{{- else }}
+{{- if $isHighlighted }}
 {{$indent}}<highlighted-todo>{{$lineIndent}}{{$line}}</highlighted-todo>
-{{- else if ne $.HighlightID "" -}}
+{{- else if ne $.HighlightID "" }}
 {{$indent}}<muted>{{$lineIndent}}{{$line}}</muted>
-{{- else -}}
+{{- else }}
 {{$indent}}{{$lineIndent}}{{$line}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- if .Children -}}
-{{- template "todoItem" dict "Todos" .Children "Level" (int (add $.Level 1)) "HighlightID" $.HighlightID -}}
-{{- end -}}
-{{- end -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Children }}
+{{- template "todoItem" dict "Todos" .Children "Level" (int (add $.Level 1)) "HighlightID" $.HighlightID }}
+{{- end }}
+{{- end }}
 {{- end -}}
