@@ -104,6 +104,11 @@ func (tm *TemplateManager) GetStyles() StyleMap {
 	return tm.styles
 }
 
+// GetFuncs returns the template functions
+func (tm *TemplateManager) GetFuncs() template.FuncMap {
+	return tm.funcs
+}
+
 var defaultRenderer = lipgloss.NewRenderer(os.Stdout)
 
 // SetDefaultRenderer sets the default renderer for the package.

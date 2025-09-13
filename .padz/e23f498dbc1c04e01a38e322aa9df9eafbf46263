@@ -1,0 +1,22 @@
+establishing lip balm's role
+
+
+libpbaml is our  lib for terminial based output rendering which can provide : 
+
+- automatic style applicatoin with lipgloss styles
+- markdup syntax for text formatting (<error>{{text}}</error>)
+- shell detection and output redirection handling  and shell capabitlity (reich
+  term, plain text)
+- rendering outptu as json, makdown etc.
+- nested templates, etc.
+- template management from paths, 
+
+
+we moved some parts to lipbalm, but others were not. 
+we're in the middle of moving to lipbalm what is the generic lib's scope and
+removing from too (our app). 
+
+
+we have just done the code that moves off too/output/renderer.go the template
+loading. did we remove from our codebase / adapted the code to use lipbalm for
+this?
