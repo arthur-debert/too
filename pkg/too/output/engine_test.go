@@ -32,7 +32,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := engine.Render(&buf, "json", result)
+		err := engine.GetLipbalmEngine().Render(&buf, "json", result)
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -49,7 +49,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := engine.Render(&buf, "yaml", result)
+		err := engine.GetLipbalmEngine().Render(&buf, "yaml", result)
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -81,7 +81,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := engine.Render(&buf, "markdown", result)
+		err := engine.GetLipbalmEngine().Render(&buf, "markdown", result)
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -106,7 +106,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		err := engine.Render(&buf, "csv", result)
+		err := engine.GetLipbalmEngine().Render(&buf, "csv", result)
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -125,7 +125,7 @@ func TestEngine_ErrorHandling(t *testing.T) {
 		testErr := assert.AnError
 		var buf bytes.Buffer
 
-		err := engine.RenderError(&buf, "json", testErr)
+		err := engine.GetLipbalmEngine().RenderError(&buf, "json", testErr)
 		require.NoError(t, err)
 
 		output := buf.String()
@@ -156,7 +156,7 @@ func TestEngine_ChangeResult(t *testing.T) {
 
 	t.Run("Markdown shows affected count", func(t *testing.T) {
 		var buf bytes.Buffer
-		err := engine.Render(&buf, "markdown", result)
+		err := engine.GetLipbalmEngine().Render(&buf, "markdown", result)
 		require.NoError(t, err)
 
 		output := buf.String()

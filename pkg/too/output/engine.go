@@ -3,8 +3,6 @@ package output
 import (
 	"embed"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/lipbalm"

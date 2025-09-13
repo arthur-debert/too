@@ -207,17 +207,6 @@ func Quick() *RenderEngine {
 	})
 }
 
-// DefaultStyles returns a basic set of styles
-func DefaultStyles() StyleMap {
-	return StyleMap{
-		"title":   lipgloss.NewStyle().Bold(true),
-		"error":   lipgloss.NewStyle().Foreground(lipgloss.Color("196")),
-		"warning": lipgloss.NewStyle().Foreground(lipgloss.Color("214")),
-		"success": lipgloss.NewStyle().Foreground(lipgloss.Color("46")),
-		"info":    lipgloss.NewStyle().Foreground(lipgloss.Color("33")),
-		"muted":   lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-	}
-}
 
 // FormatRegistry manages available formats
 type FormatRegistry struct {
