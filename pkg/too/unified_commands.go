@@ -11,11 +11,11 @@ import (
 type UnifiedCommand struct {
 	Name        string
 	Aliases     []string
-	Type        CommandType
+	Type        models.CommandType
 	Description string
 	
 	// Execution configuration
-	Attribute       AttributeType      // What attribute to change (if any)
+	Attribute       models.AttributeType      // What attribute to change (if any)
 	AttributeValue  interface{}        // Fixed value (e.g., StatusDone) or nil if from args
 	RequiresRef     bool              // Does it need a todo reference?
 	AcceptsMultiple bool              // Can operate on multiple todos?
@@ -33,9 +33,9 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"complete": {
 		Name:            "complete",
 		Aliases:         []string{"c"},
-		Type:            CommandTypeCore,
+		Type:            models.CommandTypeCore,
 		Description:     "Mark todos as complete",
-		Attribute:       AttributeCompletion,
+		Attribute:       models.AttributeCompletion,
 		AttributeValue:  string(models.StatusDone),
 		RequiresRef:     true,
 		AcceptsMultiple: true,
@@ -50,9 +50,9 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"reopen": {
 		Name:            "reopen",
 		Aliases:         []string{"o"},
-		Type:            CommandTypeCore,
+		Type:            models.CommandTypeCore,
 		Description:     "Mark todos as pending",
-		Attribute:       AttributeCompletion,
+		Attribute:       models.AttributeCompletion,
 		AttributeValue:  string(models.StatusPending),
 		RequiresRef:     true,
 		AcceptsMultiple: true,
@@ -68,9 +68,9 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"edit": {
 		Name:         "edit",
 		Aliases:      []string{"e", "modify"},
-		Type:         CommandTypeCore,
+		Type:         models.CommandTypeCore,
 		Description:  "Edit the text of an existing todo",
-		Attribute:    AttributeText,
+		Attribute:    models.AttributeText,
 		RequiresRef:  true,
 		RequiresText: true,
 		ValidateFunc: func(args []string, opts map[string]interface{}) error {
@@ -90,9 +90,9 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"move": {
 		Name:        "move",
 		Aliases:     []string{"m"},
-		Type:        CommandTypeExtra,
+		Type:        models.CommandTypeExtra,
 		Description: "Move a todo to a different parent",
-		Attribute:   AttributeParent,
+		Attribute:   models.AttributeParent,
 		RequiresRef: true,
 		ValidateFunc: func(args []string, opts map[string]interface{}) error {
 			if len(args) < 2 {
@@ -112,7 +112,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"add": {
 		Name:         "add",
 		Aliases:      []string{"a", "new", "create"},
-		Type:         CommandTypeCore,
+		Type:         models.CommandTypeCore,
 		Description:  "Add a new todo",
 		RequiresText: true,
 		ValidateFunc: func(args []string, opts map[string]interface{}) error {
@@ -132,7 +132,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"clean": {
 		Name:        "clean",
 		Aliases:     []string{},
-		Type:        CommandTypeMisc,
+		Type:        models.CommandTypeMisc,
 		Description: "Remove finished todos",
 		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
@@ -150,7 +150,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"list": {
 		Name:        "list",
 		Aliases:     []string{"ls"},
-		Type:        CommandTypeExtra,
+		Type:        models.CommandTypeExtra,
 		Description: "List all todos",
 		GetFilterFunc: func(opts map[string]interface{}) FilterFunc {
 			if done, _ := opts["done"].(bool); done {
@@ -166,7 +166,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 	"search": {
 		Name:        "search",
 		Aliases:     []string{"s"},
-		Type:        CommandTypeExtra,
+		Type:        models.CommandTypeExtra,
 		Description: "Search for todos",
 		ValidateFunc: func(args []string, opts map[string]interface{}) error {
 			if len(args) < 1 {
@@ -295,9 +295,9 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 				
 				// Get value from args if needed
 				if value == nil && len(args) > 1 {
-					if cmd.Attribute == AttributeText {
+					if cmd.Attribute == models.AttributeText {
 						value = args[1]
-					} else if cmd.Attribute == AttributeParent {
+					} else if cmd.Attribute == models.AttributeParent {
 						value = args[1]
 					}
 				}

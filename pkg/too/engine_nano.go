@@ -222,11 +222,11 @@ func (e *NanoEngine) ResolveReference(ref string) (string, error) {
 }
 
 // MutateAttributeByUUID changes a single attribute on a todo by its UUID
-func (e *NanoEngine) MutateAttributeByUUID(uuid string, attr AttributeType, value interface{}) (string, error) {
+func (e *NanoEngine) MutateAttributeByUUID(uuid string, attr models.AttributeType, value interface{}) (string, error) {
 	// Apply mutation based on attribute type
 	var err error
 	switch attr {
-	case AttributeCompletion:
+	case models.AttributeCompletion:
 		status := value.(string)
 		// For UUID-based operations, we need to use the adapter directly
 		// since Complete/Reopen methods expect user-facing IDs
@@ -235,10 +235,10 @@ func (e *NanoEngine) MutateAttributeByUUID(uuid string, attr AttributeType, valu
 		} else {
 			err = e.adapter.ReopenByUUID(uuid)
 		}
-	case AttributeText:
+	case models.AttributeText:
 		text := value.(string)
 		err = e.adapter.UpdateByUUID(uuid, text)
-	case AttributeParent:
+	case models.AttributeParent:
 		newParent := value.(string)
 		var parentPtr *string
 		if newParent != "" {
@@ -257,7 +257,7 @@ func (e *NanoEngine) MutateAttributeByUUID(uuid string, attr AttributeType, valu
 }
 
 // MutateAttribute changes a single attribute on a todo
-func (e *NanoEngine) MutateAttribute(ref string, attr AttributeType, value interface{}) (string, error) {
+func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, value interface{}) (string, error) {
 	// Resolve reference to UID
 	uuid, err := e.adapter.ResolvePositionPath(ref)
 	if err != nil {
@@ -266,17 +266,17 @@ func (e *NanoEngine) MutateAttribute(ref string, attr AttributeType, value inter
 
 	// Apply mutation based on attribute type
 	switch attr {
-	case AttributeCompletion:
+	case models.AttributeCompletion:
 		status := value.(string)
 		if status == string(models.StatusDone) {
 			err = e.adapter.Complete(ref)
 		} else {
 			err = e.adapter.Reopen(ref)
 		}
-	case AttributeText:
+	case models.AttributeText:
 		text := value.(string)
 		err = e.adapter.Update(ref, text)
-	case AttributeParent:
+	case models.AttributeParent:
 		newParent := value.(string)
 		var parentPtr *string
 		if newParent != "" {
