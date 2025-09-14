@@ -6,9 +6,9 @@ toolchain go1.24.6
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/arthur-debert/nanostore v0.2.0
 	github.com/beevik/etree v1.5.1
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/google/uuid v1.6.0
 	github.com/muesli/termenv v0.16.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
@@ -21,6 +21,7 @@ require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
+	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
@@ -28,12 +29,16 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
+	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

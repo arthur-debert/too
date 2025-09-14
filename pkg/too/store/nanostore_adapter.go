@@ -1,0 +1,290 @@
+package store
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/arthur-debert/nanostore/nanostore"
+	"github.com/arthur-debert/too/pkg/too/models"
+)
+
+// NanoStoreAdapter wraps nanostore to provide too-specific functionality
+type NanoStoreAdapter struct {
+	store nanostore.Store
+}
+
+// NewNanoStoreAdapter creates a new adapter instance
+func NewNanoStoreAdapter(dbPath string) (*NanoStoreAdapter, error) {
+	// Expand ~ to home directory
+	if strings.HasPrefix(dbPath, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get home directory: %w", err)
+		}
+		dbPath = filepath.Join(home, dbPath[2:])
+	}
+
+	// Ensure directory exists
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Create store with default config (status dimension with 'c' prefix for completed)
+	store, err := nanostore.New(dbPath, nanostore.DefaultConfig())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create nanostore: %w", err)
+	}
+
+	return &NanoStoreAdapter{store: store}, nil
+}
+
+// Close releases resources
+func (n *NanoStoreAdapter) Close() error {
+	return n.store.Close()
+}
+
+// CompleteByUUID marks a todo as completed by its UUID
+func (n *NanoStoreAdapter) CompleteByUUID(uuid string) error {
+	return n.store.SetStatus(uuid, nanostore.StatusCompleted)
+}
+
+// ReopenByUUID marks a completed todo as pending by its UUID
+func (n *NanoStoreAdapter) ReopenByUUID(uuid string) error {
+	return n.store.SetStatus(uuid, nanostore.StatusPending)
+}
+
+// UpdateByUUID modifies a todo's text by its UUID
+func (n *NanoStoreAdapter) UpdateByUUID(uuid string, text string) error {
+	updates := nanostore.UpdateRequest{
+		Title: &text,
+	}
+	return n.store.Update(uuid, updates)
+}
+
+// MoveByUUID changes a todo's parent by its UUID
+func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
+	// Resolve new parent if provided
+	var newParentUUID *string
+	if newParentID != nil && *newParentID != "" {
+		parentUUID, err := n.store.ResolveUUID(*newParentID)
+		if err != nil {
+			return fmt.Errorf("failed to resolve new parent ID: %w", err)
+		}
+		newParentUUID = &parentUUID
+	}
+
+	updates := nanostore.UpdateRequest{
+		ParentID: newParentUUID,
+	}
+	return n.store.Update(uuid, updates)
+}
+
+// Add creates a new todo item
+func (n *NanoStoreAdapter) Add(text string, parentID *string) (*models.Todo, error) {
+	// If parentID is a user-facing ID, resolve it first
+	var parentUUID *string
+	if parentID != nil && *parentID != "" {
+		uuid, err := n.store.ResolveUUID(*parentID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve parent ID '%s': %w", *parentID, err)
+		}
+		parentUUID = &uuid
+	}
+
+	// Add the document
+	uuid, err := n.store.Add(text, parentUUID, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add todo: %w", err)
+	}
+
+	// Get the document to return with its user-facing ID
+	doc, err := n.getDocument(uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	return n.documentToTodo(doc), nil
+}
+
+// Complete marks a todo as completed
+func (n *NanoStoreAdapter) Complete(userFacingID string) error {
+	uuid, err := n.store.ResolveUUID(userFacingID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
+	}
+
+	return n.store.SetStatus(uuid, nanostore.StatusCompleted)
+}
+
+// Reopen marks a completed todo as pending
+func (n *NanoStoreAdapter) Reopen(userFacingID string) error {
+	uuid, err := n.store.ResolveUUID(userFacingID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
+	}
+
+	return n.store.SetStatus(uuid, nanostore.StatusPending)
+}
+
+// Update modifies a todo's text
+func (n *NanoStoreAdapter) Update(userFacingID string, text string) error {
+	uuid, err := n.store.ResolveUUID(userFacingID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
+	}
+
+	updates := nanostore.UpdateRequest{
+		Title: &text,
+	}
+
+	return n.store.Update(uuid, updates)
+}
+
+// Move changes a todo's parent
+func (n *NanoStoreAdapter) Move(userFacingID string, newParentID *string) error {
+	uuid, err := n.store.ResolveUUID(userFacingID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
+	}
+
+	// Resolve new parent if provided
+	var newParentUUID *string
+	if newParentID != nil && *newParentID != "" {
+		parentUUID, err := n.store.ResolveUUID(*newParentID)
+		if err != nil {
+			return fmt.Errorf("failed to resolve new parent ID '%s': %w", *newParentID, err)
+		}
+		newParentUUID = &parentUUID
+	}
+
+	updates := nanostore.UpdateRequest{
+		ParentID: newParentUUID,
+	}
+
+	return n.store.Update(uuid, updates)
+}
+
+// Delete removes a todo and optionally its children
+func (n *NanoStoreAdapter) Delete(userFacingID string, cascade bool) error {
+	uuid, err := n.store.ResolveUUID(userFacingID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
+	}
+
+	return n.store.Delete(uuid, cascade)
+}
+
+// DeleteCompleted removes all completed todos
+func (n *NanoStoreAdapter) DeleteCompleted() (int, error) {
+	return n.store.DeleteCompleted()
+}
+
+// List returns todos based on options
+func (n *NanoStoreAdapter) List(showAll bool) ([]*models.Todo, error) {
+	opts := nanostore.ListOptions{}
+	if !showAll {
+		// Only show pending items
+		opts.FilterByStatus = []nanostore.Status{nanostore.StatusPending}
+	}
+
+	docs, err := n.store.List(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list todos: %w", err)
+	}
+
+	todos := make([]*models.Todo, len(docs))
+	for i, doc := range docs {
+		todos[i] = n.documentToTodo(doc)
+	}
+
+	return todos, nil
+}
+
+// Search finds todos matching the query
+func (n *NanoStoreAdapter) Search(query string, showAll bool) ([]*models.Todo, error) {
+	opts := nanostore.ListOptions{
+		FilterBySearch: query,
+	}
+	if !showAll {
+		opts.FilterByStatus = []nanostore.Status{nanostore.StatusPending}
+	}
+
+	docs, err := n.store.List(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search todos: %w", err)
+	}
+
+	todos := make([]*models.Todo, len(docs))
+	for i, doc := range docs {
+		todos[i] = n.documentToTodo(doc)
+	}
+
+	return todos, nil
+}
+
+// ResolvePositionPath converts a user-facing ID to UUID
+func (n *NanoStoreAdapter) ResolvePositionPath(userFacingID string) (string, error) {
+	return n.store.ResolveUUID(userFacingID)
+}
+
+// GetByUUID retrieves a todo by its UUID
+func (n *NanoStoreAdapter) GetByUUID(uuid string) (*models.Todo, error) {
+	doc, err := n.getDocument(uuid)
+	if err != nil {
+		return nil, err
+	}
+	return n.documentToTodo(doc), nil
+}
+
+// getDocument retrieves a single document by UUID
+func (n *NanoStoreAdapter) getDocument(uuid string) (nanostore.Document, error) {
+	// List all and find the one with matching UUID
+	docs, err := n.store.List(nanostore.ListOptions{})
+	if err != nil {
+		return nanostore.Document{}, fmt.Errorf("failed to get document: %w", err)
+	}
+
+	for _, doc := range docs {
+		if doc.UUID == uuid {
+			return doc, nil
+		}
+	}
+
+	return nanostore.Document{}, fmt.Errorf("document not found: %s", uuid)
+}
+
+// nanostoreStatusToTodoStatus converts nanostore status to todo status
+func (n *NanoStoreAdapter) nanostoreStatusToTodoStatus(status nanostore.Status) string {
+	switch status {
+	case nanostore.StatusCompleted:
+		return string(models.StatusDone)
+	case nanostore.StatusPending:
+		return string(models.StatusPending)
+	default:
+		return string(models.StatusPending)
+	}
+}
+
+// documentToTodo converts a nanostore Document to a Todo
+func (n *NanoStoreAdapter) documentToTodo(doc nanostore.Document) *models.Todo {
+	todo := &models.Todo{
+		UID:          doc.UUID,
+		Text:         doc.Title,
+		PositionPath: doc.UserFacingID,
+		ParentID:     "",
+		Statuses: map[string]string{
+			"completion": n.nanostoreStatusToTodoStatus(doc.Status),
+		},
+		Modified: doc.UpdatedAt,
+	}
+
+	// Set ParentID if has parent
+	if doc.ParentUUID != nil {
+		todo.ParentID = *doc.ParentUUID
+	}
+
+	return todo
+}

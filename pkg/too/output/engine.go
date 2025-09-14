@@ -101,7 +101,7 @@ func NewEngine() (*Engine, error) {
 			},
 
 			// Custom CSV rendering for hierarchical todos
-			"[]*models.IDMTodo": func(format, fieldName string, value interface{}) (string, bool) {
+			"[]*models.Todo": func(format, fieldName string, value interface{}) (string, bool) {
 				if format != "csv" {
 					return "", false
 				}
@@ -213,7 +213,7 @@ func renderFormatsAsMarkdown(result *too.ListFormatsResult) string {
 	return sb.String()
 }
 
-func renderTodosAsMarkdown(todos []*models.IDMTodo) string {
+func renderTodosAsMarkdown(todos []*models.Todo) string {
 	// Build hierarchical structure
 	hierarchical := BuildHierarchy(todos)
 	return renderHierarchicalTodosAsMarkdown(hierarchical, 0)

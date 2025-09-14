@@ -6,13 +6,13 @@ import (
 
 // HierarchicalTodo represents a todo with its children for display purposes
 type HierarchicalTodo struct {
-	*models.IDMTodo
+	*models.Todo
 	Children        []*HierarchicalTodo
 	EffectiveStatus string // Computed status considering children
 }
 
-// BuildHierarchy converts a flat list of IDMTodos into a hierarchical structure
-func BuildHierarchy(todos []*models.IDMTodo) []*HierarchicalTodo {
+// BuildHierarchy converts a flat list of Todos into a hierarchical structure
+func BuildHierarchy(todos []*models.Todo) []*HierarchicalTodo {
 	// Create a map for quick lookup
 	todoMap := make(map[string]*HierarchicalTodo)
 	var roots []*HierarchicalTodo
@@ -20,7 +20,7 @@ func BuildHierarchy(todos []*models.IDMTodo) []*HierarchicalTodo {
 	// First pass: create HierarchicalTodo wrappers
 	for _, todo := range todos {
 		todoMap[todo.UID] = &HierarchicalTodo{
-			IDMTodo:  todo,
+			Todo:     todo,
 			Children: []*HierarchicalTodo{},
 		}
 	}
@@ -63,11 +63,6 @@ func BuildHierarchy(todos []*models.IDMTodo) []*HierarchicalTodo {
 
 // computeEffectiveStatus calculates the effective status for a hierarchical todo
 func computeEffectiveStatus(htodo *HierarchicalTodo) string {
-	// Check if deleted
-	if status, exists := htodo.GetWorkflowStatus("status"); exists && status == "deleted" {
-		return "deleted"
-	}
-	
 	// No children - return own status
 	if len(htodo.Children) == 0 {
 		if htodo.GetStatus() == models.StatusDone {
@@ -105,11 +100,11 @@ func computeEffectiveStatus(htodo *HierarchicalTodo) string {
 }
 
 // FlattenHierarchy converts a hierarchical structure back to a flat list
-func FlattenHierarchy(todos []*HierarchicalTodo) []*models.IDMTodo {
-	var flat []*models.IDMTodo
+func FlattenHierarchy(todos []*HierarchicalTodo) []*models.Todo {
+	var flat []*models.Todo
 	
 	for _, todo := range todos {
-		flat = append(flat, todo.IDMTodo)
+		flat = append(flat, todo.Todo)
 		if len(todo.Children) > 0 {
 			flat = append(flat, FlattenHierarchy(todo.Children)...)
 		}

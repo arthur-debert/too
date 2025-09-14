@@ -41,7 +41,7 @@ var reopenCmd = &cobra.Command{
 		}
 		
 		// Collect all affected todos
-		affectedTodos := make([]*models.IDMTodo, len(results))
+		affectedTodos := make([]*models.Todo, len(results))
 		for i, result := range results {
 			affectedTodos[i] = result.Todo
 		}

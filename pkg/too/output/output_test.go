@@ -50,7 +50,7 @@ func TestRenderer_RenderMethods(t *testing.T) {
 		result := &too.ChangeResult{
 			Command: "test",
 			Message: "Test message",
-			AllTodos: []*models.IDMTodo{},
+			AllTodos: []*models.Todo{},
 			TotalCount: 0,
 			DoneCount: 0,
 		}
@@ -84,7 +84,7 @@ func TestRenderer_RenderMethods(t *testing.T) {
 		buf.Reset()
 		result := &too.SearchResult{
 			Query: "test",
-			MatchedTodos: []*models.IDMTodo{},
+			MatchedTodos: []*models.Todo{},
 			TotalCount: 0,
 		}
 		err := renderer.RenderSearch(result)
@@ -95,7 +95,7 @@ func TestRenderer_RenderMethods(t *testing.T) {
 	t.Run("RenderList", func(t *testing.T) {
 		buf.Reset()
 		result := &too.ListResult{
-			Todos: []*models.IDMTodo{},
+			Todos: []*models.Todo{},
 			TotalCount: 0,
 			DoneCount: 0,
 		}

@@ -1,65 +1,66 @@
-// Package store provides storage abstractions for the too todo list application.
+// Package store provides the storage adapter for the too todo list application.
 //
-// The store package implements a clean separation between business logic and
-// persistence concerns, allowing the too application to work with different
-// storage backends without changing the core logic.
+// The store package wraps the nanostore library to provide todo-specific
+// functionality while leveraging nanostore's powerful ID management and
+// SQLite-based storage.
 //
 // # Design Principles
 //
 // The package follows several key design principles:
 //
-//   - Storage operations are abstracted behind the Store interface
-//   - All saves are atomic using a write-and-rename pattern to prevent data corruption
-//   - Updates are transactional with automatic rollback on error
-//   - Path resolution maintains backward compatibility with the original too
-//   - Error messages provide clear context about what failed
+//   - Uses nanostore for all storage operations and ID management
+//   - Provides semi-stable IDs through nanostore's canonical namespace pattern
+//   - SQLite-based storage for reliability and performance
+//   - Atomic operations with transaction support
+//   - Clear error messages with context
 //
-// # Store Interface
+// # NanoStoreAdapter
 //
-// The Store interface defines the contract for all storage implementations:
+// The NanoStoreAdapter wraps nanostore.Store and provides todo-specific methods:
 //
-//   - Load() retrieves the todo collection from storage
-//   - Save() persists the todo collection to storage
-//   - Exists() checks if the storage exists
-//   - Update() performs transactional updates with rollback safety
-//   - Path() returns the storage location
-//
-// # Implementations
-//
-// Two implementations are provided:
-//
-//   - JSONFileStore: Production storage using JSON files
-//   - MemoryStore: In-memory storage for testing
+//   - Add() creates new todos with optional parent
+//   - Complete() marks todos as done (moves to 'c' namespace)
+//   - Reopen() marks completed todos as pending
+//   - Update() modifies todo text
+//   - Move() changes todo parent/position
+//   - Delete() removes todos (with optional cascade)
+//   - List() retrieves todos with filtering
+//   - Search() finds todos by text
 //
 // # Path Resolution
 //
-// The JSONFileStore uses the following path resolution order:
+// The adapter uses the following path resolution order:
 //
-//  1. Search current directory and parent directories for .todos file
+//  1. Search current directory and parent directories for .todos.db file
 //  2. Check TODO_DB_PATH environment variable
-//  3. Fall back to ~/.todos.json in the user's home directory
+//  3. Fall back to ~/.todos.db in the user's home directory
 //
-// This maintains compatibility with existing too installations while
-// allowing users to override the default location.
+// # ID Management
+//
+// Nanostore provides semi-stable IDs with canonical namespaces:
+//
+//   - Pending items: consecutive numbering (1, 2, 3...)
+//   - Completed items: 'c' namespace (1.c1, 1.c2...)
+//   - IDs remain stable within namespace until structural changes
 //
 // # Example Usage
 //
-//	// Create a store with automatic path resolution
-//	store := store.NewStore("")
+//	// Create adapter with automatic path resolution
+//	adapter, err := store.NewNanoStoreAdapter("")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer adapter.Close()
 //
-//	// Load existing todos
-//	collection, err := store.Load()
+//	// Add a new todo
+//	todo, err := adapter.Add("New task", nil)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //
-//	// Update todos transactionally
-//	err = store.Update(func(c *models.Collection) error {
-//	    c.CreateTodo("New task")
-//	    return nil
-//	})
+//	// Complete a todo by position
+//	err = adapter.Complete("1")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 package store
-
-// RootScope is the special scope identifier for the root of the todo tree.
-// It represents the top-level container for all todos in the IDM system.
-const RootScope = "root"

@@ -12,8 +12,7 @@ import (
 func TestDataPath(t *testing.T) {
 	t.Run("shows specified collection path", func(t *testing.T) {
 		// Setup
-		store := testutil.CreatePopulatedStore(t, "Test todo")
-		expectedPath := store.Path()
+		_, expectedPath := testutil.CreatePopulatedStore(t)
 
 		// Execute
 		opts := datapath.Options{CollectionPath: expectedPath}
@@ -34,19 +33,18 @@ func TestDataPath(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		assert.NotEmpty(t, result.Path)
-		// Should be either .todos in current dir or ~/.todos.json
+		// Should be .todos.db in current dir or home
 		assert.True(t,
-			filepath.Base(result.Path) == ".todos" ||
-				filepath.Base(result.Path) == ".todos.json",
-			"Expected path to end with .todos or .todos.json, got %s", result.Path)
+			filepath.Base(result.Path) == ".todos.db",
+			"Expected path to end with .todos.db, got %s", result.Path)
 	})
 
 	t.Run("returns absolute path", func(t *testing.T) {
 		// Setup
-		store := testutil.CreatePopulatedStore(t, "Test todo")
+		_, dbPath := testutil.CreatePopulatedStore(t)
 
 		// Execute
-		opts := datapath.Options{CollectionPath: store.Path()}
+		opts := datapath.Options{CollectionPath: dbPath}
 		result, err := datapath.Execute(opts)
 
 		// Assert

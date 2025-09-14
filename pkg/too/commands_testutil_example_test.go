@@ -10,11 +10,12 @@ import (
 
 // Example: TestAddCommand using testutil
 func TestAddCommand_WithTestutil(t *testing.T) {
-	// Much simpler setup with testutil
-	store := testutil.CreatePopulatedStore(t) // Start with empty store
+	// Create empty test store
+	adapter, dbPath := testutil.CreateTestStore(t)
+	defer adapter.Close()
 
 	// Add a todo
-	opts := too.AddOptions{CollectionPath: store.Path()}
+	opts := too.AddOptions{CollectionPath: dbPath}
 	result, err := too.Add("My first todo", opts)
 
 	// Use testutil assertions
@@ -26,27 +27,26 @@ func TestAddCommand_WithTestutil(t *testing.T) {
 	}
 
 	// Load and verify it was saved
-	collection, err := store.LoadIDM()
-	testutil.AssertNoError(t, err)
-
-	testutil.AssertCollectionSize(t, collection, 1)
-	testutil.AssertTodoInList(t, collection.Items, "My first todo")
-	testutil.AssertTodoHasStatus(t, collection.Items[0], models.StatusPending)
+	todos := testutil.LoadTodos(t, adapter, false)
+	testutil.AssertTodoCount(t, todos, 1)
+	testutil.AssertTodoInList(t, todos, "My first todo")
+	testutil.AssertTodoHasStatus(t, todos[0], models.StatusPending)
 }
 
 // Example: TestSearchCommand using testutil
 func TestSearchCommand_WithTestutil(t *testing.T) {
 	// Create a store with predefined todos
-	store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
-		{Text: "Buy milk", Status: models.StatusPending},
-		{Text: "Buy bread", Status: models.StatusDone},
-		{Text: "Walk the dog", Status: models.StatusPending},
-		{Text: "Write tests", Status: models.StatusDone},
-	})
+	adapter, dbPath := testutil.CreateStoreWithSpecs(t, 
+		testutil.TodoSpec{Text: "Buy milk"},
+		testutil.TodoSpec{Text: "Buy bread", Complete: true},
+		testutil.TodoSpec{Text: "Walk the dog"},
+		testutil.TodoSpec{Text: "Write tests", Complete: true},
+	)
+	defer adapter.Close()
 
 	// Search for "Buy"
 	opts := too.SearchOptions{
-		CollectionPath: store.Path(),
+		CollectionPath: dbPath,
 		CaseSensitive:  false,
 	}
 	result, err := too.Search("Buy", opts)
@@ -70,16 +70,17 @@ func TestSearchCommand_WithTestutil(t *testing.T) {
 // Example: TestCleanCommand using testutil
 func TestCleanCommand_WithTestutil(t *testing.T) {
 	// Create a store with mixed pending/done todos
-	store := testutil.CreateStoreWithSpecs(t, []testutil.TodoSpec{
-		{Text: "Pending task 1", Status: models.StatusPending},
-		{Text: "Done task 1", Status: models.StatusDone},
-		{Text: "Pending task 2", Status: models.StatusPending},
-		{Text: "Done task 2", Status: models.StatusDone},
-		{Text: "Done task 3", Status: models.StatusDone},
-	})
+	adapter, dbPath := testutil.CreateStoreWithSpecs(t,
+		testutil.TodoSpec{Text: "Pending task 1"},
+		testutil.TodoSpec{Text: "Done task 1", Complete: true},
+		testutil.TodoSpec{Text: "Pending task 2"},
+		testutil.TodoSpec{Text: "Done task 2", Complete: true},
+		testutil.TodoSpec{Text: "Done task 3", Complete: true},
+	)
+	defer adapter.Close()
 
 	// Run clean command
-	opts := too.CleanOptions{CollectionPath: store.Path()}
+	opts := too.CleanOptions{CollectionPath: dbPath}
 	result, err := too.Clean(opts)
 
 	testutil.AssertNoError(t, err)
@@ -98,8 +99,8 @@ func TestCleanCommand_WithTestutil(t *testing.T) {
 	testutil.AssertTodoInList(t, result.RemovedTodos, "Done task 3")
 
 	// Load collection and verify only pending tasks remain
-	collection, _ := store.LoadIDM()
-	testutil.AssertCollectionSize(t, collection, 2)
-	testutil.AssertTodoInList(t, collection.Items, "Pending task 1")
-	testutil.AssertTodoInList(t, collection.Items, "Pending task 2")
+	todos := testutil.LoadTodos(t, adapter, false)
+	testutil.AssertTodoCount(t, todos, 2)
+	testutil.AssertTodoInList(t, todos, "Pending task 1")
+	testutil.AssertTodoInList(t, todos, "Pending task 2")
 }

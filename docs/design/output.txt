@@ -1,8 +1,8 @@
-                OUTPUT AND RENDERING SYSTEM
+                Output and Rendering System
 
-    This document describes how too renders todo items for display, including
-    the visual formatting, status indicators, and hierarchical presentation
-    used across different output contexts.
+This document describes how too renders todo items for display, including
+the visual formatting, status indicators, and hierarchical presentation
+used across different output contexts.
 
 
 1. Core Rendering Philosophy
@@ -48,239 +48,161 @@
         - Universal display support across terminals
         - Clear visual hierarchy compared to text indicators  
         - Compact representation saves horizontal space
-        - Consistent with modern task management conventions
+        - Visually distinct from content text
 
 
-3. Hierarchical Display Format
+3. Position Path Display
 
-    3.1 Indentation System
+    Position paths are displayed according to their nanostore-calculated values:
 
-        too uses consistent 2-space indentation per nesting level:
+    3.1 Standard Numbering
 
-            1. Top Level Item
-               1. First Child  
-               2. Second Child
-                  1. Grandchild
-                  2. Another Grandchild
-            2. Another Top Level Item
+        Root level items:
+            1. First todo
+            2. Second todo
+            3. Third todo
 
-        This provides clear visual hierarchy while keeping moderate line lengths.
+        Nested items:
+            1. Project
+              1.1. Subtask one
+              1.2. Subtask two
+                1.2.1. Sub-subtask
 
-    3.2 Position Path Display
+    3.2 Completed Item Numbering
 
-        Position paths are displayed according to their IDM-calculated values:
-
-        Active Context:
-            Shows consecutive numbers at each level, creating clean numbering
-            that matches user mental models of sequential lists.
-
-        Complete Context:
-            Shows stable position paths that remain consistent across operations,
-            enabling reliable command targeting.
-
-    3.3 Text Formatting
-
-        Item text is displayed as-is, with support for:
-            - Multi-line content (indented consistently)
-            - Unicode characters in todo text
-            - Reasonable line length handling
+        In --all view, completed items show with 'c' namespace:
+            1. Active todo
+            1.c1. First completed under 1
+            1.c2. Second completed under 1
+            2. Another active todo
 
 
-4. Output Modes and Contexts
+4. Rendering Contexts
 
-    4.1 Short Mode (Default for Commands)
+    4.1 List View (Default)
 
-        Used for command confirmations and brief status updates:
+        Standard format with status symbols:
+            ○ 1. Buy groceries
+            ○ 2. Write report
+              ○ 2.1. Research
+              ● 2.2. First draft
+            ● 3. Call client
 
-            Added todo #3: Buy groceries
+    4.2 Compact View
 
-        Characteristics:
-            - Single line confirmation
-            - Shows the position and action performed
-            - Minimal visual clutter
+        No status symbols, just numbering and text:
+            1. Buy groceries
+            2. Write report
+            3. Call client
 
-    4.2 Long Mode (Default for List Views)
+    4.3 Detailed View
 
-        Used for detailed todo display:
+        Includes metadata like modification times:
+            ○ 1. Buy groceries [modified: 2h ago]
+            ○ 2. Write report [modified: 1d ago]
 
-            ○ 1. Project Alpha
-               ○ 1. Design mockups
-               ● 2. Write tests
-            ◐ 2. Project Beta  
-               ● 1. Phase 1
-               ○ 2. Phase 2
+    4.4 Search Results
 
-        Characteristics:
-            - Full hierarchical display
-            - Status symbols for all items
-            - Complete position paths
-            - Consistent indentation
+        Highlights matching terms and shows context:
+            Found 2 matches for "report":
+            ○ 2. Write report
+            ○ 5. Send report to manager
 
-    4.3 Command Output Integration
 
-        Commands can show both confirmation and updated list:
+5. Hierarchical Rendering
 
-            ✓ Completed: Design mockups
+    5.1 Indentation Rules
 
-            ○ 1. Project Alpha
-               ● 1. Design mockups  
-               ○ 2. Write tests
+        - Each level indented by 2 spaces
+        - Position path aligned with parent's text
+        - Consistent spacing regardless of path length
+
+    5.2 Collapsed/Expanded States
+
+        Future enhancement for deep hierarchies:
+            ○ 1. Project Alpha [+3 hidden]
             ○ 2. Project Beta
-
-        This provides immediate feedback plus current state visibility.
-
-
-5. Context-Specific Rendering
-
-    5.1 Active View Rendering
-
-        Focus: Clean, actionable list of current work
-
-        Features:
-            - Only shows pending items and their pending ancestors
-            - Consecutive position numbering (1, 2, 3...)
-            - Completed subtrees are entirely hidden
-            - Emphasis on what needs attention
-
-        Example:
-            ○ 1. Current Project
-               ○ 1. Next task
-               ○ 2. Another task  
-            ○ 2. Personal Items
-               ○ 1. Buy milk
-
-    5.2 Complete View Rendering (--all)
-
-        Focus: Comprehensive overview with stable references
-
-        Features:
-            - Shows all items regardless of status
-            - Stable position paths for reliable addressing
-            - Status symbols distinguish completed from pending
-            - Full project history visible
-
-        Example:
-            ◐ 1. Current Project
-               ● 1. Completed task
-               ○ 2. Next task
-               ○ 3. Another task
-            ● 2. Finished Project
-               ● 1. All done
-               ● 2. Everything complete
-            ○ 3. Personal Items  
-               ● 1. Buy milk
-               ○ 2. Schedule appointment
-
-    5.3 Search Results Rendering
-
-        Focus: Highlighting matches while maintaining context
-
-        Features:
-            - Shows matched items with their position paths
-            - Includes parent context for nested items
-            - Sorted by position path for predictable ordering
-            - Highlights search terms (when terminal supports it)
-
-        Example:
-            Found 2 matches for "milk":
-
-            ○ 3.1. Buy milk
-            ● 4.2. Get milk alternatives
+              ○ 2.1. Phase 1
+              ○ 2.2. Phase 2
 
 
-6. Format-Specific Output
+6. Output Formats
 
-    6.1 Terminal Format (Default)
+    6.1 Terminal (Default)
 
-        Optimized for interactive terminal use:
-            - Uses Unicode symbols for status
-            - Applies color coding (when supported)
-            - Responsive to terminal width
-            - Human-readable formatting
+        - ANSI colors for emphasis
+        - Unicode symbols for status
+        - Intelligent width detection
 
-    6.2 JSON Format 
+    6.2 Plain Text
 
-        Machine-readable format for integration:
-            - Structured data with all fields
-            - Includes internal UIDs for API use
-            - Hierarchical structure preserved
-            - Suitable for scripts and tools
+        - No ANSI codes
+        - ASCII alternatives for symbols
+        - Fixed width formatting
 
-    6.3 Markdown Format
+    6.3 JSON
 
-        Document-friendly format:
-            - Uses - [ ] and - [x] for checkboxes
-            - Proper Markdown indentation
-            - Compatible with documentation tools
-            - Good for export and sharing
+        - Structured data output
+        - All metadata included
+        - Machine-readable format
 
-    6.4 CSV Format
+    6.4 Markdown
 
-        Spreadsheet-compatible format:
-            - Flattened hierarchy with path columns
-            - All metadata in separate columns  
-            - Suitable for analysis and reporting
-            - Easy import to external tools
+        - GitHub-flavored markdown
+        - Checkboxes for status
+        - Nested lists for hierarchy
 
 
-7. Rendering System Architecture
+7. Implementation Architecture
 
-    7.1 Core Components
+    7.1 Renderer Interface
 
-        Renderer Interface:
-            Provides consistent rendering methods across all output formats.
-            Each format implements the same interface for uniform behavior.
+        All renderers implement consistent interface:
+            - RenderList(todos)
+            - RenderChange(result)
+            - RenderError(error)
 
-        HierarchicalTodo Structure:
-            Intermediate representation that combines IDM data with display
-            information. Includes position paths, status, and children.
+    7.2 Hierarchical Processing
 
-        Display Builders:
-            Convert flat IDM collections into hierarchical display structures
-            while applying context-appropriate filtering and numbering.
+        Build hierarchical structure from flat list:
+            - Group by parent relationships
+            - Calculate effective status
+            - Apply consistent formatting
 
-    7.2 Position Path Integration
+    7.3 Format Selection
 
-        The rendering system integrates tightly with IDM:
-            - Uses IDM-calculated position paths for all numbering
-            - Respects different contexts (active vs complete)
-            - Maintains consistent addressing across views
-            - Handles hierarchical structure automatically
-
-    7.3 Status Symbol Resolution
-
-        Status symbols are determined by:
-            1. Individual todo completion status
-            2. Children completion analysis (for parents)
-            3. Special workflow statuses (deleted, etc.)
-            4. Context-appropriate symbol selection
-
-        This ensures visual consistency while providing maximum information
-        density in the display.
+        Based on --format flag or terminal detection:
+            - Auto-detect terminal capabilities
+            - Fallback to plain text
+            - Override with explicit format
 
 
-8. User Experience Impact
+8. Special Cases
 
-    8.1 Cognitive Benefits
+    8.1 Empty States
 
-        - Immediate status recognition via symbols
-        - Clear hierarchical structure via indentation
-        - Predictable numbering for easy command construction
-        - Consistent presentation reduces mental overhead
+        Friendly messages for empty lists:
+            "No todos yet. Use 'too add' to create one."
+            "All done! No active todos."
 
-    8.2 Workflow Benefits
+    8.2 Long Text
 
-        - Active view focuses attention on actionable items
-        - Complete view provides comprehensive project oversight  
-        - Search results maintain positional context
-        - Multiple formats enable diverse use cases
+        Intelligent wrapping for long todo text:
+            ○ 1. Very long todo text that needs to wrap
+                 to multiple lines while maintaining the
+                 proper indentation
 
-    8.3 Integration Benefits
+    8.3 Special Characters
 
-        - JSON format enables tool integration
-        - Markdown format supports documentation workflows
-        - CSV format allows analysis and reporting
-        - Terminal format optimizes daily interactive use
+        Proper escaping for terminal safety:
+            - Control characters filtered
+            - Unicode normalization
+            - Shell-safe output
 
-    The output system leverages IDM's stable addressing to provide both
-    intuitive daily-use displays and comprehensive project management views.
+
+Summary:
+
+    The output system provides clear, consistent rendering across all
+    contexts while leveraging nanostore's position path calculations.
+    Visual indicators and thoughtful formatting make it easy to understand
+    todo status and relationships at a glance.

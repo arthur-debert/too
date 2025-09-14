@@ -1,7 +1,7 @@
                 Development Guide
 
 This guide provides comprehensive information for too contributors,
-covering quick start, conventions, and architecture including the IDM system.
+covering quick start, conventions, and architecture.
 
 
 1. Quick Start
@@ -66,7 +66,7 @@ covering quick start, conventions, and architecture including the IDM system.
 
 2. Architecture Overview
 
-    too follows a strict separation of concerns with IDM at its core:
+    too follows a strict separation of concerns:
 
     CLI Layer (cmd/):
     
@@ -76,321 +76,220 @@ covering quick start, conventions, and architecture including the IDM system.
         • Output formatting via pkg/too/output
         • NO business logic
 
-    Business Logic (pkg/too/commands/):
+    Business Logic (pkg/too/):
     
-        • Individual command packages for each operation
+        • Core command implementations
         • Pure Go functions with typed parameters
         • Returns structured data, never prints
-        • Uses IDM for all todo operations
+        • Uses nanostore for all storage operations
 
-    IDM Layer (pkg/idm + pkg/too/store):
+    Storage Layer (pkg/too/store/):
     
-        • IDM provides stable UID ↔ position path mapping
-        • PureIDMManager handles all todo operations
-        • IDMStore provides persistence
-        • Workflow system manages status transitions
+        • NanoStoreAdapter wraps nanostore library
+        • Provides SQLite-based persistent storage
+        • Handles semi-stable ID generation
+        • Manages canonical namespaces (pending/completed)
 
     Data Flow:
     
         1. User runs command: too add "todo text" 
         2. cmd/too/add.go parses arguments and flags
-        3. Calls too.Add() which creates PureIDMManager
-        4. IDM resolves position paths to stable UIDs
-        5. Business logic processes using UIDs
-        6. IDM calculates display position paths
-        7. pkg/too/output renders using templates
+        3. Calls too.Add() which uses NanoStoreAdapter
+        4. Nanostore manages IDs and persistence
+        5. Business logic processes the operation
+        6. Results returned with position paths for display
+        7. Renderer formats output based on --format flag
 
-    Message Management:
+
+3. Storage Architecture
+
+    Nanostore Integration:
     
-        All user-facing strings are centralized in cmd/too/msgs.go:
-        
-        • Command descriptions and usage
-        • Flag descriptions  
-        • Error messages
-        • Command aliases
+        • SQLite database for reliable storage
+        • Semi-stable IDs with canonical namespaces
+        • Pending items: consecutive numbering (1, 2, 3...)
+        • Completed items: 'c' namespace (1.c1, 1.c2...)
 
-        This provides complete visibility of the "copy deck" and ensures
-        consistency across all commands.
+    Position Path System:
+    
+        • User-facing IDs calculated dynamically
+        • Remain stable within namespace
+        • Change when structural operations occur
+        • Hierarchical support (1.2, 1.2.3)
 
-
-3. IDM System Architecture
-
-    3.1 Core Components
-
-        IDM Registry:
-            • Maps UIDs to position paths within scopes
-            • Handles hierarchical structure navigation
-            • Provides different numbering contexts (active vs all)
-
-        PureIDMManager:
-            • Main interface for todo operations
-            • Manages flat IDMCollection with parent-child relationships
-            • Integrates with workflow system for status management
-
-        IDM Adapters:
-            • pureIDMAdapter: Standard IDM operations
-            • pureIDMAdapterActiveOnly: Consecutive numbering for active todos
-            • pureIDMAdapterAllItems: Stable paths including completed todos
-
-    3.2 Position Path Contexts
-
-        Active Context (Default):
-            • Shows only pending todos and their pending ancestors
-            • Provides consecutive numbering (1, 2, 3...) with no gaps
-            • Used by: too list, command outputs in long mode
-
-        Complete Context (--all views):
-            • Shows all todos regardless of status
-            • Maintains stable position paths across todo lifecycle  
-            • Used by: too list --all, operations on completed todos
-
-    3.3 Data Model
-
-        IDMTodo Structure:
-            • UID: Stable internal identifier (UUID)
-            • ParentID: Reference to parent's UID (empty for root)
-            • Text: Todo content
-            • Statuses: Map of workflow statuses (completion, etc.)
-            • PositionPath: IDM-calculated display position
-
-        IDMCollection:
-            • Flat array of all IDMTodos
-            • Parent-child relationships via ParentID references
-            • Optimized for performance and serialization
+    Storage Operations:
+    
+        • All operations go through NanoStoreAdapter
+        • Atomic transactions with SQLite
+        • Efficient bulk operations (e.g., DeleteCompleted)
 
 
-4. Coding Conventions
+4. Development Standards
+
+    Code Organization:
+    
+        • Package names match directory names
+        • One concern per package
+        • Clear public API surface
+        • Internal packages for implementation details
+
+    Function Design:
+    
+        • Accept parameters, return results
+        • No side effects beyond stated purpose
+        • Clear error messages with context
+        • Consistent parameter ordering
 
     Error Handling:
     
-        Standard Go error handling throughout IDM system:
+        Standard Go error handling:
+        
+            if err != nil {
+                return fmt.Errorf("context: %w", err)
+            }
 
-        -- go
-        uid, err := manager.ResolvePositionPath(store.RootScope, positionPath)
-        if err != nil {
-            return nil, fmt.Errorf("todo not found at position %s: %w", positionPath, err)
-        }
-        --
+        Always wrap errors with context for debugging.
 
-    Logging:
+    Testing Requirements:
     
-        Logging is MANDATORY for all new code:
+        • Unit tests for all business logic
+        • Table-driven tests for multiple scenarios
+        • Use testutil helpers for common operations
+        • Test both success and error paths
+        • Integration tests in scripts/test
 
-        -- go
-        logger := logging.GetLogger("too.commands.add")
-        logger.Debug().
-            Str("text", todoText).
-            Str("uid", result.Todo.UID).
-            Str("positionPath", result.Todo.PositionPath).
-            Msg("todo added successfully")
-        --
 
-        Log levels:
-        
-        • TRACE (-vvv): Detailed execution flow, IDM resolution
-        • DEBUG (-vv): Business logic, position calculations
-        • INFO (-v): Command execution, status changes
-        • WARN: Warnings and recoverable errors
-        • ERROR: Operation failures
+5. Logging Guidelines
 
-    Testing:
+    Severity Levels:
     
-        • Use test utilities from pkg/testutil
-        • Always use MemoryStore for unit tests
-        • Test with both active and complete contexts
-        • Verify position path calculations
-        • Test error codes, not error messages
+        • ERROR: Operation failures requiring user action
+        • WARN: Degraded functionality but operation continues
+        • INFO: High-level operation progress
+        • DEBUG (-v): Detailed operation steps
+        • TRACE (-vv): Low-level execution details
 
-    Integration Testing:
+    Structured Logging:
     
-        Use live-tests/run for isolated end-to-end testing:
+        Use zerolog with consistent field names:
         
-        -- bash
-        # Start interactive shell with fresh .todos file
-        ./live-tests/run
-        
-        # Execute a test script
-        ./live-tests/run ./live-tests/example.sh
-        
-        # Execute script then stay in interactive mode
-        ./live-tests/run --interactive ./my-test.sh
-        
-        # Use different output format
-        ./live-tests/run --format json ./test-json.sh
-        --
-        
-        Features:
-        
-        • Creates isolated temporary directory with fresh .todos file
-        • Runs too commands without affecting your real data
-        • Shows each command before execution (in gray)
-        • Supports both interactive exploration and scripted testing
-        • Custom prompt "[too-test] $ " with vi key bindings
-        • export_history function outputs all commands from session
-        • Automatically cleans up on exit
-        
-        The live-tests directory contains:
-        
-        • run - Main script for launching test environment
-        • example.sh - Example test script showing common patterns
-        • usage.txt - Detailed usage information
-        • Hidden files (.wrapper, .zshrc, .welcome) used internally
+            log.Debug().
+                Str("todo_id", id).
+                Str("status", "completed").
+                Msg("Todo status updated")
 
-    IDM Testing Patterns:
+    Performance:
     
-        -- go
-        // Create IDM manager for testing
-        store := store.NewMemoryIDMStore()
-        manager, err := store.NewPureIDMManager(store, "")
+        • Log sampling for high-frequency operations
+        • Conditional logging based on verbosity
+        • No logging in tight loops
+
+
+6. Testing Patterns
+
+    Test Organization:
+    
+        • Tests next to code (*_test.go)
+        • Test data in testdata/ directories
+        • Shared test utilities in testutil/
+
+    Nanostore Testing:
+    
+        // Create test store
+        adapter, dbPath := testutil.CreateTestStore(t)
+        defer adapter.Close()
+        
+        // Add test data
+        todo, err := adapter.Add("Test todo", nil)
         require.NoError(t, err)
-
-        // Test active vs complete contexts
-        activeTodos := manager.ListActive()
-        allTodos := manager.ListAll()
         
-        // Verify position path calculations
-        manager.AttachActiveOnlyPositionPaths(activeTodos)
-        assert.Equal(t, "1", activeTodos[0].PositionPath)
-        --
+        // Test operations
+        err = adapter.Complete(todo.PositionPath)
+        assert.NoError(t, err)
 
-
-5. Key Design Decisions
-
-    Storage:
+    Table-Driven Tests:
     
-        • JSON file storage with flat IDMCollection structure
-        • IDMStore interface abstracts persistence 
-        • Each command: load → operate via IDM → save
-        • See docs/design/store.txxt for details
-
-    Position Management:
-    
-        • IDM provides two numbering contexts for different use cases
-        • Active context: consecutive numbering for daily use
-        • Complete context: stable paths for reliable operations
-        • Automatic renumbering maintains clean user experience
-
-    Command Aliases:
-    
-        • init (i), add (a), edit (e, m, modify)
-        • complete (c), reopen (o), move (m), search (s), list (ls)
-        • Global flags: --done (-d), --all (-a), --quiet, --loud
-
-    Build System:
-    
-        • Always use scripts/* for operations
-        • Never compile binaries in root directory
-        • Meta-tools in separate binaries:
-            - cmd/tools/too-completion
-            - cmd/tools/too-manpage
-
-
-6. Documentation Standards
-
-    Format:
-    
-        • ALL documentation must use txt format (not txxt)
-        • 4-space indentation for paragraphs
-        • Section headers with appropriate spacing
-        • No markdown-style headers
-
-    Organization:
-    
-        • docs/design/ - Architecture and design documents
-        • docs/dev/ - Developer guides and conventions
-        • Inline Go docs for API documentation
-
-
-7. Common Patterns
-
-    Adding a New Command:
-    
-        1. Create cmd/too/newcmd.go with Cobra command
-        2. Add strings to cmd/too/msgs.go
-        3. Create pkg/too/commands/newcmd/newcmd.go
-        4. Add API function to pkg/too/commands.go
-        5. Use PureIDMManager for all todo operations
-        6. Handle both active and complete contexts as needed
-        7. Create result type and template
-        8. Write comprehensive tests
-
-    Working with IDM:
-    
-        -- go
-        // Always create manager first
-        idmStore := store.NewIDMStore(collectionPath)
-        manager, err := store.NewPureIDMManager(idmStore, collectionPath)
-        if err != nil {
-            return nil, err
+        tests := []struct {
+            name     string
+            input    string
+            expected string
+            wantErr  bool
+        }{
+            {"valid", "1", "1", false},
+            {"invalid", "x", "", true},
+        }
+        
+        for _, tt := range tests {
+            t.Run(tt.name, func(t *testing.T) {
+                // Test implementation
+            })
         }
 
-        // Resolve user position to internal UID
-        uid, err := manager.ResolvePositionPath(store.RootScope, positionPath)
-        if err != nil {
-            return nil, fmt.Errorf("todo not found: %w", err)
-        }
 
-        // Perform operation using UID
-        err = manager.SetStatus(uid, "completion", "done")
-        if err != nil {
-            return nil, err
-        }
+7. Data Persistence
 
-        // Get todos for display
-        todos := manager.ListActive()
-        manager.AttachActiveOnlyPositionPaths(todos) // for consecutive numbering
-        // OR manager.AttachPositionPaths(todos) // for stable paths
-        --
-
-    Testing IDM Operations:
+    Database Format:
     
-        -- go
-        func TestCompleteCommand(t *testing.T) {
-            // Setup
-            store := NewMemoryIDMStore()
-            manager, err := NewPureIDMManager(store, "")
-            require.NoError(t, err)
-            
-            // Add test data
-            uid1, _ := manager.Add(store.RootScope, "First todo")
-            uid2, _ := manager.Add(store.RootScope, "Second todo") 
-            
-            // Test active context
-            activeTodos := manager.ListActive()
-            manager.AttachActiveOnlyPositionPaths(activeTodos)
-            assert.Equal(t, "1", activeTodos[0].PositionPath)
-            assert.Equal(t, "2", activeTodos[1].PositionPath)
-            
-            // Complete middle todo
-            err = manager.SetStatus(uid1, "completion", "done")
-            require.NoError(t, err)
-            
-            // Verify renumbering
-            activeTodos = manager.ListActive()
-            manager.AttachActiveOnlyPositionPaths(activeTodos)
-            assert.Len(t, activeTodos, 1)
-            assert.Equal(t, "1", activeTodos[0].PositionPath) // Second todo now #1
-        }
-        --
+        • SQLite database file (.todos.db)
+        • Managed entirely by nanostore
+        • Automatic schema creation
+        • Transaction support
+
+    File Locations:
+    
+        • Default: ~/.todos.db
+        • Override: TODO_DB_PATH environment variable
+        • Local: .todos.db in current/parent directories
+
+    Concurrency:
+    
+        • SQLite handles concurrent access
+        • Each command creates new connection
+        • No long-running processes
 
 
-Remember: The IDM system ensures reliable command targeting while providing
-intuitive user-facing numbering. When in doubt, test both active and complete
-contexts to ensure your changes work correctly across all use cases.
+8. Command Patterns
+
+    Adding Features:
+    
+        1. Define command in cmd/too/
+        2. Create Options struct in pkg/too/
+        3. Implement business logic function
+        4. Add tests for all scenarios
+        5. Update help text and documentation
+
+    Working with Todos:
+    
+        // Load store
+        adapter, err := store.NewNanoStoreAdapter(path)
+        defer adapter.Close()
+        
+        // Add todo
+        todo, err := adapter.Add(text, parentID)
+        
+        // List todos
+        todos, err := adapter.List(showAll)
+        
+        // Update todo
+        err = adapter.Update(id, newText)
+
+    Position Resolution:
+    
+        • Users provide position paths (1, 2.1, etc.)
+        • Nanostore resolves to internal UUIDs
+        • Operations use UUIDs internally
+        • Results include position paths for display
 
 
-TLDR
-----
+Remember: Nanostore handles all the complexity of ID management and storage.
+Focus on implementing clear, testable business logic that uses the adapter's
+simple API.
 
-    • Use scripts/* for build, lint, pre-commit, test
-    • CLI architecture with IDM at core:
-        - CLI (cmd) is thin: parsing, validation, help, output
-        - Business logic in pkg/too/commands/* uses PureIDMManager
-        - IDM provides UID ↔ position path mapping
-        - Two contexts: active (consecutive) vs complete (stable)
-        - All operations use UIDs internally, HIDs for user interface
-    • Testing: Use MemoryIDMStore, test both contexts
-    • Working on issues:
-        - GitHub issue: gh issue develop -c <issue-id>
-        - Create feature branch, implement with IDM, test, commit, PR
-        - Always verify position path behavior in both contexts
+
+Key Points:
+
+    • CLI parses, business logic processes, nanostore stores
+    • All IDs are managed by nanostore's canonical namespace system
+    • SQLite provides reliable, transactional storage
+    • Test everything, use testutil helpers
+    • Clear separation of concerns throughout

@@ -44,7 +44,7 @@ var moveCmd = &cobra.Command{
 			changeResult := too.NewChangeResult(
 				"move",
 				"Moved todo: " + result.NewPath,
-				[]*models.IDMTodo{result.Todo},
+				[]*models.Todo{result.Todo},
 				result.AllTodos,
 				result.TotalCount,
 				result.DoneCount,

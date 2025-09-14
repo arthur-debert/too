@@ -5,9 +5,14 @@ import (
 )
 
 // CreateTestTodo creates a todo for testing
-func CreateTestTodo(text string, status models.TodoStatus) *models.IDMTodo {
-	todo := models.NewIDMTodo(text, "")
-	todo.EnsureStatuses()
-	todo.Statuses["completion"] = string(status)
+func CreateTestTodo(text string, status models.TodoStatus) *models.Todo {
+	todo := &models.Todo{
+		UID:      "test-" + text,
+		Text:     text,
+		ParentID: "",
+		Statuses: map[string]string{
+			"completion": string(status),
+		},
+	}
 	return todo
 }
