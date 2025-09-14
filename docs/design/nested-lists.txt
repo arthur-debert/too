@@ -1,7 +1,7 @@
-                NESTED LISTS DESIGN SPECIFICATION
+                Nested Lists Design
 
-    This document outlines the design and behavior of the nested todo lists 
-    feature in too, including how it integrates with the IDM system.
+This document outlines the design and behavior of the nested todo lists 
+feature in too, including how it integrates with the nanostore system.
 
 
 1. Problem Analysis
@@ -21,17 +21,17 @@
 
     2.1 Data Model
 
-        The IDMTodo struct supports hierarchical relationships:
+        The Todo struct supports hierarchical relationships:
 
         - UID: A permanent, internal UUID (never changes)
         - ParentID: A string referencing the parent's UID. Empty string for root items
         - Text: The todo content  
-        - Statuses: Map of workflow statuses (completion, priority, etc.)
-        - PositionPath: IDM-calculated hierarchical position (e.g., "1.2.3")
+        - Statuses: Map including completion status
+        - PositionPath: Nanostore-calculated hierarchical position (e.g., "1.2.3")
 
-        The flat IDMCollection stores all todos with parent-child relationships
+        Nanostore manages the flat collection of todos with parent-child relationships
         expressed via ParentID references. This provides both flexibility and
-        performance.
+        performance through SQLite storage.
 
     2.2 Business Rules: User-Centric Model
 
@@ -49,161 +49,158 @@
            completed, the parent is automatically marked complete as a
            convenience feature.
 
-        4. Position Path Calculation: IDM calculates position paths based on
-           the current context (active-only vs all items) to provide either
-           consecutive numbering or stable references.
+        4. Position Path Calculation: Nanostore calculates position paths based on
+           hierarchy (e.g., 1.2 for second child of first item).
 
 
-3. IDM Integration for Hierarchical Structures
+3. Nanostore Integration for Hierarchical Structures
 
-    3.1 Scope-Based Organization
-
-        IDM organizes nested todos using scopes:
+    Position Path System:
+    
+        Nanostore manages hierarchical position paths using dot notation:
         
-        - Root Scope: Contains top-level todos
-        - Item Scopes: Each todo with children becomes a scope containing its children
-        - Hierarchical Resolution: Position paths like "1.2.3" resolve across scopes
+        • Root items: Simple numbers (1, 2, 3)
+        • Children: Parent path + position (1.1, 1.2, 2.1)
+        • Deep nesting: Extended paths (1.2.3.4)
 
-    3.2 Position Path Calculation
+    Resolution Process:
+    
+        1. User provides hierarchical path (e.g., "1.2")
+        2. Nanostore resolves path to UUID considering hierarchy
+        3. Operations use UUID internally
+        4. New paths calculated post-operation
 
-        Active Context (Default View):
-            - Only pending todos and their pending ancestors are included
-            - Provides consecutive numbering within each level
-            - Completed subtrees are excluded entirely
-
-        Complete Context (--all View):  
-            - All todos regardless of status are included
-            - Maintains stable position paths across the entire hierarchy
-            - Allows operations on any item in the tree
-
-    3.3 Parent-Child Visibility Rules
-
-        Active View Rules:
-            - If a parent is completed, none of its children appear in active view
-            - This matches user expectation: "If I'm done with a project, 
-              don't show me its tasks"
-            - Position numbering skips completed branches entirely
-
-        Complete View Rules:
-            - All items are visible with their stable position paths
-            - Completed items are marked with status indicators
-            - Full tree structure is preserved and navigable
+    Namespace Behavior:
+    
+        • Pending items maintain consecutive numbering at each level
+        • Completed items move to 'c' namespace within their parent
+        • Structure preserved across status changes
 
 
-4. User-Facing API (CLI)
+4. User Interface and Commands
 
-    The command-line interface manages hierarchy using dot-notation addressing.
+    4.1 Command Syntax
+    
+        Adding child todos:
+            too add "Design database schema" to 3
+            too add "Implement API endpoints" to 3
 
-    4.1 Addressing Items
+        The 'to' keyword specifies parent by position path.
 
-        Users interact with items using dot-separated position paths:
-        - "1": First top-level item
-        - "1.2": Second child of first top-level item  
-        - "2.1.3": Third grandchild of first child of second top-level item
-
-        IDM resolves these paths to internal UIDs based on current context.
-
-    4.2 Command Behaviors
-
-        too add:
-            - too add "Top-level task": Adds to root level
-            - too add "Sub-task" 1.2: Adds as child of item at 1.2
-            - New items get next consecutive position in their scope
-
-        too complete <positions...>:
-            - too complete 1.2: Marks item at 1.2 as done
-            - Triggers bottom-up completion if all siblings are done
-            - May cause renumbering in active view if gaps are created
-
-        too reopen <positions...>:
-            - too reopen 1.2: Marks item at 1.2 as pending  
-            - Only affects specified item, no propagation
-            - May cause renumbering in active view
-
-        too move <source> <destination>:
-            - too move 2.1.1 1: Moves item to be child of item 1
-            - too move 1.2 "": Moves item to root level
-            - IDM handles scope changes and position recalculation
-
-        too list:
-            - too list: Shows hierarchical active view with consecutive numbering
-            - too list --all: Shows complete tree with stable position paths
-            - Indentation indicates nesting level
-
-        too cleanup:
-            - Removes all completed items and their entire subtrees
-            - Causes position recalculation for remaining items
-            - Matches user expectation of cleaning entire project branches
-
-
-5. Hierarchical Display Format
-
-    5.1 Active View Display
-
-        1. Project Alpha
-           1. Design mockups
-           2. Implement backend
-        2. Project Beta  
-           1. Research requirements
-           2. Write specifications
-        3. Personal Tasks
-           1. Buy groceries
-           2. Schedule appointment
-
-        This shows only active items with consecutive numbering at each level.
-        Completed projects and their tasks are entirely hidden.
-
-    5.2 Complete View Display
-
-        1. Project Alpha
-           ● 1. Design mockups (done)
-           2. Implement backend
-           ● 3. Write tests (done)
-        ● 2. Project Beta (done)
-           ● 1. Research requirements (done) 
-           ● 2. Write specifications (done)
-        3. Personal Tasks
-           ● 1. Buy groceries (done)
-           2. Schedule appointment
-
-        This shows all items with stable position paths. Completed items are
-        marked with ● and maintain their original positions for reliable reference.
-
-    5.3 Mixed State Handling
-
-        When a parent has both completed and pending children, the display
-        uses visual indicators:
-
-        ◐ 1. Project Gamma (mixed)
-           ● 1. Phase 1 (done)
-           2. Phase 2 (pending)
-           3. Phase 3 (pending)
-
-        The ◐ symbol indicates a parent with mixed completion status.
-
-
-6. Implementation Benefits
-
-    6.1 User Experience
+    4.2 Display Representation
+    
+        Default display shows indented hierarchy:
         
-        - Natural hierarchical organization of related tasks
-        - Intuitive dot-notation addressing (1.2.3)
-        - Clean active view hides completed project clutter
-        - Stable references available when needed via --all
+            $ too list
+            1. Backend refactoring
+              1.1. Design database schema
+              1.2. Implement API endpoints
+            2. Write documentation
+            3. Deploy to production
 
-    6.2 Technical Robustness
+    4.3 Targeting Nested Items
+    
+        All commands work with hierarchical paths:
+        
+            too complete 1.2    # Complete "Implement API endpoints"
+            too edit 1.1 "Update database design"
+            too move 1.2 to 2  # Move item to different parent
 
-        - Flat storage model provides performance and simplicity
-        - IDM ensures reliable command resolution regardless of view context
-        - Transactional integrity protects against data corruption
-        - Flexible scope system handles arbitrary nesting depth
 
-    6.3 Workflow Power
+5. Behavioral Examples
 
-        - Bottom-up auto-completion reduces manual status management
-        - Top-down behavioral propagation matches project lifecycle
-        - Move operations enable flexible project reorganization
-        - Cleanup operations handle entire project branches atomically
+    5.1 Parent Completion Behavior
+    
+        When completing a parent with pending children:
+        
+            Initial state:
+            1. Project X
+              1.1. Research phase
+              1.2. Implementation
+            
+            $ too complete 1
+            
+            Result (active view):
+            [Empty - parent and children hidden]
+            
+            Result (--all view):
+            1.c1. Project X [completed]
+              1.c1.1. Research phase [pending but hidden]
+              1.c1.2. Implementation [pending but hidden]
 
-    The nested lists system leverages IDM to provide both intuitive daily-use
-    numbering and the stability needed for complex hierarchical operations.
+    5.2 Auto-Completion Behavior
+    
+        When all children are completed:
+        
+            Initial state:
+            1. Release v2.0
+              1.1. Fix bugs [pending]
+              1.2. Update docs [pending]
+            
+            $ too complete 1.1
+            $ too complete 1.2
+            
+            Result:
+            Parent "Release v2.0" automatically marked complete
+
+    5.3 Moving Items
+    
+        Items can be moved between parents:
+        
+            $ too move 2.3 to 1
+            
+            Moves item 2.3 to become a child of item 1,
+            with position paths recalculated.
+
+
+6. Technical Implementation
+
+    Storage:
+    
+        • Nanostore handles all hierarchical relationships
+        • Parent-child links via UUID references
+        • Position paths calculated dynamically
+        • Efficient queries via SQLite
+
+    Operations:
+    
+        • Add with parent: Store parent UUID reference
+        • Complete: Check children for auto-completion
+        • Move: Update parent reference, recalculate paths
+        • Delete: Option to cascade to children
+
+    Performance:
+    
+        • Hierarchical queries optimized in SQL
+        • Position paths cached within transaction
+        • Bulk operations for cascade effects
+
+
+7. Edge Cases and Constraints
+
+    Depth Limits:
+    
+        • No hard limit on nesting depth
+        • UI may truncate very deep paths for readability
+        • Performance remains good to 10+ levels
+
+    Circular References:
+    
+        • Prevented by nanostore validation
+        • Move operations check for cycles
+        • Clear error messages on attempts
+
+    Large Hierarchies:
+    
+        • Tested with 1000+ items in hierarchy
+        • Position calculation remains efficient
+        • Display may paginate for usability
+
+
+Summary:
+
+    The nested lists system leverages nanostore to provide intuitive
+    hierarchical organization while maintaining the simplicity and speed
+    that makes too effective. The canonical namespace pattern extends
+    naturally to nested structures, ensuring consistent behavior across
+    all operations.

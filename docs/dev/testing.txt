@@ -1,318 +1,374 @@
                 Testing Guide
 
-This project uses test-driven development with a focus on clear, fast,
-and reliable tests. The IDM system requires special attention to testing
-both active and complete contexts.
+This guide outlines testing practices, patterns, and tools for developing robust
+and reliable tests. The nanostore system requires special attention to testing
+due to its position path calculations and SQLite persistence.
 
 
-1. Test Types
+1. Testing Philosophy
 
-    Unit Tests (Preferred):
+    Test Coverage Goals:
     
-        Test business logic without filesystem access. Fast and reliable.
+        • Unit tests for all business logic (80%+ coverage)
+        • Integration tests for command workflows
+        • Table-driven tests for comprehensive scenarios
+        • Error path testing for robustness
+
+    Test Organization:
+    
+        Convention: Tests live alongside code in *_test.go files
         
-        • Always use MemoryIDMStore for in-memory testing
-        • Test both active and complete contexts
-        • Verify position path calculations
-        • Test the pkg/too API, not CLI parsing
+        Structure:
+            pkg/too/
+            ├── commands.go
+            ├── commands_test.go
+            └── testdata/
+                └── sample.db
 
-    Integration Tests:
+    Test Independence:
     
-        Only for testing the storage layer and IDM persistence.
+        • Each test must be runnable in isolation
+        • No dependency on test execution order
+        • Clean up all resources (especially temp files)
+        • Use t.TempDir() for temporary directories
+
+    Types of Tests:
+    
+        Unit Tests:
+            Test individual functions with mocked dependencies.
+            Focus on business logic, edge cases, and error handling.
         
-        • Use t.TempDir() for automatic cleanup
-        • Test IDM registry rebuilding across save/load cycles
-        • Minimize filesystem tests
+        Integration Tests:
+            Test complete command flows with real nanostore.
+            Verify end-to-end functionality including persistence.
+        
+        CLI Tests:
+            Test command parsing and flag handling.
+            Only for testing the CLI layer and command routing.
 
 
-2. IDM Testing Patterns
+2. Nanostore Testing Patterns
 
-    Creating Test Managers:
+    Setting Up Test Stores:
     
-        -- go
-        func setupTestManager(t *testing.T) *store.PureIDMManager {
-            idmStore := store.NewMemoryIDMStore()
-            manager, err := store.NewPureIDMManager(idmStore, "")
+        func TestAddCommand(t *testing.T) {
+            // Create temporary test store
+            adapter, dbPath := testutil.CreateTestStore(t)
+            defer adapter.Close()
+            
+            // Add test data
+            todo, err := adapter.Add("Test todo", nil)
             require.NoError(t, err)
-            return manager
+            
+            // Verify
+            todos, err := adapter.List(false)
+            assert.Len(t, todos, 1)
+            assert.Equal(t, "Test todo", todos[0].Text)
         }
-        --
 
-    Testing Position Contexts:
+    Testing with Pre-populated Data:
     
-        -- go
-        func TestActiveVsCompleteContexts(t *testing.T) {
-            manager := setupTestManager(t)
+        func TestCompleteCommand(t *testing.T) {
+            // Create store with test data
+            adapter, dbPath := testutil.CreatePopulatedStore(t)
+            defer adapter.Close()
             
-            // Add test todos
-            uid1, _ := manager.Add(store.RootScope, "First")
-            uid2, _ := manager.Add(store.RootScope, "Second") 
-            uid3, _ := manager.Add(store.RootScope, "Third")
+            // Execute command
+            result, err := too.Complete("1", too.CompleteOptions{
+                CollectionPath: dbPath,
+            })
             
-            // Complete middle todo
-            manager.SetStatus(uid2, "completion", "done")
-            
-            // Test active context (consecutive numbering)
-            activeTodos := manager.ListActive()
-            manager.AttachActiveOnlyPositionPaths(activeTodos)
-            assert.Len(t, activeTodos, 2)
-            assert.Equal(t, "1", activeTodos[0].PositionPath) // First
-            assert.Equal(t, "2", activeTodos[1].PositionPath) // Third (renumbered)
-            
-            // Test complete context (stable paths)
-            allTodos := manager.ListAll()
-            manager.AttachPositionPaths(allTodos)
-            assert.Len(t, allTodos, 3)
-            assert.Equal(t, "1", allTodos[0].PositionPath) // First
-            assert.Equal(t, "2", allTodos[1].PositionPath) // Second (stable)
-            assert.Equal(t, "3", allTodos[2].PositionPath) // Third (stable)
+            // Verify
+            assert.NoError(t, err)
+            assert.Equal(t, models.StatusDone, result.Todo.GetStatus())
         }
-        --
 
-    Testing Position Resolution:
+    The testutil package provides nanostore-compatible helpers:
     
-        -- go
-        func TestPositionResolution(t *testing.T) {
-            manager := setupTestManager(t)
-            
-            // Add todos with known UIDs
-            uid1, _ := manager.Add(store.RootScope, "Test todo")
-            
-            // Test resolution in active context
-            activeTodos := manager.ListActive() 
-            manager.AttachActiveOnlyPositionPaths(activeTodos)
-            
-            resolvedUID, err := manager.ResolvePositionPath(store.RootScope, "1")
-            require.NoError(t, err)
-            assert.Equal(t, uid1, resolvedUID)
-        }
-        --
-
-
-3. Test Utilities
-
-    The testutil package provides IDM-compatible helpers:
-
-    Store Creation:
-    
-        -- go
-        // Create memory store for IDM testing
-        store := testutil.NewMemoryIDMStore()
-        manager, err := store.NewPureIDMManager(store, "")
-        require.NoError(t, err)
+        // Create empty test store
+        adapter, path := testutil.CreateTestStore(t)
         
-        // Add test todos
-        uid1, _ := manager.Add(store.RootScope, "Task 1")
-        uid2, _ := manager.Add(store.RootScope, "Task 2")
-        --
+        // Create store with default test data
+        adapter, path := testutil.CreatePopulatedStore(t)
+        
+        // Create store with specific todos
+        adapter, path := testutil.CreateStoreWithSpecs(t,
+            testutil.TodoSpec{Text: "First", Complete: false},
+            testutil.TodoSpec{Text: "Second", Complete: true},
+            testutil.TodoSpec{Text: "Child", ParentPos: "1"},
+        )
 
-    Assertions:
+    Position Path Testing:
     
-        -- go
-        // IDM-specific assertions
-        func AssertTodoAtPosition(t *testing.T, todos []*models.IDMTodo, position, text string) {
-            found := false
+        // Nanostore-specific assertions
+        func AssertTodoAtPosition(t *testing.T, todos []*models.Todo, position, text string) {
             for _, todo := range todos {
-                if todo.PositionPath == position && todo.Text == text {
-                    found = true
-                    break
+                if todo.PositionPath == position {
+                    assert.Equal(t, text, todo.Text)
+                    return
                 }
             }
-            assert.True(t, found, "Expected todo '%s' at position '%s'", text, position)
+            t.Errorf("No todo found at position %s", position)
         }
         
-        func AssertConsecutivePositions(t *testing.T, todos []*models.IDMTodo) {
-            for i, todo := range todos {
-                expected := fmt.Sprintf("%d", i+1)
-                assert.Equal(t, expected, todo.PositionPath, 
-                    "Todo at index %d should have position %s", i, expected)
+        func AssertConsecutivePositions(t *testing.T, todos []*models.Todo) {
+            pending := FilterPending(todos)
+            for i, todo := range pending {
+                expected := strconv.Itoa(i + 1)
+                assert.Equal(t, expected, todo.PositionPath)
             }
         }
-        --
 
-    Hierarchical Testing:
+
+3. Table-Driven Testing
+
+    Basic Pattern:
     
-        -- go
-        func setupHierarchicalTodos(t *testing.T) *store.PureIDMManager {
-            manager := setupTestManager(t)
-            
-            // Create parent
-            parentUID, _ := manager.Add(store.RootScope, "Project")
-            
-            // Create children  
-            child1UID, _ := manager.Add(parentUID, "Task 1")
-            child2UID, _ := manager.Add(parentUID, "Task 2")
-            
-            return manager
-        }
-        --
-
-
-4. Test Pattern
-
-    Follow the Arrange-Act-Assert pattern with IDM considerations:
-
-    -- go
-    func TestCompleteCommand(t *testing.T) {
-        // ARRANGE: Set up IDM manager with test data
-        manager := setupTestManager(t)
-        uid1, _ := manager.Add(store.RootScope, "Keep me")
-        uid2, _ := manager.Add(store.RootScope, "Complete me")
-        
-        // ACT: Execute command using IDM
-        result, err := complete.Execute("2", complete.Options{
-            CollectionPath: "",  // MemoryStore ignores path
-            Mode:          "long",
-        })
-        require.NoError(t, err)
-        
-        // ASSERT: Verify IDM state changes
-        assert.Equal(t, uid2, result.Todo.UID)
-        assert.Equal(t, "done", result.NewStatus)
-        
-        // Verify active context shows consecutive numbering
-        activeTodos := manager.ListActive()
-        manager.AttachActiveOnlyPositionPaths(activeTodos)
-        assert.Len(t, activeTodos, 1)
-        assert.Equal(t, "1", activeTodos[0].PositionPath) // Renumbered
-        assert.Equal(t, "Keep me", activeTodos[0].Text)
-    }
-    --
-
-
-5. Integration Testing Environment
-
-    For manual integration testing, use scripts/run-integration-env.sh:
-    
-    Purpose:
-    
-        • Test too commands without affecting your real todo data
-        • Verify IDM behavior with different .todos file states  
-        • Debug position path issues in isolated environment
-        • Test consecutive numbering vs stable path behavior
-    
-    Usage:
-    
-        -- bash
-        # Start with empty .todos file
-        ./scripts/run-integration-env.sh
-        
-        # Copy your current todos for testing
-        ./scripts/run-integration-env.sh ~/.todos.json
-        
-        # Use test fixtures
-        ./scripts/run-integration-env.sh test/fixtures/complex.todos
-        --
-    
-    Testing IDM Behavior:
-    
-        -- bash
-        [too-test] $ too add "First" && too add "Second" && too add "Third"
-        [too-test] $ too list
-        1. First
-        2. Second  
-        3. Third
-        
-        [too-test] $ too complete 2
-        [too-test] $ too list
-        1. First
-        2. Third    # Note: renumbered from 3 to 2
-        
-        [too-test] $ too list --all
-        1. First
-        ● 2. Second  # Completed, stable position
-        3. Third     # Stable position
-        --
-    
-    The script:
-    
-        • Creates a temporary directory in PROJECT_ROOT/tmp/
-        • Initializes or copies a .todos file
-        • Drops you into a shell with custom "[too-test]" prompt
-        • Adds too to PATH for easy testing
-        • Automatically cleans up when you exit
-
-
-6. Common Test Scenarios
-
-    Testing Consecutive Numbering:
-    
-        -- go
-        func TestConsecutiveNumbering(t *testing.T) {
-            manager := setupTestManager(t)
-            
-            // Add several todos
-            for i := 1; i <= 5; i++ {
-                manager.Add(store.RootScope, fmt.Sprintf("Todo %d", i))
+        func TestResolvePosition(t *testing.T) {
+            tests := []struct {
+                name     string
+                input    string
+                expected string
+                wantErr  bool
+            }{
+                {"simple", "1", "uuid-1", false},
+                {"nested", "1.2", "uuid-1-2", false},
+                {"invalid", "x", "", true},
+                {"empty", "", "", true},
             }
             
-            // Complete non-consecutive todos (2, 4)
-            allTodos := manager.ListAll()
-            manager.AttachPositionPaths(allTodos) // Get stable paths
-            
-            manager.SetStatus(allTodos[1].UID, "completion", "done") // Todo 2
-            manager.SetStatus(allTodos[3].UID, "completion", "done") // Todo 4
-            
-            // Verify active view has consecutive numbering
-            activeTodos := manager.ListActive()
-            manager.AttachActiveOnlyPositionPaths(activeTodos)
-            
-            AssertConsecutivePositions(t, activeTodos)
-            assert.Len(t, activeTodos, 3) // 1, 3, 5 remain
-        }
-        --
-
-    Testing Hierarchical Numbering:
-    
-        -- go
-        func TestHierarchicalPositions(t *testing.T) {
-            manager := setupTestManager(t)
-            
-            // Create nested structure
-            projectUID, _ := manager.Add(store.RootScope, "Project")
-            task1UID, _ := manager.Add(projectUID, "Task 1")
-            task2UID, _ := manager.Add(projectUID, "Task 2")
-            subtaskUID, _ := manager.Add(task1UID, "Subtask")
-            
-            // Test hierarchical position paths
-            activeTodos := manager.ListActive()
-            manager.AttachActiveOnlyPositionPaths(activeTodos)
-            
-            // Find todos by UID and check their positions
-            positionMap := make(map[string]string)
-            for _, todo := range activeTodos {
-                positionMap[todo.UID] = todo.PositionPath
+            for _, tt := range tests {
+                t.Run(tt.name, func(t *testing.T) {
+                    result, err := ResolvePosition(tt.input)
+                    if tt.wantErr {
+                        assert.Error(t, err)
+                    } else {
+                        assert.NoError(t, err)
+                        assert.Equal(t, tt.expected, result)
+                    }
+                })
             }
-            
-            assert.Equal(t, "1", positionMap[projectUID])
-            assert.Equal(t, "1.1", positionMap[task1UID])
-            assert.Equal(t, "1.2", positionMap[task2UID])
-            assert.Equal(t, "1.1.1", positionMap[subtaskUID])
         }
-        --
 
-
-7. Best Practices
-
-    DO:
+    Complex Scenarios:
     
-        • Use MemoryIDMStore for all unit tests
-        • Test both active and complete contexts for each feature
-        • Verify position path calculations explicitly
-        • Test consecutive numbering after operations that change structure
-        • Use table-driven tests for different IDM scenarios
+        func TestCompleteMultiple(t *testing.T) {
+            tests := []struct {
+                name      string
+                setup     []testutil.TodoSpec
+                positions []string
+                expected  int // expected done count
+            }{
+                {
+                    name: "complete two of three",
+                    setup: []testutil.TodoSpec{
+                        {Text: "First"},
+                        {Text: "Second"},
+                        {Text: "Third"},
+                    },
+                    positions: []string{"1", "3"},
+                    expected:  2,
+                },
+            }
+            // Test implementation
+        }
 
-    DON'T:
-    
-        • Assume position paths without verifying calculations
-        • Test only one context (active or complete)
-        • Hard-code UIDs in tests (they're random)
-        • Skip testing hierarchical scenarios
-        • Touch the filesystem unless testing IDM persistence
 
-    IDM-Specific:
+4. Testing Best Practices
+
+    Arrange-Act-Assert Pattern:
     
-        • Always call AttachPositionPaths or AttachActiveOnlyPositionPaths before assertions
-        • Test position resolution in both directions (path→UID and UID→path)
-        • Verify that operations using position paths target correct UIDs
-        • Test edge cases like empty collections and deeply nested structures
+        func TestTodoComplete(t *testing.T) {
+            // ARRANGE: Set up test data
+            adapter, path := testutil.CreateTestStore(t)
+            defer adapter.Close()
+            
+            todo, _ := adapter.Add("Test todo", nil)
+            
+            // ACT: Execute operation
+            err := adapter.Complete(todo.PositionPath)
+            
+            // ASSERT: Verify results
+            assert.NoError(t, err)
+            
+            // Verify todo is in completed namespace
+            todos, _ := adapter.List(true)
+            completed := FilterCompleted(todos)
+            assert.Len(t, completed, 1)
+        }
+
+    Test Helpers:
+    
+        Create focused helper functions for common assertions:
+        
+        func assertTodoCount(t *testing.T, adapter *store.NanoStoreAdapter, expected int) {
+            t.Helper()
+            todos, err := adapter.List(false)
+            require.NoError(t, err)
+            assert.Len(t, todos, expected)
+        }
+
+    Error Testing:
+    
+        Always test error conditions:
+        
+        func TestAddWithInvalidParent(t *testing.T) {
+            adapter, _ := testutil.CreateTestStore(t)
+            defer adapter.Close()
+            
+            invalidParent := "999"
+            _, err := adapter.Add("Child", &invalidParent)
+            
+            assert.Error(t, err)
+            assert.Contains(t, err.Error(), "parent not found")
+        }
+
+
+5. Integration Testing
+
+    Command Integration Tests:
+    
+        Test complete command flows including persistence:
+        
+        func TestAddEditCompleteFlow(t *testing.T) {
+            adapter, path := testutil.CreateTestStore(t)
+            defer adapter.Close()
+            
+            // Add
+            addResult, err := too.Add("Original", too.AddOptions{
+                CollectionPath: path,
+            })
+            require.NoError(t, err)
+            
+            // Edit
+            editResult, err := too.Modify("1", "Updated", too.ModifyOptions{
+                CollectionPath: path,
+            })
+            require.NoError(t, err)
+            assert.Equal(t, "Updated", editResult.Todo.Text)
+            
+            // Complete
+            completeResult, err := too.Complete("1", too.CompleteOptions{
+                CollectionPath: path,
+            })
+            require.NoError(t, err)
+            assert.Equal(t, models.StatusDone, completeResult.Todo.GetStatus())
+        }
+
+    Cross-Command Testing:
+    
+        Verify interactions between commands:
+        
+        func TestMoveAffectsPositions(t *testing.T) {
+            // Setup hierarchical todos
+            // Move a todo
+            // Verify all positions are recalculated correctly
+        }
+
+
+6. Performance Testing
+
+    Benchmarking:
+    
+        func BenchmarkListWithManyTodos(b *testing.B) {
+            adapter, _ := setupLargeDataset(b, 1000)
+            defer adapter.Close()
+            
+            b.ResetTimer()
+            for i := 0; i < b.N; i++ {
+                _, err := adapter.List(true)
+                if err != nil {
+                    b.Fatal(err)
+                }
+            }
+        }
+
+    Load Testing:
+    
+        Test with realistic data volumes:
+        • 1000+ todos
+        • Deep nesting (5+ levels)
+        • Many completed items
+
+
+7. Test Utilities
+
+    Common Test Patterns:
+    
+        // Filter helpers
+        func FilterPending(todos []*models.Todo) []*models.Todo
+        func FilterCompleted(todos []*models.Todo) []*models.Todo
+        func FindByText(todos []*models.Todo, text string) *models.Todo
+        
+        // Assertion helpers
+        func AssertTodoInList(t *testing.T, todos []*models.Todo, text string)
+        func AssertTodoNotInList(t *testing.T, todos []*models.Todo, text string)
+        func AssertTodoHasStatus(t *testing.T, todo *models.Todo, status models.Status)
+
+    Test Data Builders:
+    
+        Use builder pattern for complex test data:
+        
+        type TodoBuilder struct {
+            text     string
+            status   models.Status
+            parent   *string
+            children []TodoBuilder
+        }
+        
+        func (b TodoBuilder) Build(adapter *store.NanoStoreAdapter) (*models.Todo, error) {
+            // Implementation
+        }
+
+
+8. Debugging Tests
+
+    Verbose Output:
+    
+        Use -v flag for detailed test output:
+        
+            go test -v ./pkg/too/...
+
+    Focused Testing:
+    
+        Run specific tests during development:
+        
+            go test -run TestComplete ./pkg/too
+            go test -run TestComplete/multiple_items ./pkg/too
+
+    Test Coverage:
+    
+        Generate coverage reports:
+        
+            scripts/test-with-cov
+            go tool cover -html=coverage.out
+
+
+Remember:
+
+    Nanostore-Specific:
+        • Position paths change after structural operations
+        • Use UUIDs internally, position paths for display
+        • SQLite handles concurrency - each test gets fresh DB
+        
+    Best Practices:
+        • Test the behavior, not the implementation
+        • Use testutil helpers for consistency
+        • Clean up all resources
+        • Test both success and failure paths
+
+
+Common Pitfalls:
+
+    • Assuming position paths remain stable after operations
+    • Not cleaning up test databases
+    • Testing nanostore internals instead of behavior
+    • Forgetting to test error conditions
+
+
+Key Testing Commands:
+
+    • scripts/test - Run all tests with race detection
+    • scripts/test-with-cov - Generate coverage report
+    • go test -v ./... - Verbose test output
+    • go test -bench=. - Run benchmarks
