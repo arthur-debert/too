@@ -14,16 +14,18 @@ func TestAddCommand_WithTestutil(t *testing.T) {
 	adapter, dbPath := testutil.CreateTestStore(t)
 	defer adapter.Close()
 
-	// Add a todo
-	opts := too.AddOptions{CollectionPath: dbPath}
-	result, err := too.Add("My first todo", opts)
+	// Add a todo using unified command
+	opts := map[string]interface{}{
+		"collectionPath": dbPath,
+	}
+	result, err := too.ExecuteUnifiedCommand("add", []string{"My first todo"}, opts)
 
 	// Use testutil assertions
 	testutil.AssertNoError(t, err)
 
 	// Verify the todo was created correctly
-	if result.Todo.Text != "My first todo" {
-		t.Errorf("expected todo text to be 'My first todo', got %q", result.Todo.Text)
+	if len(result.AffectedTodos) == 0 || result.AffectedTodos[0].Text != "My first todo" {
+		t.Errorf("expected todo text to be 'My first todo', got %v", result.AffectedTodos)
 	}
 
 	// Load and verify it was saved
@@ -44,27 +46,27 @@ func TestSearchCommand_WithTestutil(t *testing.T) {
 	)
 	defer adapter.Close()
 
-	// Search for "Buy"
-	opts := too.SearchOptions{
-		CollectionPath: dbPath,
-		CaseSensitive:  false,
+	// Search for "Buy" using unified command
+	opts := map[string]interface{}{
+		"collectionPath": dbPath,
+		"query":          "Buy",
 	}
-	result, err := too.Search("Buy", opts)
+	result, err := too.ExecuteUnifiedCommand("search", []string{"Buy"}, opts)
 
 	testutil.AssertNoError(t, err)
 
 	// Should find 2 todos
-	if len(result.MatchedTodos) != 2 {
-		t.Errorf("expected 2 matches, got %d", len(result.MatchedTodos))
+	if len(result.AllTodos) != 2 {
+		t.Errorf("expected 2 matches, got %d", len(result.AllTodos))
 	}
 
 	// Verify the matched todos
-	testutil.AssertTodoInList(t, result.MatchedTodos, "Buy milk")
-	testutil.AssertTodoInList(t, result.MatchedTodos, "Buy bread")
+	testutil.AssertTodoInList(t, result.AllTodos, "Buy milk")
+	testutil.AssertTodoInList(t, result.AllTodos, "Buy bread")
 
 	// Should not include the others
-	testutil.AssertTodoNotInList(t, result.MatchedTodos, "Walk the dog")
-	testutil.AssertTodoNotInList(t, result.MatchedTodos, "Write tests")
+	testutil.AssertTodoNotInList(t, result.AllTodos, "Walk the dog")
+	testutil.AssertTodoNotInList(t, result.AllTodos, "Write tests")
 }
 
 // Example: TestCleanCommand using testutil
@@ -79,24 +81,26 @@ func TestCleanCommand_WithTestutil(t *testing.T) {
 	)
 	defer adapter.Close()
 
-	// Run clean command
-	opts := too.CleanOptions{CollectionPath: dbPath}
-	result, err := too.Clean(opts)
+	// Run clean command using unified command
+	opts := map[string]interface{}{
+		"collectionPath": dbPath,
+	}
+	result, err := too.ExecuteUnifiedCommand("clean", []string{}, opts)
 
 	testutil.AssertNoError(t, err)
 
 	// Verify the result
-	if result.RemovedCount != 3 {
-		t.Errorf("expected 3 removed, got %d", result.RemovedCount)
+	if len(result.AffectedTodos) != 3 {
+		t.Errorf("expected 3 removed, got %d", len(result.AffectedTodos))
 	}
-	if result.ActiveCount != 2 {
-		t.Errorf("expected 2 active, got %d", result.ActiveCount)
+	if len(result.AllTodos) != 2 {
+		t.Errorf("expected 2 active, got %d", len(result.AllTodos))
 	}
 
 	// Verify removed todos
-	testutil.AssertTodoInList(t, result.RemovedTodos, "Done task 1")
-	testutil.AssertTodoInList(t, result.RemovedTodos, "Done task 2")
-	testutil.AssertTodoInList(t, result.RemovedTodos, "Done task 3")
+	testutil.AssertTodoInList(t, result.AffectedTodos, "Done task 1")
+	testutil.AssertTodoInList(t, result.AffectedTodos, "Done task 2")
+	testutil.AssertTodoInList(t, result.AffectedTodos, "Done task 3")
 
 	// Load collection and verify only pending tasks remain
 	todos := testutil.LoadTodos(t, adapter, false)

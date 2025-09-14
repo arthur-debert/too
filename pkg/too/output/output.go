@@ -9,7 +9,6 @@ import (
 )
 
 // Renderer is the main output renderer for too
-// Now it wraps the Engine to provide backward compatibility
 type Renderer struct {
 	engine *Engine
 	format string
@@ -17,7 +16,6 @@ type Renderer struct {
 }
 
 // NewRenderer creates a new renderer with default settings
-// This maintains backward compatibility with existing code
 func NewRenderer(w io.Writer) *Renderer {
 	if w == nil {
 		w = os.Stdout
@@ -68,31 +66,16 @@ func (r *Renderer) RenderChange(result *too.ChangeResult) error {
 	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
-// RenderMessage renders a message result
-func (r *Renderer) RenderMessage(result *too.MessageResult) error {
-	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
-}
 
 // RenderInit renders the init command result
 func (r *Renderer) RenderInit(result *too.InitResult) error {
-	msg := too.NewInfoMessage(result.Message)
-	return r.RenderMessage(msg)
-}
-
-// RenderSearch renders the search command result
-func (r *Renderer) RenderSearch(result *too.SearchResult) error {
 	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
-// RenderList renders the list command result
-func (r *Renderer) RenderList(result *too.ListResult) error {
-	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
-}
 
 // RenderDataPath renders the datapath command result
 func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
-	msg := too.NewInfoMessage(result.Path)
-	return r.RenderMessage(msg)
+	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderFormats renders the formats command result

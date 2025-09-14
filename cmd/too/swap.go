@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/arthur-debert/too/pkg/too"
-	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/spf13/cobra"
 )
 
@@ -30,10 +29,11 @@ Examples:
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
 		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
-		// Call business logic
-		result, err := too.Swap(sourcePath, destPath, too.SwapOptions{
-			CollectionPath: collectionPath,
-		})
+		// Call business logic using unified command
+		opts := map[string]interface{}{
+			"collectionPath": collectionPath,
+		}
+		result, err := too.ExecuteUnifiedCommand("move", []string{sourcePath, destPath}, opts)
 		if err != nil {
 			return err
 		}
@@ -44,19 +44,7 @@ Examples:
 			return err
 		}
 		
-		// Set the new position path on the todo
-		result.Todo.PositionPath = result.NewPath
-		
-		changeResult := too.NewChangeResult(
-			"placeholder",
-			"swapped",
-			[]*models.Todo{result.Todo},
-			result.AllTodos,
-			result.TotalCount,
-			result.DoneCount,
-		)
-		
-		return renderer.RenderChange(changeResult)
+		return renderer.RenderChange(result)
 	},
 }
 

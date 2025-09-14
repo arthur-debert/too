@@ -21,12 +21,13 @@ var listCmd = &cobra.Command{
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
 		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
-		// Call business logic with filtering options
-		result, err := too.List(too.ListOptions{
-			CollectionPath: collectionPath,
-			ShowDone:       showDone,
-			ShowAll:        showAll,
-		})
+		// Call business logic using unified command
+		opts := map[string]interface{}{
+			"collectionPath": collectionPath,
+			"done":           showDone,
+			"all":            showAll,
+		}
+		result, err := too.ExecuteUnifiedCommand("list", []string{}, opts)
 		if err != nil {
 			return err
 		}
@@ -36,7 +37,8 @@ var listCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return renderer.RenderList(result)
+		
+		return renderer.RenderChange(result)
 	},
 }
 

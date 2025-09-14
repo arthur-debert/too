@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/arthur-debert/too/pkg/too"
-	"github.com/arthur-debert/too/pkg/too/models"
 )
 
 var moveCmd = &cobra.Command{
@@ -22,37 +21,22 @@ var moveCmd = &cobra.Command{
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
 		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
-		result, err := too.Move(sourcePath, destParentPath, too.MoveOptions{
-			CollectionPath: collectionPath,
-		})
+		// Call business logic using unified command
+		opts := map[string]interface{}{
+			"collectionPath": collectionPath,
+		}
+		result, err := too.ExecuteUnifiedCommand("move", []string{sourcePath, destParentPath}, opts)
 		if err != nil {
 			return err
 		}
 
+		// Render output
 		renderer, err := getRenderer()
 		if err != nil {
 			return err
 		}
 		
-		// Get unified change result
-		unifiedResult, err := too.ExecuteUnifiedCommand("move", []string{sourcePath, destParentPath}, map[string]interface{}{
-			"collectionPath": collectionPath,
-		})
-		if err != nil {
-			// Fallback to legacy result if unified command fails
-			result.Todo.PositionPath = result.NewPath
-			changeResult := too.NewChangeResult(
-				"move",
-				"Moved todo: " + result.NewPath,
-				[]*models.Todo{result.Todo},
-				result.AllTodos,
-				result.TotalCount,
-				result.DoneCount,
-			)
-			return renderer.RenderChange(changeResult)
-		}
-		
-		return renderer.RenderChange(unifiedResult)
+		return renderer.RenderChange(result)
 	},
 }
 

@@ -44,20 +44,6 @@ func NewEngine() (*Engine, error) {
 			// Special handling for terminal format to build hierarchy
 			if format == "term" {
 				switch v := data.(type) {
-				case *too.ListResult:
-					// For terminal, we want hierarchical display
-					return &TodoListWithMessage{
-						Todos:      v.Todos,
-						TotalCount: v.TotalCount,
-						DoneCount:  v.DoneCount,
-					}
-				case *too.SearchResult:
-					return &TodoListWithMessage{
-						Message:     fmt.Sprintf("Found %d match%s", len(v.MatchedTodos), pluralize(len(v.MatchedTodos))),
-						MessageType: messageTypeForCount(len(v.MatchedTodos)),
-						Todos:       v.MatchedTodos,
-						TotalCount:  v.TotalCount,
-					}
 				case *too.ChangeResult:
 					highlightID := ""
 					if len(v.AffectedTodos) > 0 {
@@ -87,12 +73,6 @@ func NewEngine() (*Engine, error) {
 				switch v := value.(type) {
 				case *too.ChangeResult:
 					return renderChangeAsMarkdown(v), true
-				case *too.ListResult:
-					return renderListAsMarkdown(v), true
-				case *too.SearchResult:
-					return renderSearchAsMarkdown(v), true
-				case *too.MessageResult:
-					return renderMessageAsMarkdown(v), true
 				case *too.ListFormatsResult:
 					return renderFormatsAsMarkdown(v), true
 				}
@@ -162,45 +142,6 @@ func renderChangeAsMarkdown(result *too.ChangeResult) string {
 	return sb.String()
 }
 
-func renderListAsMarkdown(result *too.ListResult) string {
-	if len(result.Todos) == 0 {
-		return "No todos\n"
-	}
-
-	var sb strings.Builder
-	sb.WriteString(renderTodosAsMarkdown(result.Todos))
-	
-	if result.TotalCount > 0 {
-		sb.WriteString(fmt.Sprintf("\n---\n%d todo(s), %d done\n", result.TotalCount, result.DoneCount))
-	}
-
-	return sb.String()
-}
-
-func renderSearchAsMarkdown(result *too.SearchResult) string {
-	if len(result.MatchedTodos) == 0 {
-		return "No matching todos found\n"
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Found %d matching todo(s):\n\n", len(result.MatchedTodos)))
-	sb.WriteString(renderTodosAsMarkdown(result.MatchedTodos))
-
-	return sb.String()
-}
-
-func renderMessageAsMarkdown(result *too.MessageResult) string {
-	switch result.Level {
-	case "error":
-		return fmt.Sprintf("**Error:** %s\n", result.Text)
-	case "warning":
-		return fmt.Sprintf("**Warning:** %s\n", result.Text)
-	case "success":
-		return fmt.Sprintf("✓ %s\n", result.Text)
-	default:
-		return fmt.Sprintf("%s\n", result.Text)
-	}
-}
 
 func renderFormatsAsMarkdown(result *too.ListFormatsResult) string {
 	var sb strings.Builder

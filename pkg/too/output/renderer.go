@@ -143,59 +143,6 @@ func templateFuncs() template.FuncMap {
 
 
 
-// RenderMessage renders a simple message result
-func (r *LipbamlRenderer) RenderMessage(result *too.MessageResult) error {
-	template, ok := r.templateManager.GetTemplate("message")
-	if !ok {
-		return fmt.Errorf("template 'message' not found")
-	}
-	
-	output, err := lipbalm.Render(template, result, r.templateManager.GetStyles(), templateFuncs())
-	if err != nil {
-		return fmt.Errorf("failed to render message: %w", err)
-	}
-	_, err = fmt.Fprintln(r.Writer, output)
-	return err
-}
-
-
-// RenderSearch renders the search command result using lipbalm
-func (r *LipbamlRenderer) RenderSearch(result *too.SearchResult) error {
-	matchCount := len(result.MatchedTodos)
-	message := fmt.Sprintf("Found %d match", matchCount)
-	if matchCount != 1 {
-		message = fmt.Sprintf("Found %d matches", matchCount)
-	}
-	if result.Query != "" {
-		message += fmt.Sprintf(" for \"%s\"", result.Query)
-	}
-	
-	messageType := "info"
-	if matchCount == 0 {
-		messageType = "warning"
-	}
-	
-	return r.renderTodoCommand(
-		message,
-		messageType,
-		result.MatchedTodos,
-		result.TotalCount,
-		0, // Search doesn't track done count separately
-		"", // No highlight
-	)
-}
-
-// RenderList renders the list command result using lipbalm
-func (r *LipbamlRenderer) RenderList(result *too.ListResult) error {
-	return r.renderTodoCommand(
-		"", // No message for basic list
-		"",
-		result.Todos,
-		result.TotalCount,
-		result.DoneCount,
-		"", // No highlight
-	)
-}
 
 
 
