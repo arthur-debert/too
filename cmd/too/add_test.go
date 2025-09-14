@@ -2,13 +2,11 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too"
-	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -272,11 +270,12 @@ func createTestRootCommand() *cobra.Command {
 				text = strings.Join(args, " ")
 			}
 
-			// Call business logic
-			result, err := too.Add(text, too.AddOptions{
-				CollectionPath: collectionPath,
-				ParentPath:     parentPath,
-			})
+			// Call business logic using unified command
+			opts := map[string]interface{}{
+				"collectionPath": collectionPath,
+				"parent":         parentPath,
+			}
+			result, err := too.ExecuteUnifiedCommand("add", []string{text}, opts)
 			if err != nil {
 				return err
 			}
@@ -287,18 +286,7 @@ func createTestRootCommand() *cobra.Command {
 				return err
 			}
 			
-			// Convert to ChangeResult
-			result.Todo.PositionPath = result.PositionPath
-			changeResult := too.NewChangeResult(
-				"add",
-				fmt.Sprintf("Added todo: %s", result.PositionPath),
-				[]*models.Todo{result.Todo},
-				result.AllTodos,
-				result.TotalCount,
-				result.DoneCount,
-			)
-			
-			return renderer.RenderChange(changeResult)
+			return renderer.RenderChange(result)
 		},
 	}
 

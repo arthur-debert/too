@@ -6,7 +6,6 @@ import (
 
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/editor"
-	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/spf13/cobra"
 )
 
@@ -67,10 +66,11 @@ var editCmd = &cobra.Command{
 			text = strings.Join(args[1:], " ")
 		}
 
-		// Call business logic
-		result, err := too.Modify(position, text, too.ModifyOptions{
-			CollectionPath: collectionPath,
-		})
+		// Call business logic using unified command
+		opts := map[string]interface{}{
+			"collectionPath": collectionPath,
+		}
+		result, err := too.ExecuteUnifiedCommand("edit", []string{position, text}, opts)
 		if err != nil {
 			return err
 		}
@@ -81,24 +81,7 @@ var editCmd = &cobra.Command{
 			return err
 		}
 		
-		// Get unified change result
-		unifiedResult, err := too.ExecuteUnifiedCommand("edit", []string{position, text}, map[string]interface{}{
-			"collectionPath": collectionPath,
-		})
-		if err != nil {
-			// Fallback to legacy result if unified command fails
-			changeResult := too.NewChangeResult(
-				"edit",
-				fmt.Sprintf("Modified todo: %s", result.Todo.PositionPath),
-				[]*models.Todo{result.Todo},
-				result.AllTodos,
-				result.TotalCount,
-				result.DoneCount,
-			)
-			return renderer.RenderChange(changeResult)
-		}
-		
-		return renderer.RenderChange(unifiedResult)
+		return renderer.RenderChange(result)
 	},
 }
 

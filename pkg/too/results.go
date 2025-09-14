@@ -1,7 +1,6 @@
 package too
 
 import (
-	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/arthur-debert/too/pkg/too/models"
 )
 
@@ -44,15 +43,3 @@ func NewChangeResult(command string, message string, affected []*models.Todo, al
 	}
 }
 
-// MessageResult is an alias for lipbalm's Message type for backward compatibility
-type MessageResult = lipbalm.Message
-
-// NewMessageResult creates a new MessageResult with the specified level
-func NewMessageResult(text, level string) *MessageResult {
-	return lipbalm.NewMessage(text, level)
-}
-
-// NewInfoMessage creates a new info message result
-func NewInfoMessage(text string) *MessageResult {
-	return lipbalm.NewInfoMessage(text)
-}

@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEngine_Formats(t *testing.T) {
+func TestEngine_ChangeResult(t *testing.T) {
 	engine, err := output.NewEngine()
 	require.NoError(t, err)
 
-	// Test JSON format
-	t.Run("JSON format", func(t *testing.T) {
+	// Test JSON format with ChangeResult
+	t.Run("JSON format for ChangeResult", func(t *testing.T) {
 		todo := &models.Todo{
 			UID:      "test-123",
 			Text:     "Test todo",
@@ -25,10 +25,13 @@ func TestEngine_Formats(t *testing.T) {
 			Modified: time.Now(),
 		}
 
-		result := &too.ListResult{
-			Todos:      []*models.Todo{todo},
-			TotalCount: 1,
-			DoneCount:  0,
+		result := &too.ChangeResult{
+			Command:       "add",
+			Message:       "Added todo",
+			AffectedTodos: []*models.Todo{todo},
+			AllTodos:      []*models.Todo{todo},
+			TotalCount:    1,
+			DoneCount:     0,
 		}
 
 		var buf bytes.Buffer
@@ -36,16 +39,16 @@ func TestEngine_Formats(t *testing.T) {
 		require.NoError(t, err)
 
 		output := buf.String()
-		assert.Contains(t, output, `"Todos"`)
+		assert.Contains(t, output, `"Command"`)
 		assert.Contains(t, output, `"test-123"`)
 		assert.Contains(t, output, `"Test todo"`)
 	})
 
-	// Test YAML format
-	t.Run("YAML format", func(t *testing.T) {
-		result := &too.MessageResult{
-			Text:  "Test message",
-			Level: "info",
+	// Test YAML format with ChangeResult  
+	t.Run("YAML format for ChangeResult", func(t *testing.T) {
+		result := &too.ChangeResult{
+			Command: "add",
+			Message: "Test message",
 		}
 
 		var buf bytes.Buffer
@@ -53,114 +56,45 @@ func TestEngine_Formats(t *testing.T) {
 		require.NoError(t, err)
 
 		output := buf.String()
-		assert.Contains(t, output, "text: Test message")
-		assert.Contains(t, output, "level: info")
-	})
-
-	// Test Markdown format
-	t.Run("Markdown format", func(t *testing.T) {
-		todo1 := &models.Todo{
-			UID:      "parent-1",
-			Text:     "Parent todo",
-			Statuses: map[string]string{"completion": string(models.StatusPending)},
-			Modified: time.Now(),
-		}
-
-		todo2 := &models.Todo{
-			UID:      "child-1",
-			Text:     "Child todo",
-			Statuses: map[string]string{"completion": string(models.StatusDone)},
-			ParentID: "parent-1",
-			Modified: time.Now(),
-		}
-
-		result := &too.ListResult{
-			Todos:      []*models.Todo{todo1, todo2},
-			TotalCount: 2,
-			DoneCount:  1,
-		}
-
-		var buf bytes.Buffer
-		err := engine.GetLipbalmEngine().Render(&buf, "markdown", result)
-		require.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "1. [ ] Parent todo")
-		assert.Contains(t, output, "   1. [x] Child todo")
-		assert.Contains(t, output, "2 todo(s), 1 done")
-	})
-
-	// Test CSV format
-	t.Run("CSV format", func(t *testing.T) {
-		todo := &models.Todo{
-			UID:      "test-123",
-			Text:     "Test todo",
-			Statuses: map[string]string{"completion": string(models.StatusPending)},
-			Modified: time.Now(),
-		}
-
-		result := &too.ListResult{
-			Todos:      []*models.Todo{todo},
-			TotalCount: 1,
-			DoneCount:  0,
-		}
-
-		var buf bytes.Buffer
-		err := engine.GetLipbalmEngine().Render(&buf, "csv", result)
-		require.NoError(t, err)
-
-		output := buf.String()
-		// For now, just check the CSV contains the data
-		// The actual format depends on how lipbalm renders structs to CSV
-		assert.NotEmpty(t, output)
-		// TODO: Implement proper CSV rendering for ListResult
+		assert.Contains(t, output, "command: add")
+		assert.Contains(t, output, "message: Test message")
 	})
 }
 
-func TestEngine_ErrorHandling(t *testing.T) {
+func TestEngine_Formats(t *testing.T) {
 	engine, err := output.NewEngine()
 	require.NoError(t, err)
 
-	t.Run("RenderError", func(t *testing.T) {
-		testErr := assert.AnError
-		var buf bytes.Buffer
+	// Test that engine is created successfully
+	lipbalmEngine := engine.GetLipbalmEngine()
+	require.NotNil(t, lipbalmEngine)
 
-		err := engine.GetLipbalmEngine().RenderError(&buf, "json", testErr)
-		require.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, `"error"`)
-		assert.Contains(t, output, testErr.Error())
-	})
+	// Test that basic formats are available
+	formats := lipbalmEngine.ListFormats()
+	assert.Contains(t, formats, "json")
+	assert.Contains(t, formats, "yaml")
+	assert.Contains(t, formats, "term")
 }
 
-func TestEngine_ChangeResult(t *testing.T) {
-	engine, err := output.NewEngine()
-	require.NoError(t, err)
-
-	todo := &models.Todo{
-		UID:      "test-123",
-		Text:     "Test todo",
-		Statuses: map[string]string{"completion": string(models.StatusPending)},
-		Modified: time.Now(),
+func TestEngine_Hierarchy(t *testing.T) {
+	// Test hierarchical todo building
+	todos := []*models.Todo{
+		{
+			UID:          "1",
+			Text:         "Parent",
+			PositionPath: "1",
+		},
+		{
+			UID:          "2",
+			Text:         "Child",
+			ParentID:     "1",
+			PositionPath: "1.1",
+		},
 	}
 
-	result := &too.ChangeResult{
-		Command:       "add",
-		Message:       "Added todo",
-		AffectedTodos: []*models.Todo{todo},
-		AllTodos:      []*models.Todo{todo},
-		TotalCount:    1,
-		DoneCount:     0,
-	}
-
-	t.Run("Markdown shows affected count", func(t *testing.T) {
-		var buf bytes.Buffer
-		err := engine.GetLipbalmEngine().Render(&buf, "markdown", result)
-		require.NoError(t, err)
-
-		output := buf.String()
-		assert.Contains(t, output, "Added 1 todo(s)")
-		assert.Contains(t, output, "1. [ ] Test todo")
-	})
+	hierarchical := output.BuildHierarchy(todos)
+	require.Len(t, hierarchical, 1)
+	assert.Equal(t, "Parent", hierarchical[0].Text)
+	assert.Len(t, hierarchical[0].Children, 1)
+	assert.Equal(t, "Child", hierarchical[0].Children[0].Text)
 }

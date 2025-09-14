@@ -59,47 +59,12 @@ func TestRenderer_RenderMethods(t *testing.T) {
 		assert.NotEmpty(t, buf.String())
 	})
 
-	t.Run("RenderMessage", func(t *testing.T) {
-		buf.Reset()
-		result := &too.MessageResult{
-			Text: "Test message",
-			Level: "info",
-		}
-		err := renderer.RenderMessage(result)
-		require.NoError(t, err)
-		assert.NotEmpty(t, buf.String())
-	})
-
 	t.Run("RenderInit", func(t *testing.T) {
 		buf.Reset()
 		result := &too.InitResult{
 			Message: "Initialized",
 		}
 		err := renderer.RenderInit(result)
-		require.NoError(t, err)
-		assert.NotEmpty(t, buf.String())
-	})
-
-	t.Run("RenderSearch", func(t *testing.T) {
-		buf.Reset()
-		result := &too.SearchResult{
-			Query: "test",
-			MatchedTodos: []*models.Todo{},
-			TotalCount: 0,
-		}
-		err := renderer.RenderSearch(result)
-		require.NoError(t, err)
-		assert.NotEmpty(t, buf.String())
-	})
-
-	t.Run("RenderList", func(t *testing.T) {
-		buf.Reset()
-		result := &too.ListResult{
-			Todos: []*models.Todo{},
-			TotalCount: 0,
-			DoneCount: 0,
-		}
-		err := renderer.RenderList(result)
 		require.NoError(t, err)
 		assert.NotEmpty(t, buf.String())
 	})

@@ -6,7 +6,6 @@ import (
 
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/editor"
-	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
 )
@@ -98,25 +97,26 @@ var addCmd = &cobra.Command{
 
 			// For now, we'll add them one by one
 			// TODO: Create a batch add function for efficiency
-			results := make([]*too.AddResult, 0)
+			var changeResults []*too.ChangeResult
 
 			// Helper function to add todos recursively
 			var addTodoWithChildren func(todo *parser.TodoItem, parentPath string) error
 			addTodoWithChildren = func(todo *parser.TodoItem, parentPath string) error {
 				// Add the current todo
-				result, err := too.Add(todo.Text, too.AddOptions{
-					CollectionPath: collectionPath,
-					ParentPath:     parentPath,
-				})
+				opts := map[string]interface{}{
+					"collectionPath": collectionPath,
+					"parent":         parentPath,
+				}
+				result, err := too.ExecuteUnifiedCommand("add", []string{todo.Text}, opts)
 				if err != nil {
 					return fmt.Errorf("failed to add todo '%s': %w", todo.Text, err)
 				}
-				results = append(results, result)
+				changeResults = append(changeResults, result)
 
 				// Add children with this todo as parent
-				if len(todo.Children) > 0 {
+				if len(todo.Children) > 0 && len(result.AffectedTodos) > 0 {
 					// Use the position path of the newly created todo
-					newParentPath := result.PositionPath
+					newParentPath := result.AffectedTodos[0].PositionPath
 
 					for _, child := range todo.Children {
 						if err := addTodoWithChildren(child, newParentPath); err != nil {
@@ -141,27 +141,13 @@ var addCmd = &cobra.Command{
 				return err
 			}
 
-			// Convert to ChangeResult for rendering
-			if len(results) > 0 {
-				// Collect all affected todos
-				affectedTodos := make([]*models.Todo, len(results))
-				for i, result := range results {
-					result.Todo.PositionPath = result.PositionPath
-					affectedTodos[i] = result.Todo
-				}
+			// Render the last result which has the final state
+			if len(changeResults) > 0 {
+				lastResult := changeResults[len(changeResults)-1]
+				// Update message to reflect total added
+				lastResult.Message = fmt.Sprintf("Added %d todos", len(changeResults))
 				
-				// Use data from the last result
-				lastResult := results[len(results)-1]
-				changeResult := too.NewChangeResult(
-					"add",
-					fmt.Sprintf("Added %d todos", len(affectedTodos)),
-					affectedTodos,
-					lastResult.AllTodos,
-					lastResult.TotalCount,
-					lastResult.DoneCount,
-				)
-				
-				if err := renderer.RenderChange(changeResult); err != nil {
+				if err := renderer.RenderChange(lastResult); err != nil {
 					return err
 				}
 			}
@@ -169,11 +155,12 @@ var addCmd = &cobra.Command{
 			return nil
 		}
 
-		// Call business logic
-		result, err := too.Add(text, too.AddOptions{
-			CollectionPath: collectionPath,
-			ParentPath:     parentPath,
-		})
+		// Call business logic using unified command
+		opts := map[string]interface{}{
+			"collectionPath": collectionPath,
+			"parent":         parentPath,
+		}
+		result, err := too.ExecuteUnifiedCommand("add", []string{text}, opts)
 		if err != nil {
 			return err
 		}
@@ -184,18 +171,7 @@ var addCmd = &cobra.Command{
 			return err
 		}
 		
-		// Convert to ChangeResult
-		result.Todo.PositionPath = result.PositionPath
-		changeResult := too.NewChangeResult(
-			"add",
-			fmt.Sprintf("Added todo: %s", result.PositionPath),
-			[]*models.Todo{result.Todo},
-			result.AllTodos,
-			result.TotalCount,
-			result.DoneCount,
-		)
-		
-		return renderer.RenderChange(changeResult)
+		return renderer.RenderChange(result)
 	},
 }
 

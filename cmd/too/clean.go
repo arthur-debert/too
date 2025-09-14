@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/spf13/cobra"
 )
@@ -17,10 +15,11 @@ var cleanCmd = &cobra.Command{
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
 		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
 
-		// Call business logic
-		result, err := too.Clean(too.CleanOptions{
-			CollectionPath: collectionPath,
-		})
+		// Call business logic using unified command
+		opts := map[string]interface{}{
+			"collectionPath": collectionPath,
+		}
+		result, err := too.ExecuteUnifiedCommand("clean", []string{}, opts)
 		if err != nil {
 			return err
 		}
@@ -31,24 +30,7 @@ var cleanCmd = &cobra.Command{
 			return err
 		}
 		
-		// Get unified change result
-		unifiedResult, err := too.ExecuteUnifiedCommand("clean", []string{}, map[string]interface{}{
-			"collectionPath": collectionPath,
-		})
-		if err != nil {
-			// Fallback to legacy result if unified command fails
-			changeResult := too.NewChangeResult(
-				"clean",
-				fmt.Sprintf("Cleaned %d todos", len(result.RemovedTodos)),
-				result.RemovedTodos,
-				result.ActiveTodos,
-				result.ActiveCount,
-				0, // After clean, no done todos remain
-			)
-			return renderer.RenderChange(changeResult)
-		}
-		
-		return renderer.RenderChange(unifiedResult)
+		return renderer.RenderChange(result)
 	},
 }
 
