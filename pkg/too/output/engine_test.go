@@ -18,7 +18,7 @@ func TestEngine_Formats(t *testing.T) {
 
 	// Test JSON format
 	t.Run("JSON format", func(t *testing.T) {
-		todo := &models.IDMTodo{
+		todo := &models.Todo{
 			UID:      "test-123",
 			Text:     "Test todo",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
@@ -26,7 +26,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		result := &too.ListResult{
-			Todos:      []*models.IDMTodo{todo},
+			Todos:      []*models.Todo{todo},
 			TotalCount: 1,
 			DoneCount:  0,
 		}
@@ -59,14 +59,14 @@ func TestEngine_Formats(t *testing.T) {
 
 	// Test Markdown format
 	t.Run("Markdown format", func(t *testing.T) {
-		todo1 := &models.IDMTodo{
+		todo1 := &models.Todo{
 			UID:      "parent-1",
 			Text:     "Parent todo",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
 			Modified: time.Now(),
 		}
 
-		todo2 := &models.IDMTodo{
+		todo2 := &models.Todo{
 			UID:      "child-1",
 			Text:     "Child todo",
 			Statuses: map[string]string{"completion": string(models.StatusDone)},
@@ -75,7 +75,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		result := &too.ListResult{
-			Todos:      []*models.IDMTodo{todo1, todo2},
+			Todos:      []*models.Todo{todo1, todo2},
 			TotalCount: 2,
 			DoneCount:  1,
 		}
@@ -92,7 +92,7 @@ func TestEngine_Formats(t *testing.T) {
 
 	// Test CSV format
 	t.Run("CSV format", func(t *testing.T) {
-		todo := &models.IDMTodo{
+		todo := &models.Todo{
 			UID:      "test-123",
 			Text:     "Test todo",
 			Statuses: map[string]string{"completion": string(models.StatusPending)},
@@ -100,7 +100,7 @@ func TestEngine_Formats(t *testing.T) {
 		}
 
 		result := &too.ListResult{
-			Todos:      []*models.IDMTodo{todo},
+			Todos:      []*models.Todo{todo},
 			TotalCount: 1,
 			DoneCount:  0,
 		}
@@ -138,7 +138,7 @@ func TestEngine_ChangeResult(t *testing.T) {
 	engine, err := output.NewEngine()
 	require.NoError(t, err)
 
-	todo := &models.IDMTodo{
+	todo := &models.Todo{
 		UID:      "test-123",
 		Text:     "Test todo",
 		Statuses: map[string]string{"completion": string(models.StatusPending)},
@@ -148,8 +148,8 @@ func TestEngine_ChangeResult(t *testing.T) {
 	result := &too.ChangeResult{
 		Command:       "add",
 		Message:       "Added todo",
-		AffectedTodos: []*models.IDMTodo{todo},
-		AllTodos:      []*models.IDMTodo{todo},
+		AffectedTodos: []*models.Todo{todo},
+		AllTodos:      []*models.Todo{todo},
 		TotalCount:    1,
 		DoneCount:     0,
 	}

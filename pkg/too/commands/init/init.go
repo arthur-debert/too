@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/store"
 )
 
@@ -35,29 +35,41 @@ func Execute(opts Options) (*Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		storePath = filepath.Join(home, ".todos.json")
+		storePath = filepath.Join(home, ".todos.db")
 	} else {
 		// Use current directory (default)
-		storePath = ".todos"
+		storePath = ".todos.db"
 	}
 
-	s := store.NewIDMStore(storePath)
+	// Convert any .json paths to .db
+	if strings.HasSuffix(storePath, ".json") {
+		storePath = strings.TrimSuffix(storePath, ".json") + ".db"
+	}
 
-	if !s.Exists() {
-		// Create an empty IDM collection to initialize the file
-		if err := s.SaveIDM(models.NewIDMCollection()); err != nil {
-			return nil, fmt.Errorf("failed to create store file: %w", err)
-		}
+	// Check if database already exists
+	exists := false
+	if _, err := os.Stat(storePath); err == nil {
+		exists = true
+	}
+
+	// Create the nanostore database
+	adapter, err := store.NewNanoStoreAdapter(storePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create store: %w", err)
+	}
+	defer adapter.Close()
+
+	if !exists {
 		return &Result{
-			DBPath:  s.Path(),
+			DBPath:  storePath,
 			Created: true,
-			Message: fmt.Sprintf("Initialized empty too collection in %s", s.Path()),
+			Message: fmt.Sprintf("Initialized empty too collection in %s", storePath),
 		}, nil
 	}
 
 	return &Result{
-		DBPath:  s.Path(),
+		DBPath:  storePath,
 		Created: false,
-		Message: fmt.Sprintf("Reinitialized existing too collection in %s", s.Path()),
+		Message: fmt.Sprintf("Reinitialized existing too collection in %s", storePath),
 	}, nil
 }

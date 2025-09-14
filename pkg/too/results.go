@@ -9,8 +9,8 @@ import (
 type ChangeResult struct {
 	Command        string              // The command that was executed (add, modify, complete, etc.)
 	Message        string              // Optional message to display
-	AffectedTodos  []*models.IDMTodo   // The todos that were affected by the command
-	AllTodos       []*models.IDMTodo   // All todos in the collection after the change
+	AffectedTodos  []*models.Todo   // The todos that were affected by the command
+	AllTodos       []*models.Todo   // All todos in the collection after the change
 	TotalCount     int                 // Total number of todos
 	DoneCount      int                 // Number of completed todos
 }
@@ -33,7 +33,7 @@ func (r *ChangeResult) MessageType() string {
 }
 
 // NewChangeResult creates a new ChangeResult
-func NewChangeResult(command string, message string, affected []*models.IDMTodo, all []*models.IDMTodo, total, done int) *ChangeResult {
+func NewChangeResult(command string, message string, affected []*models.Todo, all []*models.Todo, total, done int) *ChangeResult {
 	return &ChangeResult{
 		Command:       command,
 		Message:       message,

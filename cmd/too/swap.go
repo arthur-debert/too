@@ -50,7 +50,7 @@ Examples:
 		changeResult := too.NewChangeResult(
 			"placeholder",
 			"swapped",
-			[]*models.IDMTodo{result.Todo},
+			[]*models.Todo{result.Todo},
 			result.AllTodos,
 			result.TotalCount,
 			result.DoneCount,

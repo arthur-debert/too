@@ -144,7 +144,7 @@ var addCmd = &cobra.Command{
 			// Convert to ChangeResult for rendering
 			if len(results) > 0 {
 				// Collect all affected todos
-				affectedTodos := make([]*models.IDMTodo, len(results))
+				affectedTodos := make([]*models.Todo, len(results))
 				for i, result := range results {
 					result.Todo.PositionPath = result.PositionPath
 					affectedTodos[i] = result.Todo
@@ -189,7 +189,7 @@ var addCmd = &cobra.Command{
 		changeResult := too.NewChangeResult(
 			"add",
 			fmt.Sprintf("Added todo: %s", result.PositionPath),
-			[]*models.IDMTodo{result.Todo},
+			[]*models.Todo{result.Todo},
 			result.AllTodos,
 			result.TotalCount,
 			result.DoneCount,

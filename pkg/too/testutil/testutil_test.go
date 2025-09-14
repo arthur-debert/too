@@ -1,7 +1,6 @@
 package testutil_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too/models"
@@ -9,95 +8,111 @@ import (
 )
 
 func TestCreatePopulatedStore(t *testing.T) {
-	// Test creating a store with some todos
-	s := testutil.CreatePopulatedStore(t, "Buy milk", "Walk dog", "Write tests")
+	// Test creating a populated store
+	adapter, _ := testutil.CreatePopulatedStore(t)
+	defer adapter.Close()
 
-	collection, err := s.LoadIDM()
-	if err != nil {
-		t.Fatalf("failed to load collection: %v", err)
-	}
+	// Load all todos
+	todos := testutil.LoadTodos(t, adapter, true)
 
-	// Verify we have 3 todos
-	testutil.AssertCollectionSize(t, collection, 3)
+	// Should have 3 todos (2 root + 1 child)
+	testutil.AssertTodoCount(t, todos, 3)
 
 	// Verify the todos exist
-	testutil.AssertTodoInList(t, collection.Items, "Buy milk")
-	testutil.AssertTodoInList(t, collection.Items, "Walk dog")
-	testutil.AssertTodoInList(t, collection.Items, "Write tests")
+	testutil.AssertTodoInList(t, todos, "First todo")
+	testutil.AssertTodoInList(t, todos, "Second todo")
+	testutil.AssertTodoInList(t, todos, "Child of first")
 
-	// All should be pending by default
-	for _, todo := range collection.Items {
-		testutil.AssertTodoHasStatus(t, todo, models.StatusPending)
+	// Check statuses - second should be done
+	foundSecond := false
+	for _, todo := range todos {
+		if todo.Text == "Second todo" {
+			testutil.AssertTodoHasStatus(t, todo, models.StatusDone)
+			foundSecond = true
+		}
+	}
+	if !foundSecond {
+		t.Error("Second todo not found")
 	}
 }
 
 func TestCreateStoreWithSpecs(t *testing.T) {
 	// Test creating a store with specific todo states
 	specs := []testutil.TodoSpec{
-		{Text: "Completed task", Status: models.StatusDone},
-		{Text: "Pending task", Status: models.StatusPending},
-		{Text: "Another done task", Status: models.StatusDone},
+		{Text: "Completed task", Complete: true},
+		{Text: "Pending task"},
+		{Text: "Another done task", Complete: true},
+		{Text: "Child task", ParentPos: "1"}, // Child of first todo
 	}
 
-	s := testutil.CreateStoreWithSpecs(t, specs)
+	adapter, _ := testutil.CreateStoreWithSpecs(t, specs...)
+	defer adapter.Close()
 
-	// Load collection and count manually
-	collection, err := s.LoadIDM()
-	testutil.AssertNoError(t, err)
+	// Load all todos
+	todos := testutil.LoadTodos(t, adapter, true)
 
 	// Verify counts
-	totalCount := len(collection.Items)
+	testutil.AssertTodoCount(t, todos, 4)
+
+	// Count done todos
 	doneCount := 0
-	for _, todo := range collection.Items {
+	for _, todo := range todos {
 		if todo.GetStatus() == models.StatusDone {
 			doneCount++
 		}
 	}
-	
-	if totalCount != 3 {
-		t.Errorf("expected 3 total todos, got %d", totalCount)
-	}
+
 	if doneCount != 2 {
 		t.Errorf("expected 2 done todos, got %d", doneCount)
 	}
 
-	// Verify individual todos
-	for _, todo := range collection.Items {
-		switch todo.Text {
-		case "Completed task", "Another done task":
-			testutil.AssertTodoHasStatus(t, todo, models.StatusDone)
-		case "Pending task":
-			testutil.AssertTodoHasStatus(t, todo, models.StatusPending)
-		}
-	}
+	// Verify specific todos
+	testutil.AssertTodoInList(t, todos, "Completed task")
+	testutil.AssertTodoInList(t, todos, "Pending task")
+	testutil.AssertTodoInList(t, todos, "Child task")
 }
 
-func TestAssertTodoByID(t *testing.T) {
-	s := testutil.CreatePopulatedStore(t, "Test todo")
-	collection, _ := s.LoadIDM()
+func TestCreateTestStore(t *testing.T) {
+	// Test creating an empty store
+	adapter, dbPath := testutil.CreateTestStore(t)
+	defer adapter.Close()
 
-	// Should find the todo
-	todo := testutil.AssertTodoByID(t, collection.Items, collection.Items[0].UID)
+	// Should have created a valid path
+	if dbPath == "" {
+		t.Error("expected non-empty db path")
+	}
+
+	// Should be able to add todos
+	todo, err := adapter.Add("Test todo", nil)
+	testutil.AssertNoError(t, err)
+
 	if todo.Text != "Test todo" {
-		t.Errorf("expected todo text to be 'Test todo', got %q", todo.Text)
+		t.Errorf("expected todo text 'Test todo', got %q", todo.Text)
 	}
+
+	// Verify it was saved
+	todos := testutil.LoadTodos(t, adapter, false)
+	testutil.AssertTodoCount(t, todos, 1)
 }
 
-func TestAssertError(t *testing.T) {
-	// Test with an actual error
-	err := fmt.Errorf("file not found: test.txt")
+func TestLoadTodos(t *testing.T) {
+	adapter, _ := testutil.CreateStoreWithSpecs(t,
+		testutil.TodoSpec{Text: "Active 1"},
+		testutil.TodoSpec{Text: "Done 1", Complete: true},
+		testutil.TodoSpec{Text: "Active 2"},
+		testutil.TodoSpec{Text: "Done 2", Complete: true},
+	)
+	defer adapter.Close()
 
-	// This should not panic
-	testutil.AssertError(t, err, "not found")
+	// Test loading only active todos
+	activeTodos := testutil.LoadTodos(t, adapter, false)
+	testutil.AssertTodoCount(t, activeTodos, 2)
+	testutil.AssertTodoInList(t, activeTodos, "Active 1")
+	testutil.AssertTodoInList(t, activeTodos, "Active 2")
 
-	// Test AssertNoError with nil
-	testutil.AssertNoError(t, nil)
-}
-
-func TestAssertTodoNotInList(t *testing.T) {
-	s := testutil.CreatePopulatedStore(t, "Buy milk", "Walk dog")
-	collection, _ := s.LoadIDM()
-
-	// This should pass - "Write tests" is not in the list
-	testutil.AssertTodoNotInList(t, collection.Items, "Write tests")
+	// Test loading all todos
+	allTodos := testutil.LoadTodos(t, adapter, true)
+	testutil.AssertTodoCount(t, allTodos, 4)
+	testutil.AssertTodoInList(t, allTodos, "Done 1")
+	testutil.AssertTodoInList(t, allTodos, "Done 2")
 }

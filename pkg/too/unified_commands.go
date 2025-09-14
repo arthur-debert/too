@@ -24,7 +24,7 @@ type UnifiedCommand struct {
 	// Optional functions
 	ValidateFunc    func(args []string, opts map[string]interface{}) error
 	GetFilterFunc   func(opts map[string]interface{}) FilterFunc
-	GetMessageFunc  func(affectedCount int, affectedTodos []*models.IDMTodo) string
+	GetMessageFunc  func(affectedCount int, affectedTodos []*models.Todo) string
 }
 
 // UnifiedCommands defines all commands in a declarative way
@@ -39,7 +39,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 		AttributeValue:  string(models.StatusDone),
 		RequiresRef:     true,
 		AcceptsMultiple: true,
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
 				return "No todos completed"
 			}
@@ -56,7 +56,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 		AttributeValue:  string(models.StatusPending),
 		RequiresRef:     true,
 		AcceptsMultiple: true,
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
 				return "No todos reopened"
 			}
@@ -79,7 +79,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			}
 			return nil
 		},
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
 				return ""
 			}
@@ -100,7 +100,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			}
 			return nil
 		},
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
 				return ""
 			}
@@ -121,7 +121,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			}
 			return nil
 		},
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
 				return ""
 			}
@@ -134,7 +134,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 		Aliases:     []string{},
 		Type:        CommandTypeMisc,
 		Description: "Remove finished todos",
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			if count == 0 {
 				return "No finished todos to clean"
 			}
@@ -181,7 +181,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			}
 			return FilterByQuery(query)
 		},
-		GetMessageFunc: func(count int, todos []*models.IDMTodo) string {
+		GetMessageFunc: func(count int, todos []*models.Todo) string {
 			word := "match"
 			if count != 1 {
 				word = "matches"
@@ -221,16 +221,17 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 		}
 	}
 	
-	// Create engine
+	// Create engine - use NanoEngine instead
 	collectionPath, _ := opts["collectionPath"].(string)
-	engine, err := NewCommandEngine(collectionPath)
+	engine, err := NewNanoEngine(collectionPath)
 	if err != nil {
 		return nil, err
 	}
+	defer engine.Close()
 	
 	// Execute command
 	var affectedUIDs []string
-	var affectedTodos []*models.IDMTodo
+	var affectedTodos []*models.Todo
 	
 	switch cmdName {
 	case "add":
@@ -241,15 +242,16 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 			parentRef = p
 		}
 		
-		uid, err := engine.Add(text, parentRef)
+		todo, err := engine.Add(text, &parentRef)
 		if err != nil {
 			return nil, err
 		}
-		affectedUIDs = []string{uid}
+		affectedUIDs = []string{todo.UID}
+		affectedTodos = []*models.Todo{todo}
 		
 	case "clean":
 		// Special case: remove completed todos
-		var removedTodos []*models.IDMTodo
+		var removedTodos []*models.Todo
 		removedTodos, err = engine.Clean()
 		if err != nil {
 			return nil, err
@@ -266,8 +268,21 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 		if cmd.Attribute != "" {
 			if cmd.AcceptsMultiple && len(args) > 1 {
 				// Multiple refs (complete, reopen)
+				// First, resolve all IDs to UUIDs before any mutations
+				// This is important because IDs can shift after each mutation
+				resolvedRefs := make(map[string]string) // ref -> uuid
 				for _, ref := range args {
-					uid, err := engine.MutateAttribute(ref, cmd.Attribute, cmd.AttributeValue)
+					uuid, err := engine.ResolveReference(ref)
+					if err != nil {
+						return nil, fmt.Errorf("failed to resolve reference '%s': %w", ref, err)
+					}
+					resolvedRefs[ref] = uuid
+				}
+				
+				// Now mutate using the resolved UUIDs
+				for _, ref := range args {
+					uuid := resolvedRefs[ref]
+					uid, err := engine.MutateAttributeByUUID(uuid, cmd.Attribute, cmd.AttributeValue)
 					if err != nil {
 						return nil, err
 					}
@@ -308,12 +323,18 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 	if cmd.GetFilterFunc != nil {
 		filter = cmd.GetFilterFunc(opts)
 	}
-	todos := engine.GetTodos(filter)
+	todos, err := engine.GetTodos(filter)
+	if err != nil {
+		return nil, err
+	}
 	
 	// Get affected todos from all todos (not filtered)
 	// Skip this for clean command as we already have the removed todos
 	if cmdName != "clean" && len(affectedUIDs) > 0 {
-		allTodos := engine.GetTodos(nil)  // Get all todos
+		allTodos, err := engine.GetTodos(nil)  // Get all todos
+		if err != nil {
+			return nil, err
+		}
 		affectedMap := make(map[string]bool)
 		for _, uid := range affectedUIDs {
 			affectedMap[uid] = true
@@ -350,7 +371,7 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 }
 
 // formatMessage formats a standard action message
-func formatMessage(action string, todos []*models.IDMTodo) string {
+func formatMessage(action string, todos []*models.Todo) string {
 	if len(todos) == 0 {
 		return ""
 	}

@@ -24,20 +24,18 @@
 //   - Update() performs transactional updates with rollback safety
 //   - Path() returns the storage location
 //
-// # Implementations
+// # Implementation
 //
-// Two implementations are provided:
-//
-//   - JSONFileStore: Production storage using JSON files
-//   - MemoryStore: In-memory storage for testing
+// The current implementation uses NanoStoreAdapter which wraps the nanostore
+// library for SQLite-based storage with dynamic ID generation
 //
 // # Path Resolution
 //
-// The JSONFileStore uses the following path resolution order:
+// The NanoStoreAdapter uses the following path resolution order:
 //
-//  1. Search current directory and parent directories for .todos file
+//  1. Search current directory and parent directories for .todos.db file
 //  2. Check TODO_DB_PATH environment variable
-//  3. Fall back to ~/.todos.json in the user's home directory
+//  3. Fall back to ~/.todos.db in the user's home directory
 //
 // This maintains compatibility with existing too installations while
 // allowing users to override the default location.
@@ -61,5 +59,4 @@
 package store
 
 // RootScope is the special scope identifier for the root of the todo tree.
-// It represents the top-level container for all todos in the IDM system.
 const RootScope = "root"

@@ -90,7 +90,7 @@ var editCmd = &cobra.Command{
 			changeResult := too.NewChangeResult(
 				"edit",
 				fmt.Sprintf("Modified todo: %s", result.Todo.PositionPath),
-				[]*models.IDMTodo{result.Todo},
+				[]*models.Todo{result.Todo},
 				result.AllTodos,
 				result.TotalCount,
 				result.DoneCount,

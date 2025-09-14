@@ -34,7 +34,7 @@ You can specify a parent in three ways:
 	// Init command
 	msgInitUse   = "init"
 	msgInitShort = "Initialize a new todo collection"
-	msgInitLong  = "Initialize a new todo collection in the specified location or the default location (~/.todos.json)."
+	msgInitLong  = "Initialize a new todo collection in the specified location or the default location (~/.todos.db)."
 
 	// List command
 	msgListUse   = "list"
@@ -66,7 +66,7 @@ You can specify a parent in three ways:
 const (
 	// Global flags
 	msgFlagVerbose  = "Increase verbosity (-v, -vv, -vvv)"
-	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.json)"
+	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.db)"
 	msgFlagFormat   = "output format (term, json, markdown)"
 	msgFlagMode     = "output mode (short, long)"
 	msgFlagQuiet    = "quiet output (shows only confirmation message)"

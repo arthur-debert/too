@@ -15,14 +15,14 @@ func TestRenderChange(t *testing.T) {
 	tests := []struct {
 		name           string
 		command        string
-		affectedTodos  []*models.IDMTodo
+		affectedTodos  []*models.Todo
 		expectedInMsg  []string
 		notExpectedMsg []string
 	}{
 		{
 			name:    "single add",
 			command: "add",
-			affectedTodos: []*models.IDMTodo{
+			affectedTodos: []*models.Todo{
 				{UID: "123", Text: "New todo", PositionPath: "1"},
 			},
 			expectedInMsg: []string{"Added todo: 1"},
@@ -30,7 +30,7 @@ func TestRenderChange(t *testing.T) {
 		{
 			name:    "multiple complete",
 			command: "completed",
-			affectedTodos: []*models.IDMTodo{
+			affectedTodos: []*models.Todo{
 				{UID: "123", Text: "Todo 1", PositionPath: "1"},
 				{UID: "456", Text: "Todo 2", PositionPath: "2"},
 			},
@@ -39,7 +39,7 @@ func TestRenderChange(t *testing.T) {
 		{
 			name:    "single modified",
 			command: "modified",
-			affectedTodos: []*models.IDMTodo{
+			affectedTodos: []*models.Todo{
 				{UID: "123", Text: "Modified todo", PositionPath: "3.1"},
 			},
 			expectedInMsg: []string{"Modified todo: 3.1"},
@@ -47,13 +47,13 @@ func TestRenderChange(t *testing.T) {
 		{
 			name:    "clean with no todos",
 			command: "cleaned",
-			affectedTodos: []*models.IDMTodo{},
+			affectedTodos: []*models.Todo{},
 			expectedInMsg: []string{"Cleaned: no todos affected"},
 		},
 		{
 			name:    "reopened multiple",
 			command: "reopened",
-			affectedTodos: []*models.IDMTodo{
+			affectedTodos: []*models.Todo{
 				{UID: "123", Text: "Todo 1", PositionPath: "1"},
 				{UID: "456", Text: "Todo 2", PositionPath: "2.1"},
 				{UID: "789", Text: "Todo 3", PositionPath: "2.2"},
@@ -70,7 +70,7 @@ func TestRenderChange(t *testing.T) {
 			require.NoError(t, err)
 
 			// Create change result
-			allTodos := []*models.IDMTodo{
+			allTodos := []*models.Todo{
 				{UID: "1", Text: "Todo 1"},
 				{UID: "2", Text: "Todo 2"},
 			}
@@ -182,8 +182,8 @@ func TestRenderChangeMessageTypes(t *testing.T) {
 			result := too.NewChangeResult(
 				tt.command,
 				message,
-				[]*models.IDMTodo{{UID: "1", Text: "Test", PositionPath: "1"}},
-				[]*models.IDMTodo{{UID: "1", Text: "Test"}},
+				[]*models.Todo{{UID: "1", Text: "Test", PositionPath: "1"}},
+				[]*models.Todo{{UID: "1", Text: "Test"}},
 				1,
 				0,
 			)

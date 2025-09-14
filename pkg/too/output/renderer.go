@@ -58,7 +58,7 @@ func NewLipbamlRenderer(w io.Writer, useColor bool) (*LipbamlRenderer, error) {
 }
 
 // renderTodoCommand is a unified method for rendering todo commands with the todo_list template
-func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos []*models.IDMTodo, totalCount, doneCount int, highlightID string) error {
+func (r *LipbamlRenderer) renderTodoCommand(message, messageType string, todos []*models.Todo, totalCount, doneCount int, highlightID string) error {
 	wrapped := &TodoListWithMessage{
 		Message:     message,
 		MessageType: messageType,
@@ -122,10 +122,10 @@ func templateFuncs() template.FuncMap {
 	// Add too-specific functions
 	funcs["isDone"] = func(todo interface{}) bool {
 		switch t := todo.(type) {
-		case *models.IDMTodo:
+		case *models.Todo:
 			return t.GetStatus() == models.StatusDone
 		case *HierarchicalTodo:
-			return t.IDMTodo.GetStatus() == models.StatusDone
+			return t.Todo.GetStatus() == models.StatusDone
 		default:
 			return false
 		}
@@ -133,7 +133,7 @@ func templateFuncs() template.FuncMap {
 	funcs["getSymbol"] = func(status string) string {
 		return styles.GetStatusSymbol(status)
 	}
-	funcs["buildHierarchy"] = func(todos []*models.IDMTodo) []*HierarchicalTodo {
+	funcs["buildHierarchy"] = func(todos []*models.Todo) []*HierarchicalTodo {
 		return BuildHierarchy(todos)
 	}
 	

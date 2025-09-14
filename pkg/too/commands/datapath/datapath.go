@@ -3,8 +3,6 @@ package datapath
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/arthur-debert/too/pkg/too/store"
 )
 
 // Options holds the options for the datapath command
@@ -30,7 +28,7 @@ func Execute(opts Options) (*Result, error) {
 		if err == nil {
 			found := false
 			for {
-				todosPath := filepath.Join(dir, ".todos")
+				todosPath := filepath.Join(dir, ".todos.db")
 				if _, err := os.Stat(todosPath); err == nil {
 					storePath = todosPath
 					found = true
@@ -50,36 +48,33 @@ func Execute(opts Options) (*Result, error) {
 				if envPath := os.Getenv("TODO_DB_PATH"); envPath != "" {
 					storePath = envPath
 				} else {
-					// Check if ~/.todos.json exists (home directory default)
+					// Check if ~/.todos.db exists (home directory default)
 					home, err := os.UserHomeDir()
 					if err == nil {
-						homeDefault := filepath.Join(home, ".todos.json")
+						homeDefault := filepath.Join(home, ".todos.db")
 						if _, err := os.Stat(homeDefault); err == nil {
 							storePath = homeDefault
 						} else {
 							// Default to current directory
-							storePath = ".todos"
+							storePath = ".todos.db"
 						}
 					} else {
 						// Fallback to current directory if can't get home
-						storePath = ".todos"
+						storePath = ".todos.db"
 					}
 				}
 			}
 		} else {
 			// Fallback to current directory if can't get working directory
-			storePath = ".todos"
+			storePath = ".todos.db"
 		}
 	}
 
-	// Create an IDM store with the resolved path
-	s := store.NewIDMStore(storePath)
-
 	// Get the absolute path
-	absPath, err := filepath.Abs(s.Path())
+	absPath, err := filepath.Abs(storePath)
 	if err != nil {
 		// If we can't get absolute path, just return the path as is
-		absPath = s.Path()
+		absPath = storePath
 	}
 
 	return &Result{

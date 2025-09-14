@@ -69,27 +69,27 @@ type (
 	
 	// Legacy result types for backward compatibility
 	AddResult struct {
-		Todo         *models.IDMTodo
+		Todo         *models.Todo
 		PositionPath string
-		AllTodos     []*models.IDMTodo
+		AllTodos     []*models.Todo
 		TotalCount   int
 		DoneCount    int
 	}
 	
 	ModifyResult struct {
-		Todo       *models.IDMTodo
+		Todo       *models.Todo
 		OldText    string
 		NewText    string
-		AllTodos   []*models.IDMTodo
+		AllTodos   []*models.Todo
 		TotalCount int
 		DoneCount  int
 	}
 	
 	CompleteResult struct {
-		Todo       *models.IDMTodo
+		Todo       *models.Todo
 		OldStatus  string
 		NewStatus  string
-		AllTodos   []*models.IDMTodo
+		AllTodos   []*models.Todo
 		TotalCount int
 		DoneCount  int
 	}
@@ -97,34 +97,34 @@ type (
 	ReopenResult = CompleteResult
 	
 	CleanResult struct {
-		RemovedTodos []*models.IDMTodo
+		RemovedTodos []*models.Todo
 		RemovedCount int
 		ActiveCount  int                // Number of active todos remaining
-		ActiveTodos  []*models.IDMTodo  // Active todos for display
-		AllTodos     []*models.IDMTodo  // Alias for ActiveTodos
+		ActiveTodos  []*models.Todo  // Active todos for display
+		AllTodos     []*models.Todo  // Alias for ActiveTodos
 		TotalCount   int
 		DoneCount    int
 	}
 	
 	SearchResult struct {
 		Query        string
-		MatchedTodos []*models.IDMTodo
+		MatchedTodos []*models.Todo
 		TotalCount   int
 	}
 	
 	ListResult struct {
-		Todos      []*models.IDMTodo
+		Todos      []*models.Todo
 		TotalCount int
 		DoneCount  int
 	}
 	
 	MoveResult struct {
-		Todo         *models.IDMTodo
+		Todo         *models.Todo
 		OldParentUID string
 		NewParentUID string
 		OldPath      string  // For compatibility
 		NewPath      string  // For compatibility
-		AllTodos     []*models.IDMTodo
+		AllTodos     []*models.Todo
 		TotalCount   int
 		DoneCount    int
 	}

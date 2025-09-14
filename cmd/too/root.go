@@ -5,7 +5,6 @@ import (
 
 	"github.com/arthur-debert/too/internal/version"
 	"github.com/arthur-debert/too/pkg/logging"
-	"github.com/arthur-debert/too/pkg/too"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -80,13 +79,4 @@ func init() {
 
 	// Setup custom help
 	setupHelp()
-
-	// Register unified add command as a test
-	if addDef, ok := too.CommandRegistry["add"]; ok {
-		addCmd := createUnifiedCommand(addDef)
-		addCmd.GroupID = "core"
-		addCmd.Use = "add-unified <text>"
-		addCmd.Aliases = []string{"au"}
-		rootCmd.AddCommand(addCmd)
-	}
 }

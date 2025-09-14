@@ -292,7 +292,7 @@ func createTestRootCommand() *cobra.Command {
 			changeResult := too.NewChangeResult(
 				"add",
 				fmt.Sprintf("Added todo: %s", result.PositionPath),
-				[]*models.IDMTodo{result.Todo},
+				[]*models.Todo{result.Todo},
 				result.AllTodos,
 				result.TotalCount,
 				result.DoneCount,
