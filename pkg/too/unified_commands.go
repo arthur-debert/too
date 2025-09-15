@@ -40,10 +40,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 		RequiresRef:     true,
 		AcceptsMultiple: true,
 		GetMessageFunc: func(count int, todos []*models.Todo) string {
-			if count == 0 {
-				return "No todos completed"
-			}
-			return formatMessage("Completed", todos)
+			return "" // Visual highlight is sufficient
 		},
 	},
 	
@@ -57,10 +54,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 		RequiresRef:     true,
 		AcceptsMultiple: true,
 		GetMessageFunc: func(count int, todos []*models.Todo) string {
-			if count == 0 {
-				return "No todos reopened"
-			}
-			return formatMessage("Reopened", todos)
+			return "" // Visual highlight is sufficient
 		},
 	},
 	
@@ -80,10 +74,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			return nil
 		},
 		GetMessageFunc: func(count int, todos []*models.Todo) string {
-			if count == 0 {
-				return ""
-			}
-			return fmt.Sprintf("Modified todo: %s", todos[0].PositionPath)
+			return "" // Visual highlight is sufficient
 		},
 	},
 	
@@ -101,10 +92,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			return nil
 		},
 		GetMessageFunc: func(count int, todos []*models.Todo) string {
-			if count == 0 {
-				return ""
-			}
-			return fmt.Sprintf("Moved todo: %s", todos[0].PositionPath)
+			return "" // Visual highlight is sufficient
 		},
 	},
 	
@@ -122,10 +110,7 @@ var UnifiedCommands = map[string]*UnifiedCommand{
 			return nil
 		},
 		GetMessageFunc: func(count int, todos []*models.Todo) string {
-			if count == 0 {
-				return ""
-			}
-			return fmt.Sprintf("Added todo: %s", todos[0].PositionPath)
+			return "" // Visual highlight is sufficient
 		},
 	},
 	

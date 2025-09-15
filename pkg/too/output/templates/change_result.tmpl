@@ -3,6 +3,7 @@
 {{- $highlightID := "" -}}
 {{- if .AffectedTodos -}}{{- $highlightID = (index .AffectedTodos 0).UID -}}{{- end -}}
 {{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID }}
+
 <subdued>{{.TotalCount}} todo(s), {{.DoneCount}} done</subdued>
 {{- else if not .Message -}}
 <warning>No todos found</warning>

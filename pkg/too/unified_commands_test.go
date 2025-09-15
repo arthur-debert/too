@@ -49,7 +49,7 @@ func TestCommandRegistration(t *testing.T) {
 		// Test alias 'c' for complete
 		result, err = too.ExecuteUnifiedCommand("c", []string{"1"}, opts)
 		require.NoError(t, err)
-		assert.Contains(t, result.Message, "Completed")
+		assert.Empty(t, result.Message)
 	})
 	
 	t.Run("unknown command", func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestMultiTodoOperations(t *testing.T) {
 		// Complete multiple
 		result := executeCommand(t, "complete", []string{"1", "2", "3"}, opts)
 		assert.Len(t, result.AffectedTodos, 3)
-		assert.Contains(t, result.Message, "Completed")
+		assert.Empty(t, result.Message)
 		
 		// Verify all are completed
 		for _, todo := range result.AffectedTodos {
@@ -187,7 +187,7 @@ func TestMultiTodoOperations(t *testing.T) {
 		// Reopen both
 		result := executeCommand(t, "reopen", []string{"c1", "c2"}, opts)
 		assert.Len(t, result.AffectedTodos, 2)
-		assert.Contains(t, result.Message, "Reopened")
+		assert.Empty(t, result.Message) // No message, visual highlight is sufficient
 		
 		// Verify all are pending
 		for _, todo := range result.AffectedTodos {
@@ -262,7 +262,7 @@ func TestCommandSpecificBehaviors(t *testing.T) {
 		result := executeCommand(t, "edit", []string{"1", "Updated text"}, opts)
 		assert.Len(t, result.AffectedTodos, 1)
 		assert.Equal(t, "Updated text", result.AffectedTodos[0].Text)
-		assert.Contains(t, result.Message, "Modified")
+		assert.Empty(t, result.Message)
 	})
 	
 	t.Run("move command", func(t *testing.T) {
@@ -280,7 +280,7 @@ func TestCommandSpecificBehaviors(t *testing.T) {
 		result := executeCommand(t, "move", []string{child.AffectedTodos[0].PositionPath, parent2.AffectedTodos[0].PositionPath}, opts)
 		assert.Len(t, result.AffectedTodos, 1)
 		assert.Equal(t, parent2.AffectedTodos[0].UID, result.AffectedTodos[0].ParentID)
-		assert.Contains(t, result.Message, "Moved")
+		assert.Empty(t, result.Message)
 	})
 	
 	t.Run("swap command uses move", func(t *testing.T) {
@@ -295,7 +295,7 @@ func TestCommandSpecificBehaviors(t *testing.T) {
 		// In unified commands, we should use move directly
 		// Moving todo 2 under todo 1
 		result := executeCommand(t, "move", []string{"2", "1"}, opts)
-		assert.Contains(t, result.Message, "Moved")
+		assert.Empty(t, result.Message)
 		assert.Equal(t, "1.1", result.AffectedTodos[0].PositionPath)
 		assert.Equal(t, todo1.AffectedTodos[0].UID, result.AffectedTodos[0].ParentID)
 	})
@@ -376,7 +376,7 @@ func TestEdgeCases(t *testing.T) {
 		
 		// Complete entire hierarchy
 		result = executeCommand(t, "complete", []string{"1"}, opts)
-		assert.Contains(t, result.Message, "Completed")
+		assert.Empty(t, result.Message)
 	})
 	
 	t.Run("special characters in text", func(t *testing.T) {
@@ -433,8 +433,7 @@ func TestCustomMessages(t *testing.T) {
 		// Single todo
 		executeCommand(t, "add", []string{"Single"}, opts)
 		result := executeCommand(t, "complete", []string{"1"}, opts)
-		assert.Contains(t, result.Message, "Completed todo:")
-		assert.Contains(t, result.Message, "c1")
+		assert.Empty(t, result.Message) // No message, visual highlight is sufficient
 		
 		// Multiple todos in new test env
 		dbPath2 := createTestDB(t)
@@ -442,10 +441,9 @@ func TestCustomMessages(t *testing.T) {
 		executeCommand(t, "add", []string{"Multi 1"}, opts2)
 		executeCommand(t, "add", []string{"Multi 2"}, opts2)
 		result = executeCommand(t, "complete", []string{"1", "2"}, opts2)
-		assert.Contains(t, result.Message, "Completed todos:")
-		// Should contain both completed IDs
-		assert.Contains(t, result.Message, "c1")
-		assert.Contains(t, result.Message, "c2")
+		assert.Empty(t, result.Message) // No message, visual highlight is sufficient
+		// Verify both todos were completed
+		assert.Len(t, result.AffectedTodos, 2)
 	})
 	
 	t.Run("clean message variations", func(t *testing.T) {
