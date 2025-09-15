@@ -32,6 +32,7 @@ func templateFuncs() template.FuncMap {
 	}
 	funcs["getSymbol"] = GetStatusSymbol
 	funcs["buildHierarchy"] = models.BuildHierarchy
+	funcs["countHierarchy"] = countHierarchy
 	
 	return funcs
 }
@@ -104,5 +105,26 @@ func NewEngine() (*Engine, error) {
 // GetLipbalmEngine returns the underlying lipbalm engine for direct use
 func (e *Engine) GetLipbalmEngine() *lipbalm.RenderEngine {
 	return e.lipbalmEngine
+}
+
+// countHierarchy counts todos in a hierarchical structure
+func countHierarchy(todos []*models.HierarchicalTodo) map[string]int {
+	counts := map[string]int{"total": 0, "done": 0}
+	
+	var count func([]*models.HierarchicalTodo)
+	count = func(todos []*models.HierarchicalTodo) {
+		for _, todo := range todos {
+			counts["total"]++
+			if todo.Todo.GetStatus() == models.StatusDone {
+				counts["done"]++
+			}
+			if todo.Children != nil {
+				count(todo.Children)
+			}
+		}
+	}
+	
+	count(todos)
+	return counts
 }
 

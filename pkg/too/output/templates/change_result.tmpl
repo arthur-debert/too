@@ -3,13 +3,9 @@
 {{- $highlightID := "" -}}
 {{- if .AffectedTodos -}}{{- $highlightID = (index .AffectedTodos 0).UID -}}{{- end -}}
 {{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID }}
-{{ $displayCount := len .AllTodos -}}
-{{- $displayDone := 0 -}}
-{{- range .AllTodos -}}
-{{- if isDone . -}}{{- $displayDone = add $displayDone 1 -}}{{- end -}}
-{{- end -}}
+{{- $counts := countHierarchy $hierarchy -}}
 
-<subdued>{{$displayCount}} todo(s), {{$displayDone}} done</subdued>
+<subdued>{{index $counts "total"}} todo(s), {{index $counts "done"}} done</subdued>
 {{- else if not .Message -}}
 <warning>No todos found</warning>
 {{- end -}}
@@ -64,3 +60,4 @@
 {{- end }}
 {{- end }}
 {{- end }}
+
