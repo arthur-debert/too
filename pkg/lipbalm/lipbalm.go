@@ -182,6 +182,37 @@ func ListFormats() []string {
 	return registry.List()
 }
 
+// FormatInfo contains metadata about a format
+type FormatInfo struct {
+	Name        string
+	Description string
+}
+
+// GetFormatInfo returns information about all available formats
+func GetFormatInfo() []FormatInfo {
+	registry := newDefaultRegistry()
+	names := registry.List()
+	
+	infos := make([]FormatInfo, len(names))
+	for i, name := range names {
+		formatter, err := registry.Get(name)
+		if err != nil {
+			// Fallback if we can't get the formatter
+			infos[i] = FormatInfo{
+				Name:        name,
+				Description: name + " output format",
+			}
+		} else {
+			infos[i] = FormatInfo{
+				Name:        formatter.Name(),
+				Description: formatter.Description(),
+			}
+		}
+	}
+	
+	return infos
+}
+
 func processToken(token etree.Token, w io.Writer, styles StyleMap, hasColor bool) {
 	switch t := token.(type) {
 	case *etree.Element:
