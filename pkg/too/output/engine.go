@@ -30,12 +30,8 @@ func templateFuncs() template.FuncMap {
 			return false
 		}
 	}
-	funcs["getSymbol"] = func(status string) string {
-		return GetStatusSymbol(status)
-	}
-	funcs["buildHierarchy"] = func(todos []*models.Todo) []*models.HierarchicalTodo {
-		return models.BuildHierarchy(todos)
-	}
+	funcs["getSymbol"] = GetStatusSymbol
+	funcs["buildHierarchy"] = models.BuildHierarchy
 	
 	return funcs
 }
@@ -128,24 +124,3 @@ func (e *Engine) GetLipbalmEngine() *lipbalm.RenderEngine {
 	return e.lipbalmEngine
 }
 
-// Helper functions
-
-func pluralize(count int) string {
-	if count == 1 {
-		return ""
-	}
-	return "es"
-}
-
-func messageTypeForCount(count int) string {
-	if count == 0 {
-		return "warning"
-	}
-	return "info"
-}
-
-// getDefaultEngine returns a default engine instance for init.go
-// This is only used during initialization to avoid import cycles
-func getDefaultEngine() (*Engine, error) {
-	return NewEngine()
-}
