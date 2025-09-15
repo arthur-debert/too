@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too"
@@ -248,21 +247,6 @@ func TestErrorHandling(t *testing.T) {
 		_, err := too.ExecuteUnifiedCommand("add", []string{"Child"}, opts)
 		assert.Error(t, err)
 	})
-	
-	t.Run("delete with children", func(t *testing.T) {
-		dbPath := createTestDB(t)
-		opts := map[string]interface{}{"collectionPath": dbPath}
-		
-		// Create parent and child
-		parent := executeCommand(t, "add", []string{"Parent"}, opts)
-		opts["parent"] = parent.AffectedTodos[0].PositionPath
-		executeCommand(t, "add", []string{"Child"}, opts)
-		delete(opts, "parent")
-		
-		// Try to delete parent without cascade
-		_, err := too.ExecuteUnifiedCommand("rm", []string{"1"}, opts)
-		assert.Error(t, err)
-	})
 }
 
 // Test command-specific behaviors
@@ -299,24 +283,21 @@ func TestCommandSpecificBehaviors(t *testing.T) {
 		assert.Contains(t, result.Message, "Moved")
 	})
 	
-	t.Run("swap command", func(t *testing.T) {
+	t.Run("swap command uses move", func(t *testing.T) {
 		dbPath := createTestDB(t)
 		opts := map[string]interface{}{"collectionPath": dbPath}
 		
 		// Add todos
-		executeCommand(t, "add", []string{"Todo 1"}, opts)
+		todo1 := executeCommand(t, "add", []string{"Todo 1"}, opts)
 		executeCommand(t, "add", []string{"Todo 2"}, opts)
 		
-		// Check if swap command exists
-		_, err := too.ExecuteUnifiedCommand("swap", []string{"1", "2"}, opts)
-		if err != nil && strings.Contains(err.Error(), "unknown command") {
-			t.Skip("Swap command not implemented in unified commands")
-		}
-		
-		// If we get here, swap is implemented
-		result, err := too.ExecuteUnifiedCommand("swap", []string{"1", "2"}, opts)
-		require.NoError(t, err)
-		assert.Contains(t, result.Message, "Swapped")
+		// Swap is a CLI command that calls move internally
+		// In unified commands, we should use move directly
+		// Moving todo 2 under todo 1
+		result := executeCommand(t, "move", []string{"2", "1"}, opts)
+		assert.Contains(t, result.Message, "Moved")
+		assert.Equal(t, "1.1", result.AffectedTodos[0].PositionPath)
+		assert.Equal(t, todo1.AffectedTodos[0].UID, result.AffectedTodos[0].ParentID)
 	})
 	
 	t.Run("clean command", func(t *testing.T) {
@@ -369,11 +350,8 @@ func TestEdgeCases(t *testing.T) {
 		reopen := executeCommand(t, "reopen", []string{"c1"}, opts)
 		assert.Len(t, reopen.AffectedTodos, 1)
 		
-		// Delete/rm command might not be in unified commands yet
-		_, err := too.ExecuteUnifiedCommand("rm", []string{"1"}, opts)
-		if err != nil && strings.Contains(err.Error(), "unknown command") {
-			t.Skip("Delete command not implemented in unified commands")
-		}
+		// Note: too does not support deletion, only completion
+		// This is by design to maintain a complete history
 	})
 	
 	t.Run("deep hierarchy", func(t *testing.T) {
@@ -431,28 +409,6 @@ func TestEdgeCases(t *testing.T) {
 
 // Test validation functions
 func TestValidation(t *testing.T) {
-	t.Run("swap validation", func(t *testing.T) {
-		dbPath := createTestDB(t)
-		opts := map[string]interface{}{"collectionPath": dbPath}
-		
-		// Check if swap command exists first
-		_, err := too.ExecuteUnifiedCommand("swap", []string{}, opts)
-		if err != nil && strings.Contains(err.Error(), "unknown command") {
-			t.Skip("Swap command not implemented in unified commands")
-		}
-		
-		// Add one todo
-		executeCommand(t, "add", []string{"Todo 1"}, opts)
-		
-		// Try swap with only one argument
-		_, err = too.ExecuteUnifiedCommand("swap", []string{"1"}, opts)
-		assert.Error(t, err)
-		
-		// Try swap with three arguments
-		_, err = too.ExecuteUnifiedCommand("swap", []string{"1", "2", "3"}, opts)
-		assert.Error(t, err)
-	})
-	
 	t.Run("move validation", func(t *testing.T) {
 		dbPath := createTestDB(t)
 		opts := map[string]interface{}{"collectionPath": dbPath}
@@ -474,23 +430,22 @@ func TestCustomMessages(t *testing.T) {
 		dbPath := createTestDB(t)
 		opts := map[string]interface{}{"collectionPath": dbPath}
 		
-		// Skip test if complete doesn't handle empty args properly
-		// This is a known issue - complete should validate args
-		t.Skip("Complete command needs arg validation")
-		
 		// Single todo
 		executeCommand(t, "add", []string{"Single"}, opts)
 		result := executeCommand(t, "complete", []string{"1"}, opts)
 		assert.Contains(t, result.Message, "Completed todo:")
 		assert.Contains(t, result.Message, "c1")
 		
-		// Multiple todos
-		executeCommand(t, "add", []string{"Multi 1"}, opts)
-		executeCommand(t, "add", []string{"Multi 2"}, opts)
-		result = executeCommand(t, "complete", []string{"1", "2"}, opts)
+		// Multiple todos in new test env
+		dbPath2 := createTestDB(t)
+		opts2 := map[string]interface{}{"collectionPath": dbPath2}
+		executeCommand(t, "add", []string{"Multi 1"}, opts2)
+		executeCommand(t, "add", []string{"Multi 2"}, opts2)
+		result = executeCommand(t, "complete", []string{"1", "2"}, opts2)
 		assert.Contains(t, result.Message, "Completed todos:")
 		// Should contain both completed IDs
-		assert.Contains(t, result.Message, "c")
+		assert.Contains(t, result.Message, "c1")
+		assert.Contains(t, result.Message, "c2")
 	})
 	
 	t.Run("clean message variations", func(t *testing.T) {
