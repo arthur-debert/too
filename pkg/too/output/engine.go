@@ -9,7 +9,6 @@ import (
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/commands/formats"
 	"github.com/arthur-debert/too/pkg/too/models"
-	"github.com/arthur-debert/too/pkg/too/output/styles"
 )
 
 //go:embed templates/*.tmpl
@@ -32,7 +31,7 @@ func templateFuncs() template.FuncMap {
 		}
 	}
 	funcs["getSymbol"] = func(status string) string {
-		return styles.GetStatusSymbol(status)
+		return GetStatusSymbol(status)
 	}
 	funcs["buildHierarchy"] = func(todos []*models.Todo) []*HierarchicalTodo {
 		return BuildHierarchy(todos)
@@ -49,7 +48,7 @@ type Engine struct {
 // NewEngine creates a new output engine
 func NewEngine() (*Engine, error) {
 	// Get too's style map
-	styleMap := styles.GetLipbalmStyleMap()
+	styleMap := GetLipbalmStyleMap()
 
 	// Create template manager with domain-specific functions
 	tm := lipbalm.NewTemplateManager(styleMap, templateFuncs())
