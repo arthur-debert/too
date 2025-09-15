@@ -61,26 +61,8 @@ func NewEngine() (*Engine, error) {
 
 	// Configure too-specific callbacks
 	lipbalmEngine.Config().Callbacks = lipbalm.RenderCallbacks{
-		// Pre-process to handle hierarchical todos
+		// Pre-process callback (currently unused but kept for future extensibility)
 		PreProcess: func(format string, data interface{}) interface{} {
-			// Special handling for terminal format to build hierarchy
-			if format == "term" {
-				switch v := data.(type) {
-				case *too.ChangeResult:
-					highlightID := ""
-					if len(v.AffectedTodos) > 0 {
-						highlightID = v.AffectedTodos[0].UID
-					}
-					return &TodoListWithMessage{
-						Message:     v.Message,
-						MessageType: v.MessageType(),
-						Todos:       v.AllTodos,
-						TotalCount:  v.TotalCount,
-						DoneCount:   v.DoneCount,
-						HighlightID: highlightID,
-					}
-				}
-			}
 			return data
 		},
 
