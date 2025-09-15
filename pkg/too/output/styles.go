@@ -19,12 +19,12 @@ var (
 	}
 
 	MUTED_TEXT = lipgloss.AdaptiveColor{
-		Light: "#868E96",
+		Light: "#ADB5BD", // Lighter gray for completed items
 		Dark:  "#6C757D",
 	}
 
 	FAINT_TEXT = lipgloss.AdaptiveColor{
-		Light: "#868E96",
+		Light: "#CED4DA", // Even lighter gray
 		Dark:  "#CED4DA",
 	}
 
