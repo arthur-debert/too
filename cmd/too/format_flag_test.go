@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/arthur-debert/too/pkg/too/output"
+	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +11,7 @@ import (
 func TestFormatFlag(t *testing.T) {
 	t.Run("getRenderer with valid format", func(t *testing.T) {
 		// Test each registered format
-		formats := output.List()
+		formats := lipbalm.ListFormats()
 		for _, format := range formats {
 			formatFlag = format
 			renderer, err := getRenderer()

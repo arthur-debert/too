@@ -170,6 +170,18 @@ func ExpandTags(s string, styles StyleMap) (string, error) {
 	return result.String(), nil
 }
 
+// HasFormat checks if a format is available in the default registry
+func HasFormat(name string) bool {
+	registry := newDefaultRegistry()
+	return registry.Has(name)
+}
+
+// ListFormats returns all available format names from the default registry
+func ListFormats() []string {
+	registry := newDefaultRegistry()
+	return registry.List()
+}
+
 func processToken(token etree.Token, w io.Writer, styles StyleMap, hasColor bool) {
 	switch t := token.(type) {
 	case *etree.Element:

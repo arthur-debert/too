@@ -95,27 +95,3 @@ func (r *Renderer) RenderError(err error) error {
 	return r.engine.GetLipbalmEngine().RenderError(r.writer, r.format, err)
 }
 
-// HasFormatter checks if a formatter is available
-func HasFormatter(name string) bool {
-	engine, err := NewEngine()
-	if err != nil {
-		return false
-	}
-	
-	for _, format := range engine.GetLipbalmEngine().ListFormats() {
-		if format == name {
-			return true
-		}
-	}
-	return false
-}
-
-// List returns all available format names
-func List() []string {
-	engine, err := NewEngine()
-	if err != nil {
-		return []string{}
-	}
-	
-	return engine.GetLipbalmEngine().ListFormats()
-}

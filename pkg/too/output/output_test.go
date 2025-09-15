@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/arthur-debert/too/pkg/too/commands/formats"
@@ -104,16 +105,16 @@ func TestRenderer_RenderMethods(t *testing.T) {
 
 func TestHasFormatter(t *testing.T) {
 	// Test for known formatters
-	assert.True(t, HasFormatter("json"))
-	assert.True(t, HasFormatter("yaml"))
-	assert.True(t, HasFormatter("term"))
+	assert.True(t, lipbalm.HasFormat("json"))
+	assert.True(t, lipbalm.HasFormat("yaml"))
+	assert.True(t, lipbalm.HasFormat("term"))
 	
 	// Test for unknown formatter
-	assert.False(t, HasFormatter("unknown"))
+	assert.False(t, lipbalm.HasFormat("unknown"))
 }
 
 func TestList(t *testing.T) {
-	formats := List()
+	formats := lipbalm.ListFormats()
 	assert.NotEmpty(t, formats)
 	
 	// Check that standard formats are present

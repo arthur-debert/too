@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/arthur-debert/too/pkg/too/output"
 )
 
 // getRenderer returns a renderer configured with the format flag value
 func getRenderer() (*output.Renderer, error) {
 	// Validate the format
-	if !output.HasFormatter(formatFlag) {
-		availableFormats := output.List()
+	if !lipbalm.HasFormat(formatFlag) {
+		availableFormats := lipbalm.ListFormats()
 		return nil, fmt.Errorf("invalid format %q. Available formats: %v", formatFlag, availableFormats)
 	}
 
