@@ -8,8 +8,8 @@ github.com/Masterminds/sprig/v3 v3.3.0 h1:mQh0Yrg1XPo6vjYXgtf5OtijNAKJRNcTdOOGZe
 github.com/Masterminds/sprig/v3 v3.3.0/go.mod h1:Zy1iXRYNqNLUolqCpL4uhk6SHUMAOSCzdgBfDb35Lz0=
 github.com/Masterminds/squirrel v1.5.4 h1:uUcX/aBc8O7Fg9kaISIUsHXdKuqehiXAMQTYX8afzqM=
 github.com/Masterminds/squirrel v1.5.4/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
-github.com/arthur-debert/nanostore v0.2.0 h1:UNo16/ejvlg+tPsWAs/reSk7mNgoxvYcFNr++Bx/4Ys=
-github.com/arthur-debert/nanostore v0.2.0/go.mod h1:qU9uu9S+4OGiC7fms1xnGlz/F35fjYpJFFJCHSuia98=
+github.com/arthur-debert/nanostore v0.5.0 h1:eAzYqLNcW0Uh7g2i5z7GbhP1es3XXtnk7AHSwlJKSTY=
+github.com/arthur-debert/nanostore v0.5.0/go.mod h1:qU9uu9S+4OGiC7fms1xnGlz/F35fjYpJFFJCHSuia98=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=
 github.com/beevik/etree v1.5.1 h1:TC3zyxYp+81wAmbsi8SWUpZCurbxa6S8RITYRSkNRwo=
