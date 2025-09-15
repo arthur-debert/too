@@ -1,0 +1,186 @@
+name: Release macOS
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - os: macos-13  # Intel
+            goarch: amd64
+          - os: macos-14  # Apple Silicon
+            goarch: arm64
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        run: |
+          export CGO_ENABLED=1
+          export GOOS=darwin
+          export GOARCH=${{ matrix.goarch }}
+          
+          go build -ldflags "-s -w -X github.com/arthur-debert/too/internal/version.Version=${{ steps.version.outputs.VERSION }}" \
+            -o too-darwin-${{ matrix.goarch }} ./cmd/too
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: too-darwin-${{ matrix.goarch }}
+          path: too-darwin-${{ matrix.goarch }}
+
+  create-macos-release:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate completions and man pages
+        run: |
+          export CGO_ENABLED=1
+          ./scripts/gen-completion || true
+          ./scripts/gen-manpage || true
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create macOS archives
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          mkdir -p dist
+          
+          for arch in amd64 arm64; do
+            if [ -f "artifacts/too-darwin-${arch}/too-darwin-${arch}" ]; then
+              mkdir -p "too_${VERSION}_darwin_${arch}"
+              cp "artifacts/too-darwin-${arch}/too-darwin-${arch}" "too_${VERSION}_darwin_${arch}/too"
+              chmod +x "too_${VERSION}_darwin_${arch}/too"
+              cp README.md LICENSE "too_${VERSION}_darwin_${arch}/" || true
+              cp -r completions man "too_${VERSION}_darwin_${arch}/" || true
+              tar czf "dist/too_${VERSION}_darwin_${arch}.tar.gz" "too_${VERSION}_darwin_${arch}"
+              rm -rf "too_${VERSION}_darwin_${arch}"
+            fi
+          done
+
+      - name: Upload to existing release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: [create-macos-release]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: arthur-debert/homebrew-tools
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "VERSION=${VERSION#v}" >> $GITHUB_OUTPUT
+          
+      - name: Wait for release assets
+        run: sleep 30
+          
+      - name: Update Formula
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          
+          # Download the release assets to calculate SHA256
+          wget -q "https://github.com/arthur-debert/too/releases/download/v${VERSION}/too_v${VERSION}_darwin_amd64.tar.gz" || \
+            wget -q "https://github.com/arthur-debert/too/releases/download/v${VERSION}/too_${VERSION}_darwin_amd64.tar.gz"
+          wget -q "https://github.com/arthur-debert/too/releases/download/v${VERSION}/too_v${VERSION}_darwin_arm64.tar.gz" || \
+            wget -q "https://github.com/arthur-debert/too/releases/download/v${VERSION}/too_${VERSION}_darwin_arm64.tar.gz"
+          
+          # Handle both naming conventions
+          AMD64_FILE=$(ls too_*darwin_amd64.tar.gz 2>/dev/null | head -1)
+          ARM64_FILE=$(ls too_*darwin_arm64.tar.gz 2>/dev/null | head -1)
+          
+          SHA_DARWIN_AMD64=$(sha256sum "$AMD64_FILE" | cut -d' ' -f1)
+          SHA_DARWIN_ARM64=$(sha256sum "$ARM64_FILE" | cut -d' ' -f1)
+          
+          # Update the formula
+          cat > Formula/too.rb << EOF
+class Too < Formula
+  desc "A simple command-line todo list manager"
+  homepage "https://github.com/arthur-debert/too"
+  version "${VERSION}"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.intel?
+      url "https://github.com/arthur-debert/too/releases/download/v${VERSION}/too_v${VERSION}_darwin_amd64.tar.gz"
+      sha256 "${SHA_DARWIN_AMD64}"
+    else
+      url "https://github.com/arthur-debert/too/releases/download/v${VERSION}/too_v${VERSION}_darwin_arm64.tar.gz"
+      sha256 "${SHA_DARWIN_ARM64}"
+    end
+  end
+
+  def install
+    bin.install "too"
+    
+    # Install shell completions if they exist
+    if File.exist?("completions/too.bash")
+      bash_completion.install "completions/too.bash"
+    end
+    if File.exist?("completions/_too")
+      zsh_completion.install "completions/_too"
+    end
+    if File.exist?("completions/too.fish")
+      fish_completion.install "completions/too.fish"
+    end
+    
+    # Install man page if it exists
+    if File.exist?("man/man1/too.1.gz")
+      man1.install "man/man1/too.1.gz"
+    end
+  end
+
+  test do
+    system "#{bin}/too", "--help"
+  end
+end
+EOF
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Formula/too.rb
+          git commit -m "Update too to ${VERSION}" || echo "No changes to commit"
+          git push

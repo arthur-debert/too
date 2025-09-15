@@ -9,12 +9,23 @@ builds:
     ldflags:
       - -s -w -X github.com/arthur-debert/too/internal/version.Version={{.Version}} -X github.com/arthur-debert/too/internal/version.Commit={{.Commit}} -X github.com/arthur-debert/too/internal/version.Date={{.Date}}
     env:
-      - CGO_ENABLED=0
-    goos: [linux, windows, darwin]
+      - CGO_ENABLED=1
+    # Only build for Linux on Linux runners
+    goos: [linux]
     goarch: [amd64, arm64]
-    ignore:
-      - goos: windows
+    overrides:
+      - goos: linux
+        goarch: amd64
+        env:
+          - CGO_ENABLED=1
+          - CC=gcc
+          - CXX=g++
+      - goos: linux
         goarch: arm64
+        env:
+          - CGO_ENABLED=1
+          - CC=aarch64-linux-gnu-gcc
+          - CXX=aarch64-linux-gnu-g++
 
 before:
   hooks:
@@ -62,32 +73,7 @@ changelog:
       - "Merge pull request"
       - "Merge branch"
 
-brews:
-  - ids: [too-archive]
-    name: too
-    repository:
-      owner: arthur-debert
-      name: homebrew-tools
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    directory: Formula
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    homepage: "https://github.com/arthur-debert/too"
-    description: "A simple command-line todo list manager"
-    license: "MIT"
-    test: |
-      system "#{bin}/too --help"
-    install: |
-      bin.install "too"
-      
-      # Install shell completions
-      bash_completion.install "completions/too.bash" if File.exist?("completions/too.bash")
-      zsh_completion.install "completions/_too" if File.exist?("completions/_too")
-      fish_completion.install "completions/too.fish" if File.exist?("completions/too.fish")
-      
-      # Install man page
-      man1.install "man/man1/too.1.gz" if File.exist?("man/man1/too.1.gz")
+# Homebrew formula will be handled by the separate macOS workflow
 
 # nFPM packages (deb, rpm, etc.)
 # https://goreleaser.com/customization/nfpm/

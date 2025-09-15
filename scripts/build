@@ -131,6 +131,8 @@ fi
 # Build the main binary
 echo
 echo -e "${BLUE}Building CLI binary...${NC}"
+# Enable CGO for SQLite support
+export CGO_ENABLED=1
 BUILD_CMD="go build"
 if [ -f "vendor/modules.txt" ]; then
     BUILD_CMD="$BUILD_CMD -mod=vendor"
