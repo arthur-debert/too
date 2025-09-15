@@ -151,25 +151,6 @@ func GetLipbalmStyleMap() lipbalm.StyleMap {
 	styles["highlighted-todo"] = lipgloss.NewStyle().
 		Foreground(PRIMARY_TEXT)
 	
-	// Status symbols
-	styles["active-symbol"] = lipgloss.NewStyle().
-		Foreground(MUTED_TEXT)
-	
-	styles["completed-symbol"] = lipgloss.NewStyle().
-		Foreground(MUTED_TEXT)
-	
-	// Position numbers - always muted
-	styles["position"] = lipgloss.NewStyle().
-		Foreground(MUTED_TEXT)
-	
-	// Legacy styles (kept for compatibility)
-	styles["todo-done"] = lipgloss.NewStyle().
-		Foreground(SUCCESS_COLOR).
-		Bold(true)
-	styles["todo-pending"] = lipgloss.NewStyle().
-		Foreground(ERROR_COLOR).
-		Bold(true)
-	
 	// Override the default muted style to use our MUTED_TEXT
 	styles["muted"] = lipgloss.NewStyle().
 		Foreground(MUTED_TEXT)
