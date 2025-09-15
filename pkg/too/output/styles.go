@@ -138,15 +138,55 @@ func GetLipbalmStyleMap() lipbalm.StyleMap {
 	// Start with lipbalm's defaults
 	styles := lipbalm.DefaultStyles()
 	
-	// Add/override too-specific styles
+	// Semantic styles for todos
+	// Active (pending) todos - prominent display
+	styles["active-todo"] = lipgloss.NewStyle().
+		Foreground(PRIMARY_TEXT)
+	
+	// Completed todos - subdued display
+	styles["completed-todo"] = lipgloss.NewStyle().
+		Foreground(MUTED_TEXT)
+	
+	// Highlighted todo (for change feedback)
+	styles["highlighted-todo"] = lipgloss.NewStyle().
+		Foreground(PRIMARY_TEXT)
+	
+	// Status symbols
+	styles["active-symbol"] = lipgloss.NewStyle().
+		Foreground(MUTED_TEXT)
+	
+	styles["completed-symbol"] = lipgloss.NewStyle().
+		Foreground(MUTED_TEXT)
+	
+	// Position numbers - always muted
+	styles["position"] = lipgloss.NewStyle().
+		Foreground(MUTED_TEXT)
+	
+	// Legacy styles (kept for compatibility)
 	styles["todo-done"] = lipgloss.NewStyle().
 		Foreground(SUCCESS_COLOR).
 		Bold(true)
 	styles["todo-pending"] = lipgloss.NewStyle().
 		Foreground(ERROR_COLOR).
 		Bold(true)
-	styles["position"] = lipgloss.NewStyle().
+	
+	// Override the default muted style to use our MUTED_TEXT
+	styles["muted"] = lipgloss.NewStyle().
+		Foreground(MUTED_TEXT)
+	
+	// Subdued style for summary text
+	styles["subdued"] = lipgloss.NewStyle().
 		Foreground(SUBDUED_TEXT)
+	
+	// Message styles - use same color as highlighted items
+	styles["success"] = lipgloss.NewStyle().
+		Foreground(PRIMARY_TEXT)
+	styles["info"] = lipgloss.NewStyle().
+		Foreground(PRIMARY_TEXT)
+	styles["warning"] = lipgloss.NewStyle().
+		Foreground(PRIMARY_TEXT)
+	styles["error"] = lipgloss.NewStyle().
+		Foreground(PRIMARY_TEXT)
 	
 	return styles
 }

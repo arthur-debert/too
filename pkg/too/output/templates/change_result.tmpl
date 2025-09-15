@@ -3,7 +3,7 @@
 {{- $highlightID := "" -}}
 {{- if .AffectedTodos -}}{{- $highlightID = (index .AffectedTodos 0).UID -}}{{- end -}}
 {{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID }}
-<count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
+<subdued>{{.TotalCount}} todo(s), {{.DoneCount}} done</subdued>
 {{- else if not .Message -}}
 <warning>No todos found</warning>
 {{- end -}}
@@ -24,26 +24,32 @@
 {{- $pathLen := len $path -}}
 {{- $prefixLen := add (add $symbolLen 1) (add $pathLen 2) -}}
 {{- $lineIndent := repeat (int $prefixLen) " " -}}
-{{- $statusStyle := "todo-pending" -}}
-{{- if isDone . -}}
-{{- $statusStyle = "todo-done" -}}
-{{- end -}}
+{{- $isDoneStatus := isDone . -}}
+{{- $hasHighlight := ne $.HighlightID "" -}}
 {{- range $i, $line := $lines -}}
 {{- if eq $i 0 }}
 {{- if $isHighlighted }}
-{{$indent}}<highlighted-todo><{{$statusStyle}}>{{$symbol}}</{{$statusStyle}}> {{$path}}. {{$line}}</highlighted-todo>
-{{- else if ne $.HighlightID "" }}
+{{$indent}}<highlighted-todo>{{$symbol}} {{$path}}. {{$line}}</highlighted-todo>
+{{- else if $hasHighlight }}
 {{$indent}}<muted>{{$symbol}} {{$path}}. {{$line}}</muted>
 {{- else }}
-{{$indent}}<{{$statusStyle}}>{{$symbol}}</{{$statusStyle}}> {{$path}}. {{$line}}
+{{- if $isDoneStatus }}
+{{$indent}}<completed-todo>{{$symbol}} {{$path}}. {{$line}}</completed-todo>
+{{- else }}
+{{$indent}}<active-todo>{{$symbol}} {{$path}}. {{$line}}</active-todo>
+{{- end }}
 {{- end }}
 {{- else }}
 {{- if $isHighlighted }}
 {{$indent}}<highlighted-todo>{{$lineIndent}}{{$line}}</highlighted-todo>
-{{- else if ne $.HighlightID "" }}
+{{- else if $hasHighlight }}
 {{$indent}}<muted>{{$lineIndent}}{{$line}}</muted>
 {{- else }}
-{{$indent}}{{$lineIndent}}{{$line}}
+{{- if $isDoneStatus }}
+{{$indent}}<completed-todo>{{$lineIndent}}{{$line}}</completed-todo>
+{{- else }}
+{{$indent}}<active-todo>{{$lineIndent}}{{$line}}</active-todo>
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
