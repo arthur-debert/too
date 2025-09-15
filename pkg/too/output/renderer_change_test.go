@@ -8,7 +8,6 @@ import (
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRenderChange(t *testing.T) {
@@ -64,10 +63,10 @@ func TestRenderChange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create renderer
+			// Create engine
 			var buf bytes.Buffer
-			renderer, err := NewLipbamlRenderer(&buf, false)
-			require.NoError(t, err)
+			engine, err := NewEngine()
+			assert.NoError(t, err)
 
 			// Create change result
 			allTodos := []*models.Todo{
@@ -117,8 +116,8 @@ func TestRenderChange(t *testing.T) {
 			)
 
 			// Render
-			err = renderer.RenderChange(result)
-			require.NoError(t, err)
+			err = engine.GetLipbalmEngine().Render(&buf, "term", result)
+			assert.NoError(t, err)
 
 			// Check output
 			output := buf.String()
@@ -159,8 +158,8 @@ func TestRenderChangeMessageTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.command, func(t *testing.T) {
 			var buf bytes.Buffer
-			renderer, err := NewLipbamlRenderer(&buf, false)
-			require.NoError(t, err)
+			engine, err := NewEngine()
+			assert.NoError(t, err)
 
 			// Generate expected message based on command
 			var message string
@@ -188,8 +187,8 @@ func TestRenderChangeMessageTypes(t *testing.T) {
 				0,
 			)
 
-			err = renderer.RenderChange(result)
-			require.NoError(t, err)
+			err = engine.GetLipbalmEngine().Render(&buf, "term", result)
+			assert.NoError(t, err)
 
 			output := buf.String()
 			// The message should be present regardless of style tags when useColor is false

@@ -1,18 +1,14 @@
-package output
+package models
 
-import (
-	"github.com/arthur-debert/too/pkg/too/models"
-)
-
-// HierarchicalTodo represents a todo with its children for display purposes
+// HierarchicalTodo represents a todo with its children for hierarchy operations
 type HierarchicalTodo struct {
-	*models.Todo
+	*Todo
 	Children        []*HierarchicalTodo
 	EffectiveStatus string // Computed status considering children
 }
 
 // BuildHierarchy converts a flat list of Todos into a hierarchical structure
-func BuildHierarchy(todos []*models.Todo) []*HierarchicalTodo {
+func BuildHierarchy(todos []*Todo) []*HierarchicalTodo {
 	// Create a map for quick lookup
 	todoMap := make(map[string]*HierarchicalTodo)
 	var roots []*HierarchicalTodo
@@ -50,7 +46,7 @@ func BuildHierarchy(todos []*models.Todo) []*HierarchicalTodo {
 			computeStatusRecursive(child)
 		}
 		// Then compute this node's effective status
-		htodo.EffectiveStatus = computeEffectiveStatus(htodo)
+		htodo.EffectiveStatus = ComputeEffectiveStatus(htodo)
 	}
 	
 	// Start from roots
@@ -61,11 +57,11 @@ func BuildHierarchy(todos []*models.Todo) []*HierarchicalTodo {
 	return roots
 }
 
-// computeEffectiveStatus calculates the effective status for a hierarchical todo
-func computeEffectiveStatus(htodo *HierarchicalTodo) string {
+// ComputeEffectiveStatus calculates the effective status for a hierarchical todo
+func ComputeEffectiveStatus(htodo *HierarchicalTodo) string {
 	// No children - return own status
 	if len(htodo.Children) == 0 {
-		if htodo.GetStatus() == models.StatusDone {
+		if htodo.GetStatus() == StatusDone {
 			return "done"
 		}
 		return "pending"
@@ -100,8 +96,8 @@ func computeEffectiveStatus(htodo *HierarchicalTodo) string {
 }
 
 // FlattenHierarchy converts a hierarchical structure back to a flat list
-func FlattenHierarchy(todos []*HierarchicalTodo) []*models.Todo {
-	var flat []*models.Todo
+func FlattenHierarchy(todos []*HierarchicalTodo) []*Todo {
+	var flat []*Todo
 	
 	for _, todo := range todos {
 		flat = append(flat, todo.Todo)

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/arthur-debert/too/pkg/too/editor"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ var addCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var text string
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 		parentPath, _ := cmd.Flags().GetString("to")
 
 		// Handle editor mode
@@ -136,18 +137,13 @@ var addCmd = &cobra.Command{
 			}
 
 			// Render all results
-			renderer, err := getRenderer()
-			if err != nil {
-				return err
-			}
-
 			// Render the last result which has the final state
 			if len(changeResults) > 0 {
 				lastResult := changeResults[len(changeResults)-1]
 				// Update message to reflect total added
 				lastResult.Message = fmt.Sprintf("Added %d todos", len(changeResults))
 				
-				if err := renderer.RenderChange(lastResult); err != nil {
+				if err := renderToStdout(lastResult); err != nil {
 					return err
 				}
 			}
@@ -166,12 +162,7 @@ var addCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		
-		return renderer.RenderChange(result)
+		return renderToStdout(result)
 	},
 }
 

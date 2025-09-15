@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ var completeCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 
 		// Call business logic using unified command
 		opts := map[string]interface{}{
@@ -27,12 +28,7 @@ var completeCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		
-		return renderer.RenderChange(result)
+		return renderToStdout(result)
 	},
 }
 

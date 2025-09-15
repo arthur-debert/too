@@ -1,6 +1,7 @@
-{{- if .Todos -}}
-{{- $hierarchy := buildHierarchy .Todos -}}
-{{- $highlightID := .HighlightID -}}
+{{- if .AllTodos -}}
+{{- $hierarchy := buildHierarchy .AllTodos -}}
+{{- $highlightID := "" -}}
+{{- if .AffectedTodos -}}{{- $highlightID = (index .AffectedTodos 0).UID -}}{{- end -}}
 {{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID }}
 <count>{{.TotalCount}} todo(s), {{.DoneCount}} done</count>
 {{- else if not .Message -}}

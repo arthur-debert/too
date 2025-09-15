@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/spf13/cobra"
 )
 
@@ -14,10 +14,10 @@ var datapathCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 
 		// Call business logic
-		result, err := too.ShowDataPath(too.ShowDataPathOptions{
+		result, err := datapath.Execute(datapath.Options{
 			CollectionPath: collectionPath,
 		})
 		if err != nil {
@@ -25,11 +25,7 @@ var datapathCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		return renderer.RenderDataPath(result)
+		return renderToStdout(result)
 	},
 }
 

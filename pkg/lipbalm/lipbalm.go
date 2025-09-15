@@ -170,6 +170,49 @@ func ExpandTags(s string, styles StyleMap) (string, error) {
 	return result.String(), nil
 }
 
+// HasFormat checks if a format is available in the default registry
+func HasFormat(name string) bool {
+	registry := newDefaultRegistry()
+	return registry.Has(name)
+}
+
+// ListFormats returns all available format names from the default registry
+func ListFormats() []string {
+	registry := newDefaultRegistry()
+	return registry.List()
+}
+
+// FormatInfo contains metadata about a format
+type FormatInfo struct {
+	Name        string
+	Description string
+}
+
+// GetFormatInfo returns information about all available formats
+func GetFormatInfo() []FormatInfo {
+	registry := newDefaultRegistry()
+	names := registry.List()
+	
+	infos := make([]FormatInfo, len(names))
+	for i, name := range names {
+		formatter, err := registry.Get(name)
+		if err != nil {
+			// Fallback if we can't get the formatter
+			infos[i] = FormatInfo{
+				Name:        name,
+				Description: name + " output format",
+			}
+		} else {
+			infos[i] = FormatInfo{
+				Name:        formatter.Name(),
+				Description: formatter.Description(),
+			}
+		}
+	}
+	
+	return infos
+}
+
 func processToken(token etree.Token, w io.Writer, styles StyleMap, hasColor bool) {
 	switch t := token.(type) {
 	case *etree.Element:

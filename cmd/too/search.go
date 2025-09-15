@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +21,7 @@ var searchCmd = &cobra.Command{
 
 		// Get collection path from flag
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 
 		// Get case-sensitive flag (not currently used in unified command)
 		// caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")
@@ -36,12 +37,7 @@ var searchCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		
-		return renderer.RenderChange(result)
+		return renderToStdout(result)
 	},
 }
 
