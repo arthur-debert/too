@@ -46,12 +46,12 @@ func renderFormatsAsMarkdown(result *formats.Result) string {
 // renderTodosAsMarkdown converts a list of todos to markdown format
 func renderTodosAsMarkdown(todos []*models.Todo) string {
 	// Build hierarchical structure
-	hierarchical := BuildHierarchy(todos)
+	hierarchical := models.BuildHierarchy(todos)
 	return renderHierarchicalTodosAsMarkdown(hierarchical, 0)
 }
 
 // renderHierarchicalTodosAsMarkdown recursively renders hierarchical todos as markdown
-func renderHierarchicalTodosAsMarkdown(todos []*HierarchicalTodo, indent int) string {
+func renderHierarchicalTodosAsMarkdown(todos []*models.HierarchicalTodo, indent int) string {
 	var sb strings.Builder
 	indentStr := strings.Repeat("   ", indent)
 

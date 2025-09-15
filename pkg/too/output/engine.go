@@ -24,7 +24,7 @@ func templateFuncs() template.FuncMap {
 		switch t := todo.(type) {
 		case *models.Todo:
 			return t.GetStatus() == models.StatusDone
-		case *HierarchicalTodo:
+		case *models.HierarchicalTodo:
 			return t.Todo.GetStatus() == models.StatusDone
 		default:
 			return false
@@ -33,8 +33,8 @@ func templateFuncs() template.FuncMap {
 	funcs["getSymbol"] = func(status string) string {
 		return GetStatusSymbol(status)
 	}
-	funcs["buildHierarchy"] = func(todos []*models.Todo) []*HierarchicalTodo {
-		return BuildHierarchy(todos)
+	funcs["buildHierarchy"] = func(todos []*models.Todo) []*models.HierarchicalTodo {
+		return models.BuildHierarchy(todos)
 	}
 	
 	return funcs

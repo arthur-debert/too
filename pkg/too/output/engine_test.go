@@ -92,7 +92,7 @@ func TestEngine_Hierarchy(t *testing.T) {
 		},
 	}
 
-	hierarchical := output.BuildHierarchy(todos)
+	hierarchical := models.BuildHierarchy(todos)
 	require.Len(t, hierarchical, 1)
 	assert.Equal(t, "Parent", hierarchical[0].Text)
 	assert.Len(t, hierarchical[0].Children, 1)
