@@ -137,18 +137,13 @@ var addCmd = &cobra.Command{
 			}
 
 			// Render all results
-			renderer, err := getRenderer()
-			if err != nil {
-				return err
-			}
-
 			// Render the last result which has the final state
 			if len(changeResults) > 0 {
 				lastResult := changeResults[len(changeResults)-1]
 				// Update message to reflect total added
 				lastResult.Message = fmt.Sprintf("Added %d todos", len(changeResults))
 				
-				if err := renderer.RenderChange(lastResult); err != nil {
+				if err := renderToStdout(lastResult); err != nil {
 					return err
 				}
 			}
@@ -167,12 +162,7 @@ var addCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		
-		return renderer.RenderChange(result)
+		return renderToStdout(result)
 	},
 }
 

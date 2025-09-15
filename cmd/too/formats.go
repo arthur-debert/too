@@ -18,11 +18,7 @@ var formatsCmd = &cobra.Command{
 		}
 
 		// Render the result
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		return renderer.RenderFormats(result)
+		return renderToStdout(result)
 	},
 }
 

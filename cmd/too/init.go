@@ -27,11 +27,7 @@ var initCmd = &cobra.Command{
 		}
 
 		// Render output
-		renderer, err := getRenderer()
-		if err != nil {
-			return err
-		}
-		return renderer.RenderInit(result)
+		return renderToStdout(result)
 	},
 }
 
