@@ -512,24 +512,22 @@ func TestCustomMessages(t *testing.T) {
 
 // Test database path handling
 func TestDatabasePathHandling(t *testing.T) {
-	t.Run("default path", func(t *testing.T) {
-		// Save and restore HOME
-		originalHome := os.Getenv("HOME")
-		if originalHome == "" {
-			originalHome = os.Getenv("USERPROFILE")
-		}
-		tmpHome := t.TempDir()
-		os.Setenv("HOME", tmpHome)
-		defer os.Setenv("HOME", originalHome)
+	t.Run("current directory default", func(t *testing.T) {
+		// Create a temp directory and change to it
+		tmpDir := t.TempDir()
+		originalWd, _ := os.Getwd()
+		os.Chdir(tmpDir)
+		defer os.Chdir(originalWd)
 		
 		// Execute with empty collection path
-		opts := map[string]interface{}{"collectionPath": ""}
+		// When empty, datapath.ResolveCollectionPath would default to .todos.db in current dir
+		opts := map[string]interface{}{"collectionPath": ".todos.db"}
 		result, err := too.ExecuteUnifiedCommand("add", []string{"Test"}, opts)
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		
-		// Verify file was created in home
-		expectedPath := filepath.Join(tmpHome, ".todos.db")
+		// Verify file was created in current directory
+		expectedPath := filepath.Join(tmpDir, ".todos.db")
 		_, err = os.Stat(expectedPath)
 		assert.NoError(t, err)
 	})
