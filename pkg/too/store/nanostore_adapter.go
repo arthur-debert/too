@@ -32,8 +32,24 @@ func NewNanoStoreAdapter(dbPath string) (*NanoStoreAdapter, error) {
 		return nil, fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	// Create store with todo config (status dimension with 'c' prefix for completed)
-	store, err := nanostore.New(dbPath, nanostore.TodoConfig())
+	// Create store with custom config for todo management
+	config := nanostore.Config{
+		Dimensions: []nanostore.DimensionConfig{
+			{
+				Name:         "status",
+				Type:         nanostore.Enumerated,
+				Values:       []string{"pending", "completed"},
+				Prefixes:     map[string]string{"completed": "c"},
+				DefaultValue: "pending",
+			},
+			{
+				Name:     "parent_uuid",
+				Type:     nanostore.Hierarchical,
+				RefField: "parent_uuid",
+			},
+		},
+	}
+	store, err := nanostore.New(dbPath, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nanostore: %w", err)
 	}
@@ -271,6 +287,14 @@ func (n *NanoStoreAdapter) nanostoreStatusToTodoStatus(status string) string {
 	}
 }
 
+// getDocumentStatus extracts status from document dimensions
+func (n *NanoStoreAdapter) getDocumentStatus(doc nanostore.Document) string {
+	if status, ok := doc.Dimensions["status"].(string); ok {
+		return status
+	}
+	return "pending"
+}
+
 // documentToTodo converts a nanostore Document to a Todo
 func (n *NanoStoreAdapter) documentToTodo(doc nanostore.Document) *models.Todo {
 	todo := &models.Todo{
@@ -279,14 +303,14 @@ func (n *NanoStoreAdapter) documentToTodo(doc nanostore.Document) *models.Todo {
 		PositionPath: doc.UserFacingID,
 		ParentID:     "",
 		Statuses: map[string]string{
-			"completion": n.nanostoreStatusToTodoStatus(doc.GetStatus()),
+			"completion": n.nanostoreStatusToTodoStatus(n.getDocumentStatus(doc)),
 		},
 		Modified: doc.UpdatedAt,
 	}
 
 	// Set ParentID if has parent
-	if parentUUID := doc.GetParentUUID(); parentUUID != nil {
-		todo.ParentID = *parentUUID
+	if parentUUID, ok := doc.Dimensions["parent_uuid"].(string); ok && parentUUID != "" {
+		todo.ParentID = parentUUID
 	}
 
 	return todo
