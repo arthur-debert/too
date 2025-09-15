@@ -24,7 +24,11 @@ func NewRenderer(w io.Writer) *Renderer {
 		w = os.Stdout
 	}
 
-	engine, _ := GetGlobalEngine()
+	engine, err := NewEngine()
+	if err != nil {
+		// Fallback to a basic engine if initialization fails
+		panic(fmt.Sprintf("failed to create output engine: %v", err))
+	}
 	
 	return &Renderer{
 		engine: engine,
@@ -39,7 +43,7 @@ func NewRendererWithFormat(format string, w io.Writer) (*Renderer, error) {
 		w = os.Stdout
 	}
 
-	engine, err := GetGlobalEngine()
+	engine, err := NewEngine()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get engine: %w", err)
 	}
@@ -93,7 +97,7 @@ func (r *Renderer) RenderError(err error) error {
 
 // HasFormatter checks if a formatter is available
 func HasFormatter(name string) bool {
-	engine, err := GetGlobalEngine()
+	engine, err := NewEngine()
 	if err != nil {
 		return false
 	}
@@ -108,7 +112,7 @@ func HasFormatter(name string) bool {
 
 // List returns all available format names
 func List() []string {
-	engine, err := GetGlobalEngine()
+	engine, err := NewEngine()
 	if err != nil {
 		return []string{}
 	}

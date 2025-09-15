@@ -8,7 +8,7 @@ import (
 func init() {
 	// Set the function to retrieve formatter info to avoid import cycles
 	formats.GetFormatterInfoFunc = func() []*formatter.Info {
-		engine, err := GetGlobalEngine()
+		engine, err := getDefaultEngine()
 		if err != nil {
 			return []*formatter.Info{}
 		}

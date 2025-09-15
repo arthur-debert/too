@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/arthur-debert/too/pkg/too"
@@ -14,6 +15,32 @@ import (
 
 //go:embed templates/*.tmpl
 var engineTemplateFS embed.FS
+
+// templateFuncs returns too-specific template functions
+func templateFuncs() template.FuncMap {
+	// Start with lipbalm's default functions
+	funcs := lipbalm.DefaultTemplateFuncs()
+	
+	// Add too-specific functions
+	funcs["isDone"] = func(todo interface{}) bool {
+		switch t := todo.(type) {
+		case *models.Todo:
+			return t.GetStatus() == models.StatusDone
+		case *HierarchicalTodo:
+			return t.Todo.GetStatus() == models.StatusDone
+		default:
+			return false
+		}
+	}
+	funcs["getSymbol"] = func(status string) string {
+		return styles.GetStatusSymbol(status)
+	}
+	funcs["buildHierarchy"] = func(todos []*models.Todo) []*HierarchicalTodo {
+		return BuildHierarchy(todos)
+	}
+	
+	return funcs
+}
 
 // Engine wraps lipbalm's RenderEngine with too-specific functionality
 type Engine struct {
@@ -204,16 +231,8 @@ func formatMultilineMarkdown(text string, indentStr string) string {
 	return result.String()
 }
 
-// GetGlobalEngine returns a singleton engine instance
-var globalEngine *Engine
-
-func GetGlobalEngine() (*Engine, error) {
-	if globalEngine == nil {
-		var err error
-		globalEngine, err = NewEngine()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return globalEngine, nil
+// getDefaultEngine returns a default engine instance for init.go
+// This is only used during initialization to avoid import cycles
+func getDefaultEngine() (*Engine, error) {
+	return NewEngine()
 }

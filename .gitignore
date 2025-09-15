@@ -43,3 +43,8 @@ CLAUDE.md
 GEMINI.md
 tmp
 .padz/
+
+# Live test outputs
+live-tests/baseline-*/
+live-tests/output-*/
+live-tests/baseline-latest
