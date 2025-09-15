@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,7 @@ Examples:
 
 		// Get collection path from flag
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 
 		// Call business logic using unified command
 		opts := map[string]interface{}{

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/spf13/cobra"
 
 	"github.com/arthur-debert/too/pkg/too"
@@ -19,7 +20,7 @@ var moveCmd = &cobra.Command{
 
 		// Get collection path from command flags
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 
 		// Call business logic using unified command
 		opts := map[string]interface{}{

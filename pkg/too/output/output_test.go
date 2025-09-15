@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
+	"github.com/arthur-debert/too/pkg/too/commands/formats"
+	cmdInit "github.com/arthur-debert/too/pkg/too/commands/init"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,7 +64,7 @@ func TestRenderer_RenderMethods(t *testing.T) {
 
 	t.Run("RenderInit", func(t *testing.T) {
 		buf.Reset()
-		result := &too.InitResult{
+		result := &cmdInit.Result{
 			Message: "Initialized",
 		}
 		err := renderer.RenderInit(result)
@@ -71,7 +74,7 @@ func TestRenderer_RenderMethods(t *testing.T) {
 
 	t.Run("RenderDataPath", func(t *testing.T) {
 		buf.Reset()
-		result := &too.ShowDataPathResult{
+		result := &datapath.Result{
 			Path: "/test/path",
 		}
 		err := renderer.RenderDataPath(result)
@@ -81,8 +84,8 @@ func TestRenderer_RenderMethods(t *testing.T) {
 
 	t.Run("RenderFormats", func(t *testing.T) {
 		buf.Reset()
-		result := &too.ListFormatsResult{
-			Formats: []too.FormatInfo{
+		result := &formats.Result{
+			Formats: []formats.Format{
 				{Name: "json", Description: "JSON format"},
 			},
 		}

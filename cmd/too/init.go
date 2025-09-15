@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/arthur-debert/too/pkg/too"
+	cmdInit "github.com/arthur-debert/too/pkg/too/commands/init"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +18,7 @@ var initCmd = &cobra.Command{
 		collectionPath, _ := cmd.Flags().GetString("data-path")
 
 		// Call business logic
-		result, err := too.Init(too.InitOptions{
+		result, err := cmdInit.Execute(cmdInit.Options{
 			DBPath:     collectionPath,
 			UseHomeDir: initUseHomeDir,
 		})

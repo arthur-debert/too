@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/formats"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ var formatsCmd = &cobra.Command{
 	GroupID: "misc",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Call business logic
-		result, err := too.ListFormats(too.ListFormatsOptions{})
+		result, err := formats.Execute(formats.Options{})
 		if err != nil {
 			return err
 		}

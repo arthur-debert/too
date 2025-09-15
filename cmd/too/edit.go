@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"fmt"
 	"strings"
 
@@ -38,7 +39,7 @@ var editCmd = &cobra.Command{
 
 		var text string
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 
 		// Handle editor mode
 		if editUseEditor {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/formats"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/output/styles"
 )
@@ -73,7 +74,7 @@ func NewEngine() (*Engine, error) {
 				switch v := value.(type) {
 				case *too.ChangeResult:
 					return renderChangeAsMarkdown(v), true
-				case *too.ListFormatsResult:
+				case *formats.Result:
 					return renderFormatsAsMarkdown(v), true
 				}
 
@@ -143,7 +144,7 @@ func renderChangeAsMarkdown(result *too.ChangeResult) string {
 }
 
 
-func renderFormatsAsMarkdown(result *too.ListFormatsResult) string {
+func renderFormatsAsMarkdown(result *formats.Result) string {
 	var sb strings.Builder
 	sb.WriteString("Available output formats:\n")
 	

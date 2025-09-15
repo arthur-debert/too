@@ -6,6 +6,9 @@ import (
 	"os"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
+	"github.com/arthur-debert/too/pkg/too/commands/formats"
+	cmdInit "github.com/arthur-debert/too/pkg/too/commands/init"
 )
 
 // Renderer is the main output renderer for too
@@ -68,18 +71,18 @@ func (r *Renderer) RenderChange(result *too.ChangeResult) error {
 
 
 // RenderInit renders the init command result
-func (r *Renderer) RenderInit(result *too.InitResult) error {
+func (r *Renderer) RenderInit(result *cmdInit.Result) error {
 	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 
 // RenderDataPath renders the datapath command result
-func (r *Renderer) RenderDataPath(result *too.ShowDataPathResult) error {
+func (r *Renderer) RenderDataPath(result *datapath.Result) error {
 	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 
 // RenderFormats renders the formats command result
-func (r *Renderer) RenderFormats(result *too.ListFormatsResult) error {
+func (r *Renderer) RenderFormats(result *formats.Result) error {
 	return r.engine.GetLipbalmEngine().Render(r.writer, r.format, result)
 }
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/arthur-debert/too/pkg/too/editor"
 	"github.com/arthur-debert/too/pkg/too/parser"
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ var addCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var text string
 		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := too.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
 		parentPath, _ := cmd.Flags().GetString("to")
 
 		// Handle editor mode

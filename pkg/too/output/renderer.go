@@ -9,6 +9,7 @@ import (
 
 	"github.com/arthur-debert/too/pkg/lipbalm"
 	"github.com/arthur-debert/too/pkg/too"
+	"github.com/arthur-debert/too/pkg/too/commands/formats"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/arthur-debert/too/pkg/too/output/styles"
 	"github.com/charmbracelet/lipgloss"
@@ -149,7 +150,7 @@ func templateFuncs() template.FuncMap {
 
 
 // RenderFormats renders the formats command result using lipbalm
-func (r *LipbamlRenderer) RenderFormats(result *too.ListFormatsResult) error {
+func (r *LipbamlRenderer) RenderFormats(result *formats.Result) error {
 	template, ok := r.templateManager.GetTemplate("formats_result")
 	if !ok {
 		return fmt.Errorf("template 'formats_result' not found")
