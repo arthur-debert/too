@@ -6,24 +6,6 @@ import (
 	"github.com/arthur-debert/too/pkg/too/models"
 )
 
-// CommandType represents the category of a command
-type CommandType string
-
-const (
-	CommandTypeCore  CommandType = "core"
-	CommandTypeExtra CommandType = "extras"
-	CommandTypeMisc  CommandType = "misc"
-)
-
-// AttributeType represents the type of attribute to mutate
-type AttributeType string
-
-const (
-	AttributeCompletion AttributeType = "completion"
-	AttributeText       AttributeType = "text"
-	AttributeParent     AttributeType = "parent"
-)
-
 // FilterFunc filters a list of todos
 type FilterFunc func([]*models.Todo) []*models.Todo
 

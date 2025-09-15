@@ -1,53 +1,11 @@
 package too
 
 import (
-	"os"
-	"path/filepath"
+	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 )
 
-// ResolveCollectionPath resolves the collection file path using the following order:
-// 1. If explicitPath is provided, use it as-is
-// 2. Search current directory and parent directories for .todos file (like git)
-// 3. Check TODO_DB_PATH environment variable
-// 4. Fall back to ~/.todos.db if it exists
-// 5. Default to .todos.db in current directory
+// ResolveCollectionPath is a wrapper that delegates to the datapath package
+// to avoid circular imports. This maintains backward compatibility.
 func ResolveCollectionPath(explicitPath string) string {
-	if explicitPath != "" {
-		return explicitPath
-	}
-
-	// Search upward for .todos file (like git does for .git)
-	dir, err := os.Getwd()
-	if err == nil {
-		for {
-			todosPath := filepath.Join(dir, ".todos.db")
-			if _, err := os.Stat(todosPath); err == nil {
-				return todosPath
-			}
-			
-			parent := filepath.Dir(dir)
-			if parent == dir {
-				// Reached root directory
-				break
-			}
-			dir = parent
-		}
-	}
-
-	// Check TODO_DB_PATH environment variable
-	if envPath := os.Getenv("TODO_DB_PATH"); envPath != "" {
-		return envPath
-	}
-
-	// Check if ~/.todos.db exists (home directory default)
-	home, err := os.UserHomeDir()
-	if err == nil {
-		homeDefault := filepath.Join(home, ".todos.db")
-		if _, err := os.Stat(homeDefault); err == nil {
-			return homeDefault
-		}
-	}
-
-	// Default to current directory
-	return ".todos.db"
+	return datapath.ResolveCollectionPath(explicitPath)
 }

@@ -15,7 +15,7 @@ func main() {
 		Use:   "too",
 		Short: "A simple command-line todo list manager",
 		Long: `too is a simple command-line todo list manager that helps you track tasks.
-It stores todos in a JSON file and provides commands to add, modify, toggle, and search todos.`,
+It stores todos in a database file and provides commands to add, modify, toggle, and search todos.`,
 		Version: "1.0.0", // This should match your actual version
 	}
 
@@ -25,7 +25,7 @@ It stores todos in a JSON file and provides commands to add, modify, toggle, and
 			Use:     "init",
 			Aliases: []string{"i"},
 			Short:   "Initialize a new todo collection",
-			Long:    `Initialize a new todo collection in the specified location or the default location (~/.todos.json).`,
+			Long:    `Initialize a new todo collection in the specified location or the default location (~/.todos.db).`,
 		},
 		&cobra.Command{
 			Use:     "add <text>",
@@ -84,7 +84,7 @@ It stores todos in a JSON file and provides commands to add, modify, toggle, and
 	searchCmd.Flags().BoolP("case-sensitive", "s", false, "Perform case-sensitive search")
 
 	// Add persistent flags
-	rootCmd.PersistentFlags().StringP("collection", "c", "", "path to todo collection (default: $HOME/.todos.json)")
+	rootCmd.PersistentFlags().StringP("collection", "c", "", "path to todo collection (default: $HOME/.todos.db)")
 	rootCmd.PersistentFlags().CountP("verbose", "v", "Increase verbosity (-v, -vv, -vvv)")
 
 	// Set up man page header
