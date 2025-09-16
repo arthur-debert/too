@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Set TERM for CI environments
+export TERM=${TERM:-xterm}
+
 # Get the directory containing this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
