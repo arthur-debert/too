@@ -33,6 +33,9 @@ func templateFuncs() template.FuncMap {
 	funcs["getSymbol"] = GetStatusSymbol
 	funcs["buildHierarchy"] = models.BuildHierarchy
 	funcs["countHierarchy"] = countHierarchy
+	funcs["getConfig"] = func() *too.Config {
+		return too.GetConfig()
+	}
 	
 	return funcs
 }
