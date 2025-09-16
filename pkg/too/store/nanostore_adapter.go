@@ -65,7 +65,7 @@ func (n *NanoStoreAdapter) Close() error {
 // CompleteByUUID marks a todo as completed by its UUID
 func (n *NanoStoreAdapter) CompleteByUUID(uuid string) error {
 	updates := nanostore.UpdateRequest{
-		Dimensions: map[string]string{"status": "completed"},
+		Dimensions: map[string]interface{}{"status": "completed"},
 	}
 	return n.store.Update(uuid, updates)
 }
@@ -73,7 +73,7 @@ func (n *NanoStoreAdapter) CompleteByUUID(uuid string) error {
 // ReopenByUUID marks a completed todo as pending by its UUID
 func (n *NanoStoreAdapter) ReopenByUUID(uuid string) error {
 	updates := nanostore.UpdateRequest{
-		Dimensions: map[string]string{"status": "pending"},
+		Dimensions: map[string]interface{}{"status": "pending"},
 	}
 	return n.store.Update(uuid, updates)
 }
@@ -99,7 +99,7 @@ func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
 	}
 
 	updates := nanostore.UpdateRequest{
-		Dimensions: map[string]string{},
+		Dimensions: map[string]interface{}{},
 	}
 	if newParentUUID != nil {
 		updates.Dimensions["parent_uuid"] = *newParentUUID
@@ -143,7 +143,7 @@ func (n *NanoStoreAdapter) Add(text string, parentID *string) (*models.Todo, err
 // Complete marks a todo as completed
 func (n *NanoStoreAdapter) Complete(userFacingID string) error {
 	updates := nanostore.UpdateRequest{
-		Dimensions: map[string]string{"status": "completed"},
+		Dimensions: map[string]interface{}{"status": "completed"},
 	}
 	return n.store.Update(userFacingID, updates)
 }
@@ -151,7 +151,7 @@ func (n *NanoStoreAdapter) Complete(userFacingID string) error {
 // Reopen marks a completed todo as pending
 func (n *NanoStoreAdapter) Reopen(userFacingID string) error {
 	updates := nanostore.UpdateRequest{
-		Dimensions: map[string]string{"status": "pending"},
+		Dimensions: map[string]interface{}{"status": "pending"},
 	}
 	return n.store.Update(userFacingID, updates)
 }
@@ -177,7 +177,7 @@ func (n *NanoStoreAdapter) Move(userFacingID string, newParentID *string) error 
 	}
 
 	updates := nanostore.UpdateRequest{
-		Dimensions: map[string]string{},
+		Dimensions: map[string]interface{}{},
 	}
 	if newParentUUID != nil {
 		updates.Dimensions["parent_uuid"] = *newParentUUID
@@ -195,7 +195,7 @@ func (n *NanoStoreAdapter) Delete(userFacingID string, cascade bool) error {
 
 // DeleteCompleted removes all completed todos
 func (n *NanoStoreAdapter) DeleteCompleted() (int, error) {
-	return n.store.DeleteByDimension("status", "completed")
+	return n.store.DeleteByDimension(map[string]interface{}{"status": "completed"})
 }
 
 // List returns todos based on options
