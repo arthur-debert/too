@@ -33,7 +33,7 @@ fi
 
 # Run tests with JUnit XML output (for CI)
 echo -e "${YELLOW}📝 Generating JUnit XML report...${NC}"
-bats --formatter junit --output "$RESULTS_DIR" "$SCRIPT_DIR"/*.bats || true
+bats --formatter junit "$SCRIPT_DIR"/*.bats > "$RESULTS_DIR/junit.xml" || true
 
 # Run tests with TAP output (for compatibility)
 echo -e "${YELLOW}📋 Generating TAP report...${NC}"

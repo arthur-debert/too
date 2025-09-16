@@ -17,10 +17,10 @@ jobs:
       with:
         go-version: '1.23'
 
-    - name: Install Bats
+    - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bats
+        sudo apt-get install -y bats jq
 
     - name: Build too binary
       run: |
@@ -33,7 +33,7 @@ jobs:
         ./run-tests.sh
 
     - name: Upload Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: e2e-test-results
