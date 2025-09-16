@@ -3,9 +3,13 @@
 {{- $highlightID := "" -}}
 {{- if .AffectedTodos -}}{{- $highlightID = (index .AffectedTodos 0).UID -}}{{- end -}}
 {{- template "todoItem" dict "Todos" $hierarchy "Level" 0 "HighlightID" $highlightID }}
+{{- $config := getConfig -}}
+{{- if $config.Display.ShowListSummary }}
 {{- $counts := countHierarchy $hierarchy -}}
 
 <subdued>{{index $counts "total"}} todo(s), {{index $counts "done"}} done</subdued>
+
+{{- end -}}
 {{- else if not .Message -}}
 <warning>No todos found</warning>
 {{- end -}}
@@ -32,25 +36,33 @@
 {{- if eq $i 0 }}
 {{- if $isHighlighted }}
 {{$indent}}<highlighted-todo>{{$symbol}} {{$path}}. {{$line}}</highlighted-todo>
+
 {{- else if $hasHighlight }}
 {{$indent}}<muted>{{$symbol}} {{$path}}. {{$line}}</muted>
+
 {{- else }}
 {{- if $isDoneStatus }}
 {{$indent}}<completed-todo>{{$symbol}} {{$path}}. {{$line}}</completed-todo>
+
 {{- else }}
 {{$indent}}<active-todo>{{$symbol}} {{$path}}. {{$line}}</active-todo>
+
 {{- end }}
 {{- end }}
 {{- else }}
 {{- if $isHighlighted }}
 {{$indent}}<highlighted-todo>{{$lineIndent}}{{$line}}</highlighted-todo>
+
 {{- else if $hasHighlight }}
 {{$indent}}<muted>{{$lineIndent}}{{$line}}</muted>
+
 {{- else }}
 {{- if $isDoneStatus }}
 {{$indent}}<completed-todo>{{$lineIndent}}{{$line}}</completed-todo>
+
 {{- else }}
 {{$indent}}<active-todo>{{$lineIndent}}{{$line}}</active-todo>
+
 {{- end }}
 {{- end }}
 {{- end }}
@@ -58,6 +70,6 @@
 {{- if .Children }}
 {{- template "todoItem" dict "Todos" .Children "Level" (int (add $.Level 1)) "HighlightID" $.HighlightID }}
 {{- end }}
-{{- end }}
+{{ end }}
 {{- end }}
 

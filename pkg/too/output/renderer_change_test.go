@@ -11,6 +11,22 @@ import (
 )
 
 func TestRenderChange(t *testing.T) {
+	// Test with both ShowListSummary ON and OFF
+	configs := []struct {
+		name            string
+		showListSummary bool
+	}{
+		{"summary_on", true},
+		{"summary_off", false},
+	}
+
+	for _, cfg := range configs {
+		t.Run(cfg.name, func(t *testing.T) {
+			// Set config for this test
+			testConfig := too.DefaultConfig()
+			testConfig.Display.ShowListSummary = cfg.showListSummary
+			too.SetConfig(testConfig)
+			defer too.SetConfig(too.DefaultConfig()) // Reset after test
 	tests := []struct {
 		name           string
 		command        string
@@ -136,9 +152,81 @@ func TestRenderChange(t *testing.T) {
 				assert.NotContains(t, output, notExpected, "Did not expect '%s' in output", notExpected)
 			}
 			
-			// Should show count
-			assert.Contains(t, output, "2 todo(s), 0 done")
+			// Check summary based on config
+			if cfg.showListSummary {
+				assert.Contains(t, output, "2 todo(s), 0 done", "Expected summary when ShowListSummary is ON")
+			} else {
+				assert.NotContains(t, output, "2 todo(s), 0 done", "Should not show summary when ShowListSummary is OFF")
+			}
 		})
+	}
+		})
+	}
+}
+
+func TestRenderChangeSummaryWhitespace(t *testing.T) {
+	// Test that when summary is OFF, no extra whitespace is left
+	testConfig := too.DefaultConfig()
+	testConfig.Display.ShowListSummary = false
+	too.SetConfig(testConfig)
+	defer too.SetConfig(too.DefaultConfig())
+
+	engine, err := NewEngine()
+	assert.NoError(t, err)
+
+	// Create test data
+	allTodos := []*models.Todo{
+		{UID: "1", Text: "Todo 1", PositionPath: "1"},
+		{UID: "2", Text: "Todo 2", PositionPath: "2"},
+	}
+
+	result := too.NewChangeResult(
+		"add",
+		"Added todo: 1",
+		[]*models.Todo{allTodos[0]},
+		allTodos,
+		2,
+		0,
+	)
+
+	var buf bytes.Buffer
+	err = engine.GetLipbalmEngine().Render(&buf, "term", result)
+	assert.NoError(t, err)
+
+	output := buf.String()
+	
+	// Check that there's no extra blank line before the message
+	lines := strings.Split(output, "\n")
+	
+	// Find the last todo line
+	lastTodoIdx := -1
+	for i, line := range lines {
+		if strings.Contains(line, "○") && strings.Contains(line, "Todo") {
+			lastTodoIdx = i
+		}
+	}
+	
+	// Find the message line
+	messageIdx := -1
+	for i, line := range lines {
+		if strings.Contains(line, "Added todo") {
+			messageIdx = i
+		}
+	}
+	
+	// When summary is OFF, ensure no summary line is present
+	assert.NotContains(t, output, "todo(s)", "Should not contain summary when ShowListSummary is OFF")
+	
+	// Ensure proper spacing - two blank lines is acceptable for message formatting
+	if lastTodoIdx != -1 && messageIdx != -1 {
+		blankLines := 0
+		for i := lastTodoIdx + 1; i < messageIdx; i++ {
+			if strings.TrimSpace(lines[i]) == "" {
+				blankLines++
+			}
+		}
+		// Two blank lines is acceptable for proper formatting
+		assert.True(t, blankLines >= 1 && blankLines <= 2, "Should have 1-2 blank lines between todos and message, got %d", blankLines)
 	}
 }
 

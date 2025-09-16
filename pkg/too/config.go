@@ -11,14 +11,17 @@ type DisplayConfig struct {
 	IndentString string
 	// IndentSize is the number of times IndentString is repeated per level
 	IndentSize int
+	// ShowListSummary controls whether to show the "X todo(s), Y done" summary after lists
+	ShowListSummary bool
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		Display: DisplayConfig{
-			IndentString: " ",
-			IndentSize:   2,
+			IndentString:    " ",
+			IndentSize:      2,
+			ShowListSummary: false,
 		},
 	}
 }
@@ -28,4 +31,9 @@ var globalConfig = DefaultConfig()
 // GetConfig returns the global configuration
 func GetConfig() *Config {
 	return globalConfig
+}
+
+// SetConfig updates the global configuration (primarily for testing)
+func SetConfig(cfg *Config) {
+	globalConfig = cfg
 }
