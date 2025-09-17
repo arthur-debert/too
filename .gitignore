@@ -48,3 +48,4 @@ tmp
 live-tests/baseline-*/
 live-tests/output-*/
 live-tests/baseline-latest
+live-tests/e2e/results/
