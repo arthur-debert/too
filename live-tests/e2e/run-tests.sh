@@ -18,7 +18,13 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🧪 Running too e2e tests...${NC}"
 
 # Create results directory
-RESULTS_DIR="$SCRIPT_DIR/results"
+# Use E2E_RESULTS_DIR env var if set (for CI), otherwise use mktemp
+if [ -n "${E2E_RESULTS_DIR:-}" ]; then
+    RESULTS_DIR="$E2E_RESULTS_DIR"
+else
+    RESULTS_DIR=$(mktemp -d -t too-e2e-results.XXXXXX)
+    echo -e "${BLUE}📂 Using temporary results directory: $RESULTS_DIR${NC}"
+fi
 mkdir -p "$RESULTS_DIR"
 
 # Clean up old results
