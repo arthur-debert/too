@@ -1,0 +1,6 @@
+1..2
+ok 1 hello world stub test
+not ok 2 can run too command with JSON format
+# (in test file basic.bats, line 42)
+#   `output=$("$LIVE_TESTS_DIR/run" --format json "$TEST_DIR/simple_test.sh")' failed
+# [0;31mError: zsh not found[0m
