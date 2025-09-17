@@ -10,8 +10,14 @@ Structure:
 
 Running Tests:
 
-    # Run all tests
+    # Run all tests (default: human-friendly output)
     ./run-tests.sh
+    
+    # Run with JUnit XML output (for CI)
+    ./run-tests.sh --output junit
+    
+    # Run with TAP output
+    ./run-tests.sh --output tap
     
     # Run specific test file
     bats suite/01-creation.bats
@@ -19,13 +25,13 @@ Running Tests:
     # Run single test
     bats suite/01-creation.bats -f "create item at top level"
     
-    # Run with different output format
+    # Run with different too output format
     TOO_FORMAT=json ./run-tests.sh
 
 Results:
-    - Human-readable output to stdout
-    - JUnit XML for CI (in temp dir or $E2E_RESULTS_DIR)
-    - TAP format for compatibility
+    - nice: Human-readable output with colors and timing (default)
+    - junit: JUnit XML for CI systems (saved to temp dir or $E2E_RESULTS_DIR)
+    - tap: TAP format for compatibility (to stdout)
 
 Best Practices:
     - Use baseline fixture for consistent test data

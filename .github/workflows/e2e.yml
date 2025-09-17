@@ -30,7 +30,7 @@ jobs:
     - name: Run E2E Tests
       run: |
         cd live-tests/e2e
-        E2E_RESULTS_DIR=./results ./run-tests.sh
+        E2E_RESULTS_DIR=./results ./run-tests.sh --output junit
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
