@@ -225,6 +225,17 @@ covering quick start, conventions, and architecture.
             })
         }
 
+    E2E Testing:
+    
+        Comprehensive end-to-end tests in live-tests/e2e/ using Bats.
+        See live-tests/e2e/README.txt for details on running and writing
+        e2e tests. Key points:
+        
+        • Run all: ./live-tests/e2e/run-tests.sh
+        • Run one file: bats live-tests/e2e/suite/01-creation.bats
+        • Use JSON format for reliable assertions
+        • Tests cover all major CLI operations
+
 
 7. Data Persistence
 
