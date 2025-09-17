@@ -18,30 +18,49 @@ NC='\033[0m' # No Color
 # Default output format
 OUTPUT_FORMAT="nice"
 
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [--output FORMAT]"
+    echo ""
+    echo "Run too e2e tests with specified output format."
+    echo ""
+    echo "Options:"
+    echo "  --output FORMAT   Output format (nice, junit, tap)"
+    echo "  --help, -h        Show this help message"
+    echo ""
+    echo "Formats:"
+    echo "  nice    Human-friendly output with colors and timing (default)"
+    echo "  junit   JUnit XML format for CI systems"
+    echo "  tap     TAP (Test Anything Protocol) format"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Run with nice output (default)"
+    echo "  $0 --output nice      # Same as above"
+    echo "  $0 --output junit     # Generate JUnit XML for CI"
+    echo "  $0 --output tap       # Generate TAP output"
+}
+
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --output)
+            if [[ $# -lt 2 ]] || [[ "$2" == --* ]]; then
+                echo "Error: --output requires a format argument"
+                echo ""
+                show_usage
+                exit 1
+            fi
             OUTPUT_FORMAT="$2"
             shift 2
             ;;
         --help|-h)
-            echo "Usage: $0 [--output FORMAT]"
-            echo ""
-            echo "Formats:"
-            echo "  nice    Human-friendly output with colors and timing (default)"
-            echo "  junit   JUnit XML format for CI systems"
-            echo "  tap     TAP (Test Anything Protocol) format"
-            echo ""
-            echo "Examples:"
-            echo "  $0                    # Run with nice output"
-            echo "  $0 --output junit     # Generate JUnit XML"
-            echo "  $0 --output tap       # Generate TAP output"
+            show_usage
             exit 0
             ;;
         *)
-            echo "Unknown option: $1"
-            echo "Use --help for usage information"
+            echo "Error: Unknown option '$1'"
+            echo ""
+            show_usage
             exit 1
             ;;
     esac
@@ -53,7 +72,9 @@ case "$OUTPUT_FORMAT" in
         ;;
     *)
         echo "Error: Invalid output format '$OUTPUT_FORMAT'"
-        echo "Valid formats: nice, junit, tap"
+        echo "Valid formats are: nice, junit, tap"
+        echo ""
+        show_usage
         exit 1
         ;;
 esac
