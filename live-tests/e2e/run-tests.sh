@@ -26,7 +26,7 @@ rm -f "$RESULTS_DIR"/*.xml "$RESULTS_DIR"/*.tap
 
 # Run tests with pretty output (for humans)
 echo -e "${YELLOW}📊 Running tests with human-friendly output:${NC}"
-if bats --pretty --timing "$SCRIPT_DIR"/*.bats; then
+if bats --pretty --timing "$SCRIPT_DIR"/suite/*.bats; then
     echo -e "${GREEN}✅ All tests passed!${NC}"
     EXIT_CODE=0
 else
@@ -36,11 +36,11 @@ fi
 
 # Run tests with JUnit XML output (for CI)
 echo -e "${YELLOW}📝 Generating JUnit XML report...${NC}"
-bats --formatter junit "$SCRIPT_DIR"/*.bats > "$RESULTS_DIR/junit.xml" || true
+bats --formatter junit "$SCRIPT_DIR"/suite/*.bats > "$RESULTS_DIR/junit.xml" || true
 
 # Run tests with TAP output (for compatibility)
 echo -e "${YELLOW}📋 Generating TAP report...${NC}"
-bats --tap --output "$RESULTS_DIR" "$SCRIPT_DIR"/*.bats > "$RESULTS_DIR/tests.tap" || true
+bats --tap --output "$RESULTS_DIR" "$SCRIPT_DIR"/suite/*.bats > "$RESULTS_DIR/tests.tap" || true
 
 echo -e "${BLUE}📁 Results saved to: $RESULTS_DIR${NC}"
 ls -la "$RESULTS_DIR"
