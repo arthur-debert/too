@@ -76,7 +76,7 @@ get_todo_by_text() {
     local json_output="$1"
     local text="$2"
     
-    echo "$json_output" | jq -r ".AllTodos[] | select(.text == \"$text\")"
+    echo "$json_output" | jq -r --arg text "$text" '.AllTodos[] | select(.text == $text)'
 }
 
 # Get affected todo UIDs as a space-separated list
@@ -94,7 +94,8 @@ todo_exists() {
     local text="$2"
     
     local count
-    count=$(echo "$json_output" | jq -r "[.AllTodos[] | select(.text == \"$text\")] | length")
+    # Use jq's --arg to safely pass the text parameter
+    count=$(echo "$json_output" | jq -r --arg text "$text" '[.AllTodos[] | select(.text == $text)] | length')
     [[ "$count" -gt 0 ]]
 }
 
@@ -107,8 +108,8 @@ validate_parent_child() {
     local child_text="$3"
     
     local parent_uid child_parent_id
-    parent_uid=$(get_todo_by_text "$json_output" "$parent_text" | jq -r '.uid')
-    child_parent_id=$(get_todo_by_text "$json_output" "$child_text" | jq -r '.parentId')
+    parent_uid=$(echo "$json_output" | jq -r --arg text "$parent_text" '.AllTodos[] | select(.text == $text) | .uid')
+    child_parent_id=$(echo "$json_output" | jq -r --arg text "$child_text" '.AllTodos[] | select(.text == $text) | .parentId')
     
     [[ "$parent_uid" == "$child_parent_id" ]]
 }
