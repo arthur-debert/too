@@ -1,7 +1,6 @@
 package datapath
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -26,18 +25,6 @@ func ResolveCollectionPath(explicitPath string) string {
 				return todosPath
 			}
 			
-			// Check for old .db file and migrate if found
-			oldPath := filepath.Join(dir, ".todos.db")
-			if _, err := os.Stat(oldPath); err == nil {
-				// Try to rename the file
-				if err := os.Rename(oldPath, todosPath); err == nil {
-					os.Stderr.WriteString(fmt.Sprintf("Migrated %s to %s\n", oldPath, todosPath))
-					return todosPath
-				}
-				// If rename fails (e.g., permission issues), use old path
-				return oldPath
-			}
-			
 			parent := filepath.Dir(dir)
 			if parent == dir {
 				// Reached root directory
@@ -58,16 +45,6 @@ func ResolveCollectionPath(explicitPath string) string {
 		homeDefault := filepath.Join(home, ".todos.json")
 		if _, err := os.Stat(homeDefault); err == nil {
 			return homeDefault
-		}
-		
-		// Check for old ~/.todos.db and migrate
-		oldHomeDefault := filepath.Join(home, ".todos.db")
-		if _, err := os.Stat(oldHomeDefault); err == nil {
-			if err := os.Rename(oldHomeDefault, homeDefault); err == nil {
-				os.Stderr.WriteString(fmt.Sprintf("Migrated %s to %s\n", oldHomeDefault, homeDefault))
-				return homeDefault
-			}
-			return oldHomeDefault
 		}
 	}
 
