@@ -245,8 +245,59 @@ func (n *NanoStoreAdapter) Search(query string, showAll bool) ([]*models.Todo, e
 }
 
 // ResolvePositionPath converts a user-facing ID to UUID
+// This version searches across ALL statuses, not just the default "pending"
 func (n *NanoStoreAdapter) ResolvePositionPath(userFacingID string) (string, error) {
-	return n.store.ResolveUUID(userFacingID)
+	// Try to resolve the ID as-is first (for cases where user provided explicit prefixes)
+	uuid, err := n.store.ResolveUUID(userFacingID)
+	if err == nil {
+		return uuid, nil
+	}
+	
+	// If that fails and the ID doesn't have status prefixes, try different combinations
+	if !strings.Contains(userFacingID, "c") && !strings.Contains(userFacingID, "p") {
+		// For hierarchical IDs like "1.1", we need to try different status combinations
+		// since parents and children might have different statuses
+		combinations := n.generateStatusCombinations(userFacingID)
+		
+		for _, combination := range combinations {
+			uuid, err = n.store.ResolveUUID(combination)
+			if err == nil {
+				return uuid, nil
+			}
+		}
+		
+		// If no combinations worked, return a specific error
+		return "", fmt.Errorf("could not resolve '%s' with any status combination (tried %d combinations)", userFacingID, len(combinations))
+	}
+	
+	// Return a different error format to distinguish from nanostore errors
+	return "", fmt.Errorf("failed to resolve reference '%s': %w", userFacingID, err)
+}
+
+// generateStatusCombinations generates different status prefix combinations for a hierarchical ID
+func (n *NanoStoreAdapter) generateStatusCombinations(userFacingID string) []string {
+	parts := strings.Split(userFacingID, ".")
+	numLevels := len(parts)
+	
+	// For each level, we can have pending (no prefix) or completed ("c" prefix)
+	// Generate all 2^numLevels combinations
+	var combinations []string
+	
+	// Use bit manipulation to generate all combinations
+	for i := 0; i < (1 << numLevels); i++ {
+		var combination []string
+		for j := 0; j < numLevels; j++ {
+			part := parts[j]
+			// If bit j is set, use completed prefix
+			if (i >> j) & 1 == 1 {
+				part = "c" + part
+			}
+			combination = append(combination, part)
+		}
+		combinations = append(combinations, strings.Join(combination, "."))
+	}
+	
+	return combinations
 }
 
 // GetByUUID retrieves a todo by its UUID
