@@ -9,6 +9,11 @@ function export_history() {
     fi
 }
 
+# Create a wrapper function for too that always uses the correct data path
+function too() {
+    command too --data-path="${TODO_DB_PATH}" "$@"
+}
+
 # Set up color codes
 GRAY=$'\033[38;5;245m'
 NC=$'\033[0m'
