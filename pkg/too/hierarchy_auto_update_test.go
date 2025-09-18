@@ -79,7 +79,7 @@ func TestParentStaysPendingWhenSomeChildrenPending(t *testing.T) {
 	assert.Equal(t, models.StatusDone, updatedParent.GetStatus())
 }
 
-func TestChildrenAutoCompleteWhenParentCompleted(t *testing.T) {
+func TestChildrenStatusPreservedWhenParentCompleted(t *testing.T) {
 	// Setup: Create parent with children
 	engine := createTestEngine(t)
 	defer engine.Close()
@@ -95,18 +95,23 @@ func TestChildrenAutoCompleteWhenParentCompleted(t *testing.T) {
 	child2, err := engine.Add("Child Task 2", &parentRef)
 	require.NoError(t, err)
 
-	// Complete the parent - children should auto-complete
+	// Complete the parent - children statuses should NOT change (status only bubbles UP, not DOWN)
 	_, err = engine.MutateAttributeByUUID(parent.UID, models.AttributeCompletion, string(models.StatusDone))
 	require.NoError(t, err)
 
-	// Verify children are now completed
+	// Verify parent is completed
+	updatedParent, err := engine.GetTodoByUID(parent.UID)
+	require.NoError(t, err)
+	assert.Equal(t, models.StatusDone, updatedParent.GetStatus())
+
+	// Verify children remain pending (their status is preserved)
 	updatedChild1, err := engine.GetTodoByUID(child1.UID)
 	require.NoError(t, err)
-	assert.Equal(t, models.StatusDone, updatedChild1.GetStatus())
+	assert.Equal(t, models.StatusPending, updatedChild1.GetStatus())
 
 	updatedChild2, err := engine.GetTodoByUID(child2.UID)
 	require.NoError(t, err)
-	assert.Equal(t, models.StatusDone, updatedChild2.GetStatus())
+	assert.Equal(t, models.StatusPending, updatedChild2.GetStatus())
 }
 
 func TestDeepHierarchyAutoUpdate(t *testing.T) {
@@ -178,7 +183,7 @@ func TestParentReopenWhenChildReopened(t *testing.T) {
 	assert.Equal(t, models.StatusPending, updatedParent.GetStatus())
 }
 
-func TestNestedChildrenAutoComplete(t *testing.T) {
+func TestNestedChildrenStatusPreserved(t *testing.T) {
 	// Setup: Create parent with nested children
 	engine := createTestEngine(t)
 	defer engine.Close()
@@ -197,16 +202,21 @@ func TestNestedChildrenAutoComplete(t *testing.T) {
 	grandchild, err := engine.Add("Grandchild Task", &childRef)
 	require.NoError(t, err)
 
-	// Complete parent - should auto-complete all descendants
+	// Complete parent - descendants should NOT auto-complete (status only bubbles UP, not DOWN)
 	_, err = engine.MutateAttributeByUUID(parent.UID, models.AttributeCompletion, string(models.StatusDone))
 	require.NoError(t, err)
 
-	// Verify all descendants are completed
+	// Verify parent is completed
+	updatedParent, err := engine.GetTodoByUID(parent.UID)
+	require.NoError(t, err)
+	assert.Equal(t, models.StatusDone, updatedParent.GetStatus())
+
+	// Verify all descendants remain pending (their statuses are preserved)
 	updatedChild, err := engine.GetTodoByUID(child.UID)
 	require.NoError(t, err)
-	assert.Equal(t, models.StatusDone, updatedChild.GetStatus())
+	assert.Equal(t, models.StatusPending, updatedChild.GetStatus())
 
 	updatedGrandchild, err := engine.GetTodoByUID(grandchild.UID)
 	require.NoError(t, err)
-	assert.Equal(t, models.StatusDone, updatedGrandchild.GetStatus())
+	assert.Equal(t, models.StatusPending, updatedGrandchild.GetStatus())
 }

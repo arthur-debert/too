@@ -66,7 +66,7 @@ You can specify a parent in three ways:
 const (
 	// Global flags
 	msgFlagVerbose  = "Increase verbosity (-v, -vv, -vvv)"
-	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.db)"
+	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.json)"
 	msgFlagFormat   = "output format (term, json, markdown)"
 	msgFlagMode     = "output mode (short, long)"
 	msgFlagQuiet    = "quiet output (shows only confirmation message)"

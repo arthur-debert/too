@@ -137,8 +137,8 @@ trap cleanup EXIT INT TERM
 # Change to temp directory
 cd "${TEMP_DIR}"
 
-# Always initialize a fresh .todos file
-echo -e "${GRAY}Initializing fresh .todos file${NC}"
+# Always initialize a fresh .todos.json file
+echo -e "${GRAY}Initializing fresh .todos.json file${NC}"
 "${TOO_BIN}" init >/dev/null 2>&1
 
 # Get version info
