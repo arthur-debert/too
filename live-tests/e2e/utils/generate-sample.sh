@@ -19,14 +19,14 @@ generate_flat_list() {
 # Usage: generate_hierarchical_list
 generate_hierarchical_list() {
     cat << 'EOF'
-too add "Groceries" --format "${TOO_FORMAT}"
-too add --to 1 "Milk" --format "${TOO_FORMAT}"
-too add --to 1 "Bread" --format "${TOO_FORMAT}"
-too add --to 1 "Eggs" --format "${TOO_FORMAT}"
-too add "Pack for Trip" --format "${TOO_FORMAT}"
-too add --to 2 "Clothes" --format "${TOO_FORMAT}"
-too add --to 2 "Camera Gear" --format "${TOO_FORMAT}"
-too add --to 2 "Passport" --format "${TOO_FORMAT}"
+too add "Groceries"
+too add --to 1 "Milk"
+too add --to 1 "Bread"
+too add --to 1 "Eggs"
+too add "Pack for Trip"
+too add --to 2 "Clothes"
+too add --to 2 "Camera Gear"
+too add --to 2 "Passport"
 EOF
 }
 
@@ -34,12 +34,12 @@ EOF
 # Usage: generate_mixed_status_list
 generate_mixed_status_list() {
     cat << 'EOF'
-too add "Task 1" --format "${TOO_FORMAT}"
-too add "Task 2" --format "${TOO_FORMAT}"
-too add "Task 3" --format "${TOO_FORMAT}"
-too add "Task 4" --format "${TOO_FORMAT}"
-too complete 1 --format "${TOO_FORMAT}"
-too complete 3 --format "${TOO_FORMAT}"
+too add "Task 1"
+too add "Task 2"
+too add "Task 3"
+too add "Task 4"
+too complete 1
+too complete 3
 EOF
 }
 
@@ -52,22 +52,22 @@ generate_basic_operations_script() {
 #!/bin/zsh
 
 # Create some todos
-too add "Buy groceries" --format "${TOO_FORMAT}"
-too add "Call dentist" --format "${TOO_FORMAT}"
-too add "Plan weekend trip" --format "${TOO_FORMAT}"
+too add "Buy groceries"
+too add "Call dentist"
+too add "Plan weekend trip"
 
 # Create hierarchical structure
-too add --to 1 "Apples" --format "${TOO_FORMAT}"
-too add --to 1 "Bread" --format "${TOO_FORMAT}"
-too add --to 3 "Book hotel" --format "${TOO_FORMAT}"
-too add --to 3 "Check weather" --format "${TOO_FORMAT}"
+too add --to 1 "Apples"
+too add --to 1 "Bread"
+too add --to 3 "Book hotel"
+too add --to 3 "Check weather"
 
 # Complete some tasks
-too complete 1.1 --format "${TOO_FORMAT}"  # Complete "Apples"
-too complete 2 --format "${TOO_FORMAT}"    # Complete "Call dentist"
+too complete 1.1  # Complete "Apples"
+too complete 2    # Complete "Call dentist"
 
 # List final state
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     
     chmod +x "$output_file"
@@ -82,22 +82,22 @@ generate_edge_cases_script() {
 #!/bin/zsh
 
 # Test empty list
-too list --format "${TOO_FORMAT}"
+too list
 
 # Add todo with special characters
-too add "Todo with \"quotes\" and 'apostrophes'" --format "${TOO_FORMAT}"
-too add "Todo with unicode: 🚀 🎯 ✅" --format "${TOO_FORMAT}"
+too add "Todo with \"quotes\" and 'apostrophes'"
+too add "Todo with unicode: 🚀 🎯 ✅"
 
 # Test very long text
-too add "This is a very long todo item that has a lot of text to test how the system handles longer descriptions and whether everything works correctly with extended content" --format "${TOO_FORMAT}"
+too add "This is a very long todo item that has a lot of text to test how the system handles longer descriptions and whether everything works correctly with extended content"
 
 # Test hierarchy limits
-too add "Level 1" --format "${TOO_FORMAT}"
-too add --to 1 "Level 2" --format "${TOO_FORMAT}"
-too add --to 1.1 "Level 3" --format "${TOO_FORMAT}"
+too add "Level 1"
+too add --to 1 "Level 2"
+too add --to 1.1 "Level 3"
 
 # List final state
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     
     chmod +x "$output_file"

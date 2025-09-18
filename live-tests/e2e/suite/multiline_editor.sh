@@ -7,7 +7,7 @@ Third todo
 TODOS
 
 # Add todos from the file using editor mode
-EDITOR="cat todos.txt >" too add -e --format "${TOO_FORMAT}"
+EDITOR="cat todos.txt >" too add -e
 
-too list --format "${TOO_FORMAT}"
+too list
 rm -f todos.txt
