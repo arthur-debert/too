@@ -211,8 +211,8 @@ EOF
     rm -f "$TEST_DIR/test_clean.sh"
 }
 
-@test "complete parent marks only parent as done" {
-    # Create a test script that tests parent completion behavior
+@test "complete parent auto-completes all children" {
+    # Create a test script that tests parent completion behavior with auto-completion
     cat > "$TEST_DIR/complete_parent.sh" << EOF
 #!/bin/zsh
 # Setup baseline data inline since source won't work in the isolated environment
@@ -230,7 +230,7 @@ too add --to 2 "Passport" --format "\${TOO_FORMAT}"
 too add --to 2 "Bag" --format "\${TOO_FORMAT}"
 too complete 2.4 --format "\${TOO_FORMAT}"  # Complete Bag
 
-# Complete parent item (Pack)
+# Complete parent item (Pack) - should auto-complete all children
 too complete 2 --format "\${TOO_FORMAT}"
 
 # List with --all to see all completed items
@@ -255,32 +255,32 @@ EOF
         }
         END { print list_output }')
     
-    # Verify parent is completed but children remain pending
+    # Verify parent is completed
     pack_todo=$(get_todo_by_text "$json_output" "Pack")
     pack_status=$(echo "$pack_todo" | jq -r '.statuses.completion')
     [ "$pack_status" = "done" ]
     
-    # Children should still be pending (except Bag which was already completed)
+    # All children should now be completed (auto-completed when parent was completed)
     camera_todo=$(get_todo_by_text "$json_output" "Camera")
     camera_status=$(echo "$camera_todo" | jq -r '.statuses.completion')
-    [ "$camera_status" = "pending" ]
+    [ "$camera_status" = "done" ]
     
     clothes_todo=$(get_todo_by_text "$json_output" "Clothes")
     clothes_status=$(echo "$clothes_todo" | jq -r '.statuses.completion')
-    [ "$clothes_status" = "pending" ]
+    [ "$clothes_status" = "done" ]
     
     passport_todo=$(get_todo_by_text "$json_output" "Passport")
     passport_status=$(echo "$passport_todo" | jq -r '.statuses.completion')
-    [ "$passport_status" = "pending" ]
+    [ "$passport_status" = "done" ]
     
-    # Bag was already completed in baseline
+    # Bag was already completed in baseline and should remain completed
     bag_todo=$(get_todo_by_text "$json_output" "Bag")
     bag_status=$(echo "$bag_todo" | jq -r '.statuses.completion')
     [ "$bag_status" = "done" ]
     
-    # Done count should be 3 (Eggs, Bag, and Pack)
+    # Done count should be 6 (Eggs, Bag, Pack, Camera, Clothes, Passport)
     done_count=$(get_done_count "$json_output")
-    [ "$done_count" -eq 3 ]
+    [ "$done_count" -eq 6 ]
     
     # Clean up
     rm -f "$TEST_DIR/complete_parent.sh"
