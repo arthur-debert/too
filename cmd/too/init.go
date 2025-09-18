@@ -26,8 +26,8 @@ var initCmd = &cobra.Command{
 			return err
 		}
 
-		// Render output
-		return renderToStdout(result)
+		// Render output - just use the message field
+		return renderToStdout(result.Message)
 	},
 }
 

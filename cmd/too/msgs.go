@@ -8,7 +8,12 @@ import (
 const (
 	// Root command
 	msgRootShort   = "A simple command-line todo list manager"
-	msgRootLong    = "Fast project-aware, nested, command-line todo list."
+	msgRootLong    = `Fast project-aware, nested, command-line todo list.
+
+Naked execution shortcuts:
+  too                    # lists all todos (same as 'too list')
+  too Buy milk          # adds "Buy milk" (same as 'too add "Buy milk"')
+  too --to 1 Eggs       # adds "Eggs" under todo #1`
 	msgRootVersion = "too version {{.Version}}\n"
 
 	// Add command

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/arthur-debert/too/internal/version"
 	"github.com/arthur-debert/too/pkg/logging"
 
@@ -22,6 +20,12 @@ var (
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// If root command is called directly, run list
+			return listCmd.RunE(listCmd, args)
+		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Setup logging based on verbosity
 			logging.SetupLogger(verbosity)
@@ -32,33 +36,21 @@ var (
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
-	// Check if a subcommand was provided
-	args := os.Args[1:]
-	hasCommand := false
-	hasHelpFlag := false
-	hasVersionFlag := false
-
-	for _, arg := range args {
-		if arg == "-h" || arg == "--help" || arg == "help" {
-			hasHelpFlag = true
-			break
+	// Try to execute normally first
+	err := rootCmd.Execute()
+	
+	// If we got "unknown command" error, it might be naked execution
+	if err != nil && isUnknownCommandError(err) {
+		// Handle naked execution by injecting appropriate command
+		if handleErr := handleNakedExecution(); handleErr != nil {
+			return err // Return original error if we can't handle it
 		}
-		if arg == "--version" {
-			hasVersionFlag = true
-			break
-		}
-		if len(arg) > 0 && arg[0] != '-' {
-			hasCommand = true
-			break
-		}
+		
+		// Try executing again with the injected command
+		return rootCmd.Execute()
 	}
-
-	// Default to list if no command and no help/version flag
-	if !hasCommand && !hasHelpFlag && !hasVersionFlag {
-		os.Args = append([]string{os.Args[0], "list"}, os.Args[1:]...)
-	}
-
-	return rootCmd.Execute()
+	
+	return err
 }
 
 func init() {

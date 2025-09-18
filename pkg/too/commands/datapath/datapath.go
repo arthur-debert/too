@@ -3,6 +3,8 @@ package datapath
 import (
 	"os"
 	"path/filepath"
+	
+	"github.com/arthur-debert/too/pkg/lipbalm"
 )
 
 // ResolveCollectionPath resolves the collection file path using the following order:
@@ -14,6 +16,11 @@ import (
 func ResolveCollectionPath(explicitPath string) string {
 	if explicitPath != "" {
 		return explicitPath
+	}
+
+	// Check TODO_DB_PATH environment variable
+	if envPath := os.Getenv("TODO_DB_PATH"); envPath != "" {
+		return envPath
 	}
 
 	// Search upward for .todos.json file (like git does for .git)
@@ -34,11 +41,6 @@ func ResolveCollectionPath(explicitPath string) string {
 		}
 	}
 
-	// Check TODO_DB_PATH environment variable
-	if envPath := os.Getenv("TODO_DB_PATH"); envPath != "" {
-		return envPath
-	}
-
 	// Check if ~/.todos.json exists (home directory default)
 	home, err := os.UserHomeDir()
 	if err == nil {
@@ -57,13 +59,8 @@ type Options struct {
 	CollectionPath string
 }
 
-// Result represents the result of the datapath command
-type Result struct {
-	Path string
-}
-
 // Execute shows the path to the data file
-func Execute(opts Options) (*Result, error) {
+func Execute(opts Options) (*lipbalm.Message, error) {
 	// Use the unified path resolution function
 	storePath := ResolveCollectionPath(opts.CollectionPath)
 
@@ -74,7 +71,6 @@ func Execute(opts Options) (*Result, error) {
 		absPath = storePath
 	}
 
-	return &Result{
-		Path: absPath,
-	}, nil
+	// Return the path as a plain message for proper rendering
+	return lipbalm.NewPlainMessage(absPath), nil
 }

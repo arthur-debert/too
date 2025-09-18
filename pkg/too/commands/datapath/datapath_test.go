@@ -21,7 +21,7 @@ func TestDataPath(t *testing.T) {
 		// Assert
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
-		assert.Equal(t, expectedPath, result.Path)
+		assert.Equal(t, expectedPath, result.Text)
 	})
 
 	t.Run("shows default path when collection path is empty", func(t *testing.T) {
@@ -32,11 +32,11 @@ func TestDataPath(t *testing.T) {
 		// Assert
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
-		assert.NotEmpty(t, result.Path)
+		assert.NotEmpty(t, result.Text)
 		// Should be .todos.json in current dir or home
 		assert.True(t,
-			filepath.Base(result.Path) == ".todos.json",
-			"Expected path to end with .todos.json, got %s", result.Path)
+			filepath.Base(result.Text) == ".todos.json",
+			"Expected path to end with .todos.json, got %s", result.Text)
 	})
 
 	t.Run("returns absolute path", func(t *testing.T) {
@@ -50,6 +50,6 @@ func TestDataPath(t *testing.T) {
 		// Assert
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
-		assert.True(t, filepath.IsAbs(result.Path), "Expected absolute path, got %s", result.Path)
+		assert.True(t, filepath.IsAbs(result.Text), "Expected absolute path, got %s", result.Text)
 	})
 }

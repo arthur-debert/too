@@ -1,6 +1,10 @@
 {{.Long}}
 
 {{ bold "USAGE:" }}
+  too                         # lists all todos (naked execution)
+  too Buy groceries           # adds "Buy groceries" (naked execution)
+  too --to 1 Milk            # adds "Milk" under todo #1
+  
   too init                    # creates a new todo list here  
   too add "Buy Groceries"
       Added todo #1: Buy Groceries
