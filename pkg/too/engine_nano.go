@@ -232,8 +232,24 @@ func (e *NanoEngine) MutateAttributeByUUID(uuid string, attr models.AttributeTyp
 		// since Complete/Reopen methods expect user-facing IDs
 		if status == string(models.StatusDone) {
 			err = e.adapter.CompleteByUUID(uuid)
+			if err == nil {
+				// Auto-update parent status after completing a todo
+				if updateErr := e.autoUpdateParentStatus(uuid); updateErr != nil {
+					e.logger.Warn().Err(updateErr).Msg("failed to auto-update parent status")
+				}
+				// Auto-complete children when completing a parent
+				if updateErr := e.autoCompleteChildren(uuid); updateErr != nil {
+					e.logger.Warn().Err(updateErr).Msg("failed to auto-complete children")
+				}
+			}
 		} else {
 			err = e.adapter.ReopenByUUID(uuid)
+			if err == nil {
+				// Auto-update parent status after reopening a todo
+				if updateErr := e.autoUpdateParentStatus(uuid); updateErr != nil {
+					e.logger.Warn().Err(updateErr).Msg("failed to auto-update parent status")
+				}
+			}
 		}
 	case models.AttributeText:
 		text := value.(string)
@@ -270,8 +286,24 @@ func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, valu
 		status := value.(string)
 		if status == string(models.StatusDone) {
 			err = e.adapter.Complete(ref)
+			if err == nil {
+				// Auto-update parent status after completing a todo
+				if updateErr := e.autoUpdateParentStatus(uuid); updateErr != nil {
+					e.logger.Warn().Err(updateErr).Msg("failed to auto-update parent status")
+				}
+				// Auto-complete children when completing a parent
+				if updateErr := e.autoCompleteChildren(uuid); updateErr != nil {
+					e.logger.Warn().Err(updateErr).Msg("failed to auto-complete children")
+				}
+			}
 		} else {
 			err = e.adapter.Reopen(ref)
+			if err == nil {
+				// Auto-update parent status after reopening a todo
+				if updateErr := e.autoUpdateParentStatus(uuid); updateErr != nil {
+					e.logger.Warn().Err(updateErr).Msg("failed to auto-update parent status")
+				}
+			}
 		}
 	case models.AttributeText:
 		text := value.(string)
@@ -381,4 +413,147 @@ func (e *NanoEngine) countTodoAndChildren(todos []*models.Todo, uuid string) int
 	}
 	
 	return count
+}
+
+// autoUpdateParentStatus updates parent status based on children's status
+func (e *NanoEngine) autoUpdateParentStatus(childUUID string) error {
+	// Get all todos to analyze hierarchy
+	allTodos, err := e.adapter.List(true)
+	if err != nil {
+		return fmt.Errorf("failed to get todos for parent update: %w", err)
+	}
+
+	// Find the child todo to get its parent
+	var childTodo *models.Todo
+	for _, todo := range allTodos {
+		if todo.UID == childUUID {
+			childTodo = todo
+			break
+		}
+	}
+
+	if childTodo == nil || childTodo.ParentID == "" {
+		// No parent to update
+		return nil
+	}
+
+	// Find the parent todo
+	var parentTodo *models.Todo
+	for _, todo := range allTodos {
+		if todo.UID == childTodo.ParentID {
+			parentTodo = todo
+			break
+		}
+	}
+
+	if parentTodo == nil {
+		return nil // Parent not found
+	}
+
+	// Find all siblings (children of the same parent)
+	var siblings []*models.Todo
+	for _, todo := range allTodos {
+		if todo.ParentID == parentTodo.UID {
+			siblings = append(siblings, todo)
+		}
+	}
+
+	if len(siblings) == 0 {
+		return nil // No siblings found
+	}
+
+	// Check if all siblings have the same status
+	allDone := true
+	allPending := true
+	
+	for _, sibling := range siblings {
+		status := sibling.GetStatus()
+		if status == models.StatusDone {
+			allPending = false
+		} else if status == models.StatusPending {
+			allDone = false
+		}
+	}
+
+	// Determine what action to take on parent
+	var targetStatus models.TodoStatus
+	var shouldUpdate bool
+
+	if allDone && parentTodo.GetStatus() != models.StatusDone {
+		// All children are done, parent should be done
+		targetStatus = models.StatusDone
+		shouldUpdate = true
+	} else if allPending && parentTodo.GetStatus() != models.StatusPending {
+		// All children are pending, parent should be pending
+		targetStatus = models.StatusPending
+		shouldUpdate = true
+	}
+
+	if shouldUpdate {
+		e.logger.Debug().
+			Str("parentUID", parentTodo.UID).
+			Str("targetStatus", string(targetStatus)).
+			Msg("auto-updating parent status")
+
+		// Update parent status
+		if targetStatus == models.StatusDone {
+			err = e.adapter.CompleteByUUID(parentTodo.UID)
+		} else {
+			err = e.adapter.ReopenByUUID(parentTodo.UID)
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to update parent status: %w", err)
+		}
+
+		// Recursively update the parent's parent
+		return e.autoUpdateParentStatus(parentTodo.UID)
+	}
+
+	return nil
+}
+
+// autoCompleteChildren automatically completes all children when a parent is completed
+func (e *NanoEngine) autoCompleteChildren(parentUUID string) error {
+	// Get all todos to find children
+	allTodos, err := e.adapter.List(true)
+	if err != nil {
+		return fmt.Errorf("failed to get todos for children completion: %w", err)
+	}
+
+	// Find all children of this parent
+	var children []*models.Todo
+	for _, todo := range allTodos {
+		if todo.ParentID == parentUUID {
+			children = append(children, todo)
+		}
+	}
+
+	// Complete all pending children
+	for _, child := range children {
+		if child.GetStatus() == models.StatusPending {
+			e.logger.Debug().
+				Str("childUID", child.UID).
+				Str("parentUID", parentUUID).
+				Msg("auto-completing child")
+
+			if err := e.adapter.CompleteByUUID(child.UID); err != nil {
+				e.logger.Warn().
+					Err(err).
+					Str("childUID", child.UID).
+					Msg("failed to auto-complete child")
+				continue
+			}
+
+			// Recursively complete children's children
+			if err := e.autoCompleteChildren(child.UID); err != nil {
+				e.logger.Warn().
+					Err(err).
+					Str("childUID", child.UID).
+					Msg("failed to auto-complete descendants")
+			}
+		}
+	}
+
+	return nil
 }
