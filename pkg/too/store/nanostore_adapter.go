@@ -362,3 +362,104 @@ func (n *NanoStoreAdapter) documentToTodo(doc nanostore.Document) *models.Todo {
 
 	return todo
 }
+
+// GetChildrenOf returns direct children of a parent todo
+func (n *NanoStoreAdapter) GetChildrenOf(parentID string) ([]*models.Todo, error) {
+	// Resolve parent ID to UUID first
+	parentUUID, err := n.store.ResolveUUID(parentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve parent ID '%s': %w", parentID, err)
+	}
+
+	opts := nanostore.ListOptions{
+		Filters: map[string]interface{}{
+			"parent_uuid": parentUUID,
+		},
+	}
+
+	docs, err := n.store.List(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get children: %w", err)
+	}
+
+	todos := make([]*models.Todo, len(docs))
+	for i, doc := range docs {
+		todos[i] = n.documentToTodo(doc)
+	}
+
+	return todos, nil
+}
+
+// GetSiblingsOf returns todos that share the same parent
+func (n *NanoStoreAdapter) GetSiblingsOf(todoID string) ([]*models.Todo, error) {
+	// Resolve todo ID to UUID first
+	uuid, err := n.store.ResolveUUID(todoID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve todo ID '%s': %w", todoID, err)
+	}
+	
+	// Get the todo to find its parent
+	todo, err := n.GetByUUID(uuid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get todo: %w", err)
+	}
+
+	if todo.ParentID == "" {
+		// No parent, so get all todos and filter for root-level ones
+		opts := nanostore.ListOptions{}
+		docs, err := n.store.List(opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root siblings: %w", err)
+		}
+
+		var siblings []*models.Todo
+		for _, doc := range docs {
+			sibling := n.documentToTodo(doc)
+			// Only include todos with no parent and exclude the todo itself
+			if sibling.ParentID == "" && sibling.UID != todo.UID {
+				siblings = append(siblings, sibling)
+			}
+		}
+		return siblings, nil
+	}
+
+	// Get all children of the same parent
+	children, err := n.GetChildrenOf(todo.ParentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out the todo itself
+	var siblings []*models.Todo
+	for _, child := range children {
+		if child.UID != todo.UID {
+			siblings = append(siblings, child)
+		}
+	}
+
+	return siblings, nil
+}
+
+// GetDescendantsOf returns all descendants (children, grandchildren, etc.) of a parent
+func (n *NanoStoreAdapter) GetDescendantsOf(parentID string) ([]*models.Todo, error) {
+	var allDescendants []*models.Todo
+	
+	// Get direct children
+	children, err := n.GetChildrenOf(parentID)
+	if err != nil {
+		return nil, err
+	}
+	
+	allDescendants = append(allDescendants, children...)
+	
+	// Recursively get children of children
+	for _, child := range children {
+		grandchildren, err := n.GetDescendantsOf(child.PositionPath)
+		if err != nil {
+			return nil, err
+		}
+		allDescendants = append(allDescendants, grandchildren...)
+	}
+	
+	return allDescendants, nil
+}
