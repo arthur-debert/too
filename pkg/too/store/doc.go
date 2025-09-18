@@ -31,11 +31,10 @@
 //
 // The adapter uses the following path resolution order:
 //
-//  1. Search current directory and parent directories for .todos.db file
+//  1. Search current directory and parent directories for .todos.json file
 //  2. Check TODO_DB_PATH environment variable
-//  3. Fall back to ~/.todos.db in the user's home directory
+//  3. Fall back to ~/.todos.json in the user's home directory
 //
-// Note: Despite the .db extension, nanostore v0.9.x stores data as JSON
 //
 // # ID Management
 //

@@ -33,10 +33,10 @@ func TestDataPath(t *testing.T) {
 		testutil.AssertNoError(t, err)
 		assert.NotNil(t, result)
 		assert.NotEmpty(t, result.Path)
-		// Should be .todos.db in current dir or home
+		// Should be .todos.json in current dir or home
 		assert.True(t,
-			filepath.Base(result.Path) == ".todos.db",
-			"Expected path to end with .todos.db, got %s", result.Path)
+			filepath.Base(result.Path) == ".todos.json",
+			"Expected path to end with .todos.json, got %s", result.Path)
 	})
 
 	t.Run("returns absolute path", func(t *testing.T) {

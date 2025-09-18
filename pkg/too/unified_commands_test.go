@@ -473,14 +473,14 @@ func TestDatabasePathHandling(t *testing.T) {
 		defer os.Chdir(originalWd)
 		
 		// Execute with empty collection path
-		// When empty, datapath.ResolveCollectionPath would default to .todos.db in current dir
-		opts := map[string]interface{}{"collectionPath": ".todos.db"}
+		// When empty, datapath.ResolveCollectionPath would default to .todos.json in current dir
+		opts := map[string]interface{}{"collectionPath": ".todos.json"}
 		result, err := too.ExecuteUnifiedCommand("add", []string{"Test"}, opts)
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		
 		// Verify file was created in current directory
-		expectedPath := filepath.Join(tmpDir, ".todos.db")
+		expectedPath := filepath.Join(tmpDir, ".todos.json")
 		_, err = os.Stat(expectedPath)
 		assert.NoError(t, err)
 	})

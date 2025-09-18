@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/arthur-debert/too/pkg/too/store"
 )
@@ -35,16 +34,10 @@ func Execute(opts Options) (*Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get home directory: %w", err)
 		}
-		storePath = filepath.Join(home, ".todos.db")
+		storePath = filepath.Join(home, ".todos.json")
 	} else {
 		// Use current directory (default)
-		storePath = ".todos.db"
-	}
-
-	// Convert any .json paths to .db for consistency
-	// Note: Despite the .db extension, nanostore v0.9.x stores data as JSON
-	if strings.HasSuffix(storePath, ".json") {
-		storePath = strings.TrimSuffix(storePath, ".json") + ".db"
+		storePath = ".todos.json"
 	}
 
 	// Check if database already exists

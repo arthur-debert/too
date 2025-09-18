@@ -34,7 +34,7 @@ You can specify a parent in three ways:
 	// Init command
 	msgInitUse   = "init"
 	msgInitShort = "Initialize a new todo collection"
-	msgInitLong  = "Initialize a new todo collection in the specified location or the default location (~/.todos.db)."
+	msgInitLong  = "Initialize a new todo collection in the specified location or the default location (~/.todos.json)."
 
 	// List command
 	msgListUse   = "list"

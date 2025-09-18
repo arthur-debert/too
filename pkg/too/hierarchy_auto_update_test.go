@@ -13,7 +13,7 @@ import (
 // Helper to create test engine
 func createTestEngine(t *testing.T) *too.NanoEngine {
 	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "test.db")
+	dbPath := filepath.Join(tmpDir, "test.json")
 	
 	engine, err := too.NewNanoEngine(dbPath)
 	require.NoError(t, err)
