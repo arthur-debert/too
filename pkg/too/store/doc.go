@@ -2,7 +2,7 @@
 //
 // The store package wraps the nanostore library to provide todo-specific
 // functionality while leveraging nanostore's powerful ID management and
-// SQLite-based storage.
+// JSON-based storage.
 //
 // # Design Principles
 //
@@ -10,7 +10,7 @@
 //
 //   - Uses nanostore for all storage operations and ID management
 //   - Provides semi-stable IDs through nanostore's canonical namespace pattern
-//   - SQLite-based storage for reliability and performance
+//   - JSON-based storage for human-readable data and easy backup/restore
 //   - Atomic operations with transaction support
 //   - Clear error messages with context
 //

@@ -54,6 +54,10 @@ func TestNewNanoStoreAdapter(t *testing.T) {
 		require.NoError(t, err)
 		defer adapter.Close()
 		
+		// Add a todo to force database creation
+		_, err = adapter.Add("Test todo", nil)
+		require.NoError(t, err)
+		
 		// Verify the file was created in the temp home
 		expectedPath := filepath.Join(tmpHome, ".todos.db")
 		_, err = os.Stat(expectedPath)
