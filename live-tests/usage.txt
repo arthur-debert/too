@@ -20,9 +20,9 @@ Description:
   session where you can run too commands without affecting your real todo data.
   The temporary environment is automatically cleaned up when you exit.
 
-  Note: For the --format option to work with test scripts, the script must use
-  --format \${TOO_FORMAT} in all too commands. The TOO_FORMAT environment
-  variable is automatically set based on the --format option.
+  Note: The 'too' command is wrapped to automatically use --data-path and --format
+  based on the environment. Use 'too-raw' if you need to test specific formats
+  or bypass these automatic flags.
 
   Note 2: There is a export_history functin that outptus the session history sans line numbers, useful if you want to capture the commands you ran in the session for later use in a script.
 

@@ -24,8 +24,8 @@ setup() {
     # Create a test script that adds a single root-level item
     cat > "$TEST_DIR/create_root.sh" << 'EOF'
 #!/bin/zsh
-too add "First todo" --format "${TOO_FORMAT}"
-too list --format "${TOO_FORMAT}"
+too add "First todo"
+too list
 EOF
     chmod +x "$TEST_DIR/create_root.sh"
     
@@ -63,9 +63,9 @@ EOF
     # Create a test script that adds two root-level items
     cat > "$TEST_DIR/create_two_root.sh" << 'EOF'
 #!/bin/zsh
-too add "First todo" --format "${TOO_FORMAT}"
-too add "Second todo" --format "${TOO_FORMAT}"
-too list --format "${TOO_FORMAT}"
+too add "First todo"
+too add "Second todo"
+too list
 EOF
     chmod +x "$TEST_DIR/create_two_root.sh"
     
@@ -107,15 +107,15 @@ EOF
     # Create a test script that adds parents and children
     cat > "$TEST_DIR/create_with_children.sh" << 'EOF'
 #!/bin/zsh
-too add "Groceries" --format "${TOO_FORMAT}"
-too add "Pack" --format "${TOO_FORMAT}"
-too add --to 1 "Bread" --format "${TOO_FORMAT}"
-too add --to 1 "Milk" --format "${TOO_FORMAT}"
-too add --to 1 "Pancakes" --format "${TOO_FORMAT}"
-too add --to 2 "Camera" --format "${TOO_FORMAT}"
-too add --to 2 "Clothes" --format "${TOO_FORMAT}"
-too add --to 2 "Passport" --format "${TOO_FORMAT}"
-too list --format "${TOO_FORMAT}"
+too add "Groceries"
+too add "Pack"
+too add --to 1 "Bread"
+too add --to 1 "Milk"
+too add --to 1 "Pancakes"
+too add --to 2 "Camera"
+too add --to 2 "Clothes"
+too add --to 2 "Passport"
+too list
 EOF
     chmod +x "$TEST_DIR/create_with_children.sh"
     
@@ -156,11 +156,11 @@ EOF
     # Create a test script that adds multiple levels of hierarchy
     cat > "$TEST_DIR/create_grandchild.sh" << 'EOF'
 #!/bin/zsh
-too add "Project" --format "${TOO_FORMAT}"
-too add --to 1 "Frontend" --format "${TOO_FORMAT}"
-too add --to 1.1 "Components" --format "${TOO_FORMAT}"
-too add --to 1.1.1 "Button.tsx" --format "${TOO_FORMAT}"
-too list --format "${TOO_FORMAT}"
+too add "Project"
+too add --to 1 "Frontend"
+too add --to 1.1 "Components"
+too add --to 1.1.1 "Button.tsx"
+too list
 EOF
     chmod +x "$TEST_DIR/create_grandchild.sh"
     

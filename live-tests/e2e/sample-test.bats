@@ -85,11 +85,11 @@ setup() {
     # Create a simple flat list test script
     cat > "$TEST_DIR/flat_test.sh" << 'EOF'
 #!/bin/zsh
-too add "Task A" --format "${TOO_FORMAT}"
-too add "Task B" --format "${TOO_FORMAT}"
-too add "Task C" --format "${TOO_FORMAT}"
-too complete 2 --format "${TOO_FORMAT}"
-too list --format "${TOO_FORMAT}"
+too add "Task A"
+too add "Task B"
+too add "Task C"
+too complete 2
+too list
 EOF
     chmod +x "$TEST_DIR/flat_test.sh"
     

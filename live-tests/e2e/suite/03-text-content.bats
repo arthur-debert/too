@@ -25,9 +25,9 @@ setup() {
     cat > "$TEST_DIR/todo_with_breaks.sh" << 'EOF'
 #!/bin/zsh
 # Add a todo with escaped newlines
-too add "This is a todo\\nwith multiple\\nlines of text" --format "${TOO_FORMAT}"
+too add "This is a todo\\nwith multiple\\nlines of text"
 
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/todo_with_breaks.sh"
     
@@ -66,11 +66,11 @@ EOF
     cat > "$TEST_DIR/multiple_todos.sh" << 'EOF'
 #!/bin/zsh
 # Add multiple todos in one go
-too add "Task 1" --format "${TOO_FORMAT}"
-too add "Task 2" --format "${TOO_FORMAT}"
-too add "Task 3" --format "${TOO_FORMAT}"
+too add "Task 1"
+too add "Task 2"
+too add "Task 3"
 
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/multiple_todos.sh"
     
@@ -109,9 +109,9 @@ EOF
     cat > "$TEST_DIR/long_todo.sh" << 'EOF'
 #!/bin/zsh
 # Add a todo with very long text
-too add "This is a very long todo item that contains a lot of text to test how the system handles extended descriptions. It should handle this gracefully without truncation or issues. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." --format "${TOO_FORMAT}"
+too add "This is a very long todo item that contains a lot of text to test how the system handles extended descriptions. It should handle this gracefully without truncation or issues. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/long_todo.sh"
     
@@ -150,12 +150,12 @@ EOF
     cat > "$TEST_DIR/nested_todos.sh" << 'EOF'
 #!/bin/zsh
 # Create nested todo structure
-too add "Project Setup" --format "${TOO_FORMAT}"
-too add --to 1 "Install dependencies" --format "${TOO_FORMAT}"
-too add --to 1 "Configure environment" --format "${TOO_FORMAT}"
-too add --to 1 "Create database" --format "${TOO_FORMAT}"
+too add "Project Setup"
+too add --to 1 "Install dependencies"
+too add --to 1 "Configure environment"
+too add --to 1 "Create database"
 
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/nested_todos.sh"
     

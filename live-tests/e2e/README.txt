@@ -40,6 +40,8 @@ Best Practices:
     - Keep tests independent and idempotent
     - Use parse-json.sh utilities for validation
     - One test file per functional area
+    - The 'too' command automatically includes --data-path and --format flags
+    - Use 'too-raw' if you need to test specific formats or bypass wrappers
 
 Test Files:
     01-creation.bats     - Todo creation operations

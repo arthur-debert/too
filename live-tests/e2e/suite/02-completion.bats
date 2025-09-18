@@ -25,25 +25,25 @@ setup() {
     cat > "$TEST_DIR/complete_child.sh" << 'EOF'
 #!/bin/zsh
 # Setup baseline data inline
-too add "Groceries" --format "${TOO_FORMAT}"
-too add --to 1 "Bread" --format "${TOO_FORMAT}"
-too add --to 1 "Milk" --format "${TOO_FORMAT}"
-too add --to 1 "Pancakes" --format "${TOO_FORMAT}"
-too add --to 1 "Eggs" --format "${TOO_FORMAT}"
-too complete 1.4 --format "${TOO_FORMAT}"  # Complete Eggs
+too add "Groceries"
+too add --to 1 "Bread"
+too add --to 1 "Milk"
+too add --to 1 "Pancakes"
+too add --to 1 "Eggs"
+too complete 1.4  # Complete Eggs
 
-too add "Pack" --format "${TOO_FORMAT}"
-too add --to 2 "Camera" --format "${TOO_FORMAT}"
-too add --to 2 "Clothes" --format "${TOO_FORMAT}"
-too add --to 2 "Passport" --format "${TOO_FORMAT}"
-too add --to 2 "Bag" --format "${TOO_FORMAT}"
-too complete 2.4 --format "${TOO_FORMAT}"  # Complete Bag
+too add "Pack"
+too add --to 2 "Camera"
+too add --to 2 "Clothes"
+too add --to 2 "Passport"
+too add --to 2 "Bag"
+too complete 2.4  # Complete Bag
 
 # Complete a child item (Bread)
-too complete 1.1 --format "${TOO_FORMAT}"
+too complete 1.1
 
 # List with --all to see completed items
-too list --all --format "${TOO_FORMAT}"
+too list --all
 EOF
     chmod +x "$TEST_DIR/complete_child.sh"
     
@@ -82,25 +82,25 @@ EOF
     cat > "$TEST_DIR/completed_visibility.sh" << 'EOF'
 #!/bin/zsh
 # Setup baseline data inline
-too add "Groceries" --format "${TOO_FORMAT}"
-too add --to 1 "Bread" --format "${TOO_FORMAT}"
-too add --to 1 "Milk" --format "${TOO_FORMAT}"
-too add --to 1 "Pancakes" --format "${TOO_FORMAT}"
-too add --to 1 "Eggs" --format "${TOO_FORMAT}"
-too complete 1.4 --format "${TOO_FORMAT}"  # Complete Eggs
+too add "Groceries"
+too add --to 1 "Bread"
+too add --to 1 "Milk"
+too add --to 1 "Pancakes"
+too add --to 1 "Eggs"
+too complete 1.4  # Complete Eggs
 
-too add "Pack" --format "${TOO_FORMAT}"
-too add --to 2 "Camera" --format "${TOO_FORMAT}"
-too add --to 2 "Clothes" --format "${TOO_FORMAT}"
-too add --to 2 "Passport" --format "${TOO_FORMAT}"
-too add --to 2 "Bag" --format "${TOO_FORMAT}"
-too complete 2.4 --format "${TOO_FORMAT}"  # Complete Bag
+too add "Pack"
+too add --to 2 "Camera"
+too add --to 2 "Clothes"
+too add --to 2 "Passport"
+too add --to 2 "Bag"
+too complete 2.4  # Complete Bag
 
 # List without --all (should not show completed items)
-too list --format "${TOO_FORMAT}"
+too list
 echo "SEPARATOR"
 # List with --all (should show completed items)
-too list --all --format "${TOO_FORMAT}"
+too list --all
 EOF
     chmod +x "$TEST_DIR/completed_visibility.sh"
     
@@ -151,28 +151,28 @@ EOF
     cat > "$TEST_DIR/test_clean.sh" << 'EOF'
 #!/bin/zsh
 # Setup baseline data inline
-too add "Groceries" --format "${TOO_FORMAT}"
-too add --to 1 "Bread" --format "${TOO_FORMAT}"
-too add --to 1 "Milk" --format "${TOO_FORMAT}"
-too add --to 1 "Pancakes" --format "${TOO_FORMAT}"
-too add --to 1 "Eggs" --format "${TOO_FORMAT}"
-too complete 1.4 --format "${TOO_FORMAT}"  # Complete Eggs
+too add "Groceries"
+too add --to 1 "Bread"
+too add --to 1 "Milk"
+too add --to 1 "Pancakes"
+too add --to 1 "Eggs"
+too complete 1.4  # Complete Eggs
 
-too add "Pack" --format "${TOO_FORMAT}"
-too add --to 2 "Camera" --format "${TOO_FORMAT}"
-too add --to 2 "Clothes" --format "${TOO_FORMAT}"
-too add --to 2 "Passport" --format "${TOO_FORMAT}"
-too add --to 2 "Bag" --format "${TOO_FORMAT}"
-too complete 2.4 --format "${TOO_FORMAT}"  # Complete Bag
+too add "Pack"
+too add --to 2 "Camera"
+too add --to 2 "Clothes"
+too add --to 2 "Passport"
+too add --to 2 "Bag"
+too complete 2.4  # Complete Bag
 
 # Complete one more item to have something to clean
-too complete 1.2 --format "${TOO_FORMAT}" # Complete Milk
+too complete 1.2 # Complete Milk
 
 # Clean completed items
-too clean --format "${TOO_FORMAT}"
+too clean
 
 # List with --all to verify completed items are gone
-too list --all --format "${TOO_FORMAT}"
+too list --all
 EOF
     chmod +x "$TEST_DIR/test_clean.sh"
     
@@ -291,21 +291,21 @@ EOF
     cat > "$TEST_DIR/test_reopen.sh" << 'EOF'
 #!/bin/zsh
 # Simple test case for reopen
-too add "Task 1" --format "${TOO_FORMAT}"
-too add "Task 2" --format "${TOO_FORMAT}"
-too add "Task 3" --format "${TOO_FORMAT}"
+too add "Task 1"
+too add "Task 2"
+too add "Task 3"
 
 # Complete the first task
-too complete 1 --format "${TOO_FORMAT}"
+too complete 1
 
 # List with --all to see the completed task
-too list --all --format "${TOO_FORMAT}"
+too list --all
 
 # Reopen the completed task - it should be c1
-too reopen c1 --format "${TOO_FORMAT}"
+too reopen c1
 
 # List to verify it's back to pending
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/test_reopen.sh"
     

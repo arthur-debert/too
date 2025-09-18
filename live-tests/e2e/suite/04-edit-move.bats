@@ -25,10 +25,10 @@ setup() {
     cat > "$TEST_DIR/edit_text.sh" << 'EOF'
 #!/bin/zsh
 # Create a todo and edit it
-too add "Original text" --format "${TOO_FORMAT}"
-too edit 1 "Updated text" --format "${TOO_FORMAT}"
+too add "Original text"
+too edit 1 "Updated text"
 
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/edit_text.sh"
     
@@ -66,14 +66,14 @@ EOF
     cat > "$TEST_DIR/move_parent.sh" << 'EOF'
 #!/bin/zsh
 # Create structure
-too add "Parent A" --format "${TOO_FORMAT}"
-too add "Parent B" --format "${TOO_FORMAT}"
-too add --to 1 "Child of A" --format "${TOO_FORMAT}"
+too add "Parent A"
+too add "Parent B"
+too add --to 1 "Child of A"
 
 # Move child from Parent A to Parent B
-too move 1.1 2 --format "${TOO_FORMAT}"
+too move 1.1 2
 
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/move_parent.sh"
     
@@ -115,20 +115,20 @@ EOF
     cat > "$TEST_DIR/reorder_siblings.sh" << 'EOF'
 #!/bin/zsh
 # Create parent with multiple children
-too add "Parent" --format "${TOO_FORMAT}"
-too add --to 1 "Child 1" --format "${TOO_FORMAT}"
-too add --to 1 "Child 2" --format "${TOO_FORMAT}"
-too add --to 1 "Child 3" --format "${TOO_FORMAT}"
+too add "Parent"
+too add --to 1 "Child 1"
+too add --to 1 "Child 2"
+too add --to 1 "Child 3"
 
 # List before reorder
-too list --format "${TOO_FORMAT}"
+too list
 echo "SEPARATOR"
 
 # Move Child 3 to position of Child 1 (reorder)
-too move 1.3 1.1 --format "${TOO_FORMAT}"
+too move 1.3 1.1
 
 # List after reorder
-too list --format "${TOO_FORMAT}"
+too list
 EOF
     chmod +x "$TEST_DIR/reorder_siblings.sh"
     

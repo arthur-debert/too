@@ -137,9 +137,12 @@ trap cleanup EXIT INT TERM
 # Change to temp directory
 cd "${TEMP_DIR}"
 
+# Set the environment variable to ensure todos are stored in the temp directory
+export TODO_DB_PATH="${TEMP_DIR}/.todos.json"
+
 # Always initialize a fresh .todos.json file
 echo -e "${GRAY}Initializing fresh .todos.json file${NC}"
-"${TOO_BIN}" init >/dev/null 2>&1
+"${TOO_BIN}" init --data-path="${TODO_DB_PATH}" >/dev/null 2>&1
 
 # Get version info
 VERSION_INFO=$("${TOO_BIN}" --version 2>&1 || echo "Version unknown")
@@ -164,6 +167,15 @@ export SAVEHIST=10000
 function export_history() {
     fc -ln 1 2>/dev/null || echo "# No history available"
 }
+
+# Create a wrapper function for too that always uses the correct data path and format
+function too() {
+    command too --data-path="${TODO_DB_PATH}" --format="${TOO_FORMAT}" "$@"
+}
+export -f too
+
+# Create an alias for raw too command (without automatic flags)
+alias too-raw="command too"
 
 # Function to launch interactive shell or execute script
 launch_shell() {

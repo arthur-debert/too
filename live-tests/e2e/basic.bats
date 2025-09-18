@@ -34,7 +34,7 @@ setup() {
     # Create a simple test script
     cat > "$TEST_DIR/simple_test.sh" << 'EOF'
 #!/bin/zsh
-too add "Test Item" --format "${TOO_FORMAT}"
+too add "Test Item"
 EOF
     chmod +x "$TEST_DIR/simple_test.sh"
     
