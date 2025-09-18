@@ -88,21 +88,20 @@ func (n *NanoStoreAdapter) UpdateByUUID(uuid string, text string) error {
 
 // MoveByUUID changes a todo's parent by its UUID
 func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
-	// Resolve new parent if provided
-	var newParentUUID *string
+	// Validate new parent exists if provided
 	if newParentID != nil && *newParentID != "" {
-		parentUUID, err := n.store.ResolveUUID(*newParentID)
+		_, err := n.store.ResolveUUID(*newParentID)
 		if err != nil {
-			return fmt.Errorf("failed to resolve new parent ID: %w", err)
+			return fmt.Errorf("failed to resolve new parent ID '%s': %w", *newParentID, err)
 		}
-		newParentUUID = &parentUUID
 	}
 
+	// nanostore now handles SimpleID parent references directly
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{},
 	}
-	if newParentUUID != nil {
-		updates.Dimensions["parent_uuid"] = *newParentUUID
+	if newParentID != nil && *newParentID != "" {
+		updates.Dimensions["parent_uuid"] = *newParentID
 	} else {
 		updates.Dimensions["parent_uuid"] = ""
 	}
@@ -111,20 +110,18 @@ func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
 
 // Add creates a new todo item
 func (n *NanoStoreAdapter) Add(text string, parentID *string) (*models.Todo, error) {
-	// If parentID is a user-facing ID, resolve it first
-	var parentUUID *string
+	// Validate parent exists if provided
 	if parentID != nil && *parentID != "" {
-		uuid, err := n.store.ResolveUUID(*parentID)
+		_, err := n.store.ResolveUUID(*parentID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve parent ID '%s': %w", *parentID, err)
 		}
-		parentUUID = &uuid
 	}
 
-	// Add the document
+	// Add the document - nanostore now handles SimpleID parent references directly
 	dimensions := make(map[string]interface{})
-	if parentUUID != nil {
-		dimensions["parent_uuid"] = *parentUUID
+	if parentID != nil && *parentID != "" {
+		dimensions["parent_uuid"] = *parentID
 	}
 	uuid, err := n.store.Add(text, dimensions)
 	if err != nil {
@@ -166,21 +163,20 @@ func (n *NanoStoreAdapter) Update(userFacingID string, text string) error {
 
 // Move changes a todo's parent
 func (n *NanoStoreAdapter) Move(userFacingID string, newParentID *string) error {
-	// Resolve new parent if provided
-	var newParentUUID *string
+	// Validate new parent exists if provided
 	if newParentID != nil && *newParentID != "" {
-		parentUUID, err := n.store.ResolveUUID(*newParentID)
+		_, err := n.store.ResolveUUID(*newParentID)
 		if err != nil {
 			return fmt.Errorf("failed to resolve new parent ID '%s': %w", *newParentID, err)
 		}
-		newParentUUID = &parentUUID
 	}
 
+	// nanostore now handles SimpleID parent references directly
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{},
 	}
-	if newParentUUID != nil {
-		updates.Dimensions["parent_uuid"] = *newParentUUID
+	if newParentID != nil && *newParentID != "" {
+		updates.Dimensions["parent_uuid"] = *newParentID
 	} else {
 		updates.Dimensions["parent_uuid"] = ""
 	}
@@ -351,7 +347,7 @@ func (n *NanoStoreAdapter) documentToTodo(doc nanostore.Document) *models.Todo {
 	todo := &models.Todo{
 		UID:          doc.UUID,
 		Text:         doc.Title,
-		PositionPath: doc.UserFacingID,
+		PositionPath: doc.SimpleID,
 		ParentID:     "",
 		Statuses: map[string]string{
 			"completion": n.nanostoreStatusToTodoStatus(n.getDocumentStatus(doc)),
@@ -365,4 +361,105 @@ func (n *NanoStoreAdapter) documentToTodo(doc nanostore.Document) *models.Todo {
 	}
 
 	return todo
+}
+
+// GetChildrenOf returns direct children of a parent todo
+func (n *NanoStoreAdapter) GetChildrenOf(parentID string) ([]*models.Todo, error) {
+	// Resolve parent ID to UUID first
+	parentUUID, err := n.store.ResolveUUID(parentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve parent ID '%s': %w", parentID, err)
+	}
+
+	opts := nanostore.ListOptions{
+		Filters: map[string]interface{}{
+			"parent_uuid": parentUUID,
+		},
+	}
+
+	docs, err := n.store.List(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get children: %w", err)
+	}
+
+	todos := make([]*models.Todo, len(docs))
+	for i, doc := range docs {
+		todos[i] = n.documentToTodo(doc)
+	}
+
+	return todos, nil
+}
+
+// GetSiblingsOf returns todos that share the same parent
+func (n *NanoStoreAdapter) GetSiblingsOf(todoID string) ([]*models.Todo, error) {
+	// Resolve todo ID to UUID first
+	uuid, err := n.store.ResolveUUID(todoID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve todo ID '%s': %w", todoID, err)
+	}
+	
+	// Get the todo to find its parent
+	todo, err := n.GetByUUID(uuid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get todo: %w", err)
+	}
+
+	if todo.ParentID == "" {
+		// No parent, so get all todos and filter for root-level ones
+		opts := nanostore.ListOptions{}
+		docs, err := n.store.List(opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get root siblings: %w", err)
+		}
+
+		var siblings []*models.Todo
+		for _, doc := range docs {
+			sibling := n.documentToTodo(doc)
+			// Only include todos with no parent and exclude the todo itself
+			if sibling.ParentID == "" && sibling.UID != todo.UID {
+				siblings = append(siblings, sibling)
+			}
+		}
+		return siblings, nil
+	}
+
+	// Get all children of the same parent
+	children, err := n.GetChildrenOf(todo.ParentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter out the todo itself
+	var siblings []*models.Todo
+	for _, child := range children {
+		if child.UID != todo.UID {
+			siblings = append(siblings, child)
+		}
+	}
+
+	return siblings, nil
+}
+
+// GetDescendantsOf returns all descendants (children, grandchildren, etc.) of a parent
+func (n *NanoStoreAdapter) GetDescendantsOf(parentID string) ([]*models.Todo, error) {
+	var allDescendants []*models.Todo
+	
+	// Get direct children
+	children, err := n.GetChildrenOf(parentID)
+	if err != nil {
+		return nil, err
+	}
+	
+	allDescendants = append(allDescendants, children...)
+	
+	// Recursively get children of children
+	for _, child := range children {
+		grandchildren, err := n.GetDescendantsOf(child.PositionPath)
+		if err != nil {
+			return nil, err
+		}
+		allDescendants = append(allDescendants, grandchildren...)
+	}
+	
+	return allDescendants, nil
 }

@@ -7,20 +7,20 @@ import (
 
 // ResolveCollectionPath resolves the collection file path using the following order:
 // 1. If explicitPath is provided, use it as-is
-// 2. Search current directory and parent directories for .todos.db file (like git)
+// 2. Search current directory and parent directories for .todos.json file (like git)
 // 3. Check TODO_DB_PATH environment variable
-// 4. Fall back to ~/.todos.db if it exists
-// 5. Default to .todos.db in current directory
+// 4. Fall back to ~/.todos.json if it exists
+// 5. Default to .todos.json in current directory
 func ResolveCollectionPath(explicitPath string) string {
 	if explicitPath != "" {
 		return explicitPath
 	}
 
-	// Search upward for .todos.db file (like git does for .git)
+	// Search upward for .todos.json file (like git does for .git)
 	dir, err := os.Getwd()
 	if err == nil {
 		for {
-			todosPath := filepath.Join(dir, ".todos.db")
+			todosPath := filepath.Join(dir, ".todos.json")
 			if _, err := os.Stat(todosPath); err == nil {
 				return todosPath
 			}
@@ -39,17 +39,17 @@ func ResolveCollectionPath(explicitPath string) string {
 		return envPath
 	}
 
-	// Check if ~/.todos.db exists (home directory default)
+	// Check if ~/.todos.json exists (home directory default)
 	home, err := os.UserHomeDir()
 	if err == nil {
-		homeDefault := filepath.Join(home, ".todos.db")
+		homeDefault := filepath.Join(home, ".todos.json")
 		if _, err := os.Stat(homeDefault); err == nil {
 			return homeDefault
 		}
 	}
 
 	// Default to current directory
-	return ".todos.db"
+	return ".todos.json"
 }
 
 // Options holds the options for the datapath command

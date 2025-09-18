@@ -2,7 +2,6 @@ package too
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
@@ -18,10 +17,7 @@ type NanoEngine struct {
 
 // NewNanoEngine creates a new engine instance
 func NewNanoEngine(dataPath string) (*NanoEngine, error) {
-	// Convert .json to .db
-	if strings.HasSuffix(dataPath, ".json") {
-		dataPath = strings.TrimSuffix(dataPath, ".json") + ".db"
-	}
+	// No conversion needed - use the extension as provided
 
 	adapter, err := store.NewNanoStoreAdapter(dataPath)
 	if err != nil {
@@ -417,45 +413,27 @@ func (e *NanoEngine) countTodoAndChildren(todos []*models.Todo, uuid string) int
 
 // autoUpdateParentStatus updates parent status based on children's status
 func (e *NanoEngine) autoUpdateParentStatus(childUUID string) error {
-	// Get all todos to analyze hierarchy
-	allTodos, err := e.adapter.List(true)
+	// Get the child todo to find its parent
+	childTodo, err := e.adapter.GetByUUID(childUUID)
 	if err != nil {
-		return fmt.Errorf("failed to get todos for parent update: %w", err)
+		return fmt.Errorf("failed to get child todo: %w", err)
 	}
 
-	// Find the child todo to get its parent
-	var childTodo *models.Todo
-	for _, todo := range allTodos {
-		if todo.UID == childUUID {
-			childTodo = todo
-			break
-		}
-	}
-
-	if childTodo == nil || childTodo.ParentID == "" {
+	if childTodo.ParentID == "" {
 		// No parent to update
 		return nil
 	}
 
-	// Find the parent todo
-	var parentTodo *models.Todo
-	for _, todo := range allTodos {
-		if todo.UID == childTodo.ParentID {
-			parentTodo = todo
-			break
-		}
+	// Get the parent todo
+	parentTodo, err := e.adapter.GetByUUID(childTodo.ParentID)
+	if err != nil {
+		return nil // Parent not found, ignore error
 	}
 
-	if parentTodo == nil {
-		return nil // Parent not found
-	}
-
-	// Find all siblings (children of the same parent)
-	var siblings []*models.Todo
-	for _, todo := range allTodos {
-		if todo.ParentID == parentTodo.UID {
-			siblings = append(siblings, todo)
-		}
+	// Get all siblings (children of the same parent) using direct query
+	siblings, err := e.adapter.GetChildrenOf(parentTodo.PositionPath)
+	if err != nil {
+		return fmt.Errorf("failed to get siblings: %w", err)
 	}
 
 	if len(siblings) == 0 {
@@ -515,18 +493,16 @@ func (e *NanoEngine) autoUpdateParentStatus(childUUID string) error {
 
 // autoCompleteChildren automatically completes all children when a parent is completed
 func (e *NanoEngine) autoCompleteChildren(parentUUID string) error {
-	// Get all todos to find children
-	allTodos, err := e.adapter.List(true)
+	// Get the parent todo to find its position path
+	parentTodo, err := e.adapter.GetByUUID(parentUUID)
 	if err != nil {
-		return fmt.Errorf("failed to get todos for children completion: %w", err)
+		return fmt.Errorf("failed to get parent todo: %w", err)
 	}
 
-	// Find all children of this parent
-	var children []*models.Todo
-	for _, todo := range allTodos {
-		if todo.ParentID == parentUUID {
-			children = append(children, todo)
-		}
+	// Get all children of this parent using direct query
+	children, err := e.adapter.GetChildrenOf(parentTodo.PositionPath)
+	if err != nil {
+		return fmt.Errorf("failed to get children: %w", err)
 	}
 
 	// Complete all pending children

@@ -5,14 +5,15 @@ import (
 
 	"github.com/arthur-debert/too/pkg/too"
 	"github.com/arthur-debert/too/pkg/too/models"
+	"github.com/arthur-debert/too/pkg/too/store"
 	"github.com/arthur-debert/too/pkg/too/testutil"
 )
 
 // Example: TestAddCommand using testutil
 func TestAddCommand_WithTestutil(t *testing.T) {
-	// Create empty test store
+	// Create empty test store to get the path
 	adapter, dbPath := testutil.CreateTestStore(t)
-	defer adapter.Close()
+	adapter.Close() // Close it since ExecuteUnifiedCommand will create its own
 
 	// Add a todo using unified command
 	opts := map[string]interface{}{
@@ -28,7 +29,11 @@ func TestAddCommand_WithTestutil(t *testing.T) {
 		t.Errorf("expected todo text to be 'My first todo', got %v", result.AffectedTodos)
 	}
 
-	// Load and verify it was saved
+	// Create a new adapter to load and verify it was saved
+	adapter, err = store.NewNanoStoreAdapter(dbPath)
+	testutil.AssertNoError(t, err)
+	defer adapter.Close()
+	
 	todos := testutil.LoadTodos(t, adapter, false)
 	testutil.AssertTodoCount(t, todos, 1)
 	testutil.AssertTodoInList(t, todos, "My first todo")

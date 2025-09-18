@@ -16,7 +16,7 @@ import (
 // Helper function to create a test adapter with a temp database
 func createTestAdapter(t *testing.T) (*store.NanoStoreAdapter, func()) {
 	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "test.db")
+	dbPath := filepath.Join(tmpDir, "test.json")
 	
 	adapter, err := store.NewNanoStoreAdapter(dbPath)
 	require.NoError(t, err, "Failed to create adapter")
@@ -50,12 +50,16 @@ func TestNewNanoStoreAdapter(t *testing.T) {
 		defer os.Setenv("HOME", originalHome)
 		
 		// Create adapter with ~ path
-		adapter, err := store.NewNanoStoreAdapter("~/.todos.db")
+		adapter, err := store.NewNanoStoreAdapter("~/.todos.json")
 		require.NoError(t, err)
 		defer adapter.Close()
 		
+		// Add a todo to force database creation
+		_, err = adapter.Add("Test todo", nil)
+		require.NoError(t, err)
+		
 		// Verify the file was created in the temp home
-		expectedPath := filepath.Join(tmpHome, ".todos.db")
+		expectedPath := filepath.Join(tmpHome, ".todos.json")
 		_, err = os.Stat(expectedPath)
 		assert.NoError(t, err, "Database file should exist in expanded home directory")
 	})

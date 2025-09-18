@@ -15,7 +15,7 @@ func CreateTestStore(t *testing.T) (*store.NanoStoreAdapter, string) {
 	
 	// Create temp directory
 	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "test.db")
+	dbPath := filepath.Join(tmpDir, "test.json")
 	
 	// Create store
 	adapter, err := store.NewNanoStoreAdapter(dbPath)
