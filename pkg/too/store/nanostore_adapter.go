@@ -195,25 +195,7 @@ func (n *NanoStoreAdapter) Delete(userFacingID string, cascade bool) error {
 
 // DeleteCompleted removes all completed todos
 func (n *NanoStoreAdapter) DeleteCompleted() (int, error) {
-	// List all completed todos
-	opts := nanostore.ListOptions{
-		Filters: map[string]interface{}{"status": "completed"},
-	}
-	docs, err := n.store.List(opts)
-	if err != nil {
-		return 0, fmt.Errorf("failed to list completed todos: %w", err)
-	}
-	
-	// Delete them one by one
-	count := 0
-	for _, doc := range docs {
-		if err := n.store.Delete(doc.UUID, true); err != nil {
-			return count, fmt.Errorf("failed to delete todo %s: %w", doc.UUID, err)
-		}
-		count++
-	}
-	
-	return count, nil
+	return n.store.DeleteByDimension(map[string]interface{}{"status": "completed"})
 }
 
 // List returns todos based on options
