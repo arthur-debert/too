@@ -35,6 +35,8 @@
 //  2. Check TODO_DB_PATH environment variable
 //  3. Fall back to ~/.todos.db in the user's home directory
 //
+// Note: Despite the .db extension, nanostore v0.9.x stores data as JSON
+//
 // # ID Management
 //
 // Nanostore provides semi-stable IDs with canonical namespaces:

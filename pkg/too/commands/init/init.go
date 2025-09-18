@@ -41,7 +41,8 @@ func Execute(opts Options) (*Result, error) {
 		storePath = ".todos.db"
 	}
 
-	// Convert any .json paths to .db
+	// Convert any .json paths to .db for consistency
+	// Note: Despite the .db extension, nanostore v0.9.x stores data as JSON
 	if strings.HasSuffix(storePath, ".json") {
 		storePath = strings.TrimSuffix(storePath, ".json") + ".db"
 	}

@@ -18,7 +18,8 @@ type NanoEngine struct {
 
 // NewNanoEngine creates a new engine instance
 func NewNanoEngine(dataPath string) (*NanoEngine, error) {
-	// Convert .json to .db
+	// Convert .json to .db for backward compatibility
+	// Note: Despite the .db extension, nanostore v0.9.x stores data as JSON
 	if strings.HasSuffix(dataPath, ".json") {
 		dataPath = strings.TrimSuffix(dataPath, ".json") + ".db"
 	}
