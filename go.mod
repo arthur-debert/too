@@ -6,7 +6,7 @@ toolchain go1.24.6
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	github.com/arthur-debert/nanostore v0.9.10
+	github.com/arthur-debert/nanostore v0.9.11
 	github.com/beevik/etree v1.5.1
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/muesli/termenv v0.16.0

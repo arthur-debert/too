@@ -88,21 +88,20 @@ func (n *NanoStoreAdapter) UpdateByUUID(uuid string, text string) error {
 
 // MoveByUUID changes a todo's parent by its UUID
 func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
-	// Resolve new parent if provided
-	var newParentUUID string
+	// Validate new parent exists if provided
 	if newParentID != nil && *newParentID != "" {
-		parentUUID, err := n.store.ResolveUUID(*newParentID)
+		_, err := n.store.ResolveUUID(*newParentID)
 		if err != nil {
-			return fmt.Errorf("failed to resolve new parent ID: %w", err)
+			return fmt.Errorf("failed to resolve new parent ID '%s': %w", *newParentID, err)
 		}
-		newParentUUID = parentUUID
 	}
 
+	// nanostore now handles SimpleID parent references directly
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{},
 	}
-	if newParentUUID != "" {
-		updates.Dimensions["parent_uuid"] = newParentUUID
+	if newParentID != nil && *newParentID != "" {
+		updates.Dimensions["parent_uuid"] = *newParentID
 	} else {
 		updates.Dimensions["parent_uuid"] = ""
 	}
@@ -111,20 +110,18 @@ func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
 
 // Add creates a new todo item
 func (n *NanoStoreAdapter) Add(text string, parentID *string) (*models.Todo, error) {
-	// If parentID is a user-facing ID, resolve it first
-	var parentUUID *string
+	// Validate parent exists if provided
 	if parentID != nil && *parentID != "" {
-		uuid, err := n.store.ResolveUUID(*parentID)
+		_, err := n.store.ResolveUUID(*parentID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve parent ID '%s': %w", *parentID, err)
 		}
-		parentUUID = &uuid
 	}
 
-	// Add the document
+	// Add the document - nanostore now handles SimpleID parent references directly
 	dimensions := make(map[string]interface{})
-	if parentUUID != nil {
-		dimensions["parent_uuid"] = *parentUUID
+	if parentID != nil && *parentID != "" {
+		dimensions["parent_uuid"] = *parentID
 	}
 	uuid, err := n.store.Add(text, dimensions)
 	if err != nil {
@@ -166,21 +163,20 @@ func (n *NanoStoreAdapter) Update(userFacingID string, text string) error {
 
 // Move changes a todo's parent
 func (n *NanoStoreAdapter) Move(userFacingID string, newParentID *string) error {
-	// Resolve new parent if provided
-	var newParentUUID string
+	// Validate new parent exists if provided
 	if newParentID != nil && *newParentID != "" {
-		uuid, err := n.store.ResolveUUID(*newParentID)
+		_, err := n.store.ResolveUUID(*newParentID)
 		if err != nil {
 			return fmt.Errorf("failed to resolve new parent ID '%s': %w", *newParentID, err)
 		}
-		newParentUUID = uuid
 	}
 
+	// nanostore now handles SimpleID parent references directly
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{},
 	}
-	if newParentUUID != "" {
-		updates.Dimensions["parent_uuid"] = newParentUUID
+	if newParentID != nil && *newParentID != "" {
+		updates.Dimensions["parent_uuid"] = *newParentID
 	} else {
 		updates.Dimensions["parent_uuid"] = ""
 	}
