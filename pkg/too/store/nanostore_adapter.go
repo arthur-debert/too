@@ -89,20 +89,20 @@ func (n *NanoStoreAdapter) UpdateByUUID(uuid string, text string) error {
 // MoveByUUID changes a todo's parent by its UUID
 func (n *NanoStoreAdapter) MoveByUUID(uuid string, newParentID *string) error {
 	// Resolve new parent if provided
-	var newParentUUID *string
+	var newParentUUID string
 	if newParentID != nil && *newParentID != "" {
 		parentUUID, err := n.store.ResolveUUID(*newParentID)
 		if err != nil {
 			return fmt.Errorf("failed to resolve new parent ID: %w", err)
 		}
-		newParentUUID = &parentUUID
+		newParentUUID = parentUUID
 	}
 
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{},
 	}
-	if newParentUUID != nil {
-		updates.Dimensions["parent_uuid"] = *newParentUUID
+	if newParentUUID != "" {
+		updates.Dimensions["parent_uuid"] = newParentUUID
 	} else {
 		updates.Dimensions["parent_uuid"] = ""
 	}
@@ -142,84 +142,55 @@ func (n *NanoStoreAdapter) Add(text string, parentID *string) (*models.Todo, err
 
 // Complete marks a todo as completed
 func (n *NanoStoreAdapter) Complete(userFacingID string) error {
-	// Resolve to UUID first
-	uuid, err := n.store.ResolveUUID(userFacingID)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
-	}
-	
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{"status": "completed"},
 	}
-	return n.store.Update(uuid, updates)
+	return n.store.Update(userFacingID, updates)
 }
 
 // Reopen marks a completed todo as pending
 func (n *NanoStoreAdapter) Reopen(userFacingID string) error {
-	// Resolve to UUID first
-	uuid, err := n.store.ResolveUUID(userFacingID)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
-	}
-	
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{"status": "pending"},
 	}
-	return n.store.Update(uuid, updates)
+	return n.store.Update(userFacingID, updates)
 }
 
 // Update modifies a todo's text
 func (n *NanoStoreAdapter) Update(userFacingID string, text string) error {
-	// Resolve to UUID first
-	uuid, err := n.store.ResolveUUID(userFacingID)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
-	}
-	
 	updates := nanostore.UpdateRequest{
 		Title: &text,
 	}
-	return n.store.Update(uuid, updates)
+	return n.store.Update(userFacingID, updates)
 }
 
 // Move changes a todo's parent
 func (n *NanoStoreAdapter) Move(userFacingID string, newParentID *string) error {
-	// Resolve the todo's UUID first
-	uuid, err := n.store.ResolveUUID(userFacingID)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
-	}
-	
 	// Resolve new parent if provided
-	var newParentUUID *string
+	var newParentUUID string
 	if newParentID != nil && *newParentID != "" {
-		parentUUID, err := n.store.ResolveUUID(*newParentID)
+		uuid, err := n.store.ResolveUUID(*newParentID)
 		if err != nil {
 			return fmt.Errorf("failed to resolve new parent ID '%s': %w", *newParentID, err)
 		}
-		newParentUUID = &parentUUID
+		newParentUUID = uuid
 	}
 
 	updates := nanostore.UpdateRequest{
 		Dimensions: map[string]interface{}{},
 	}
-	if newParentUUID != nil {
-		updates.Dimensions["parent_uuid"] = *newParentUUID
+	if newParentUUID != "" {
+		updates.Dimensions["parent_uuid"] = newParentUUID
 	} else {
 		updates.Dimensions["parent_uuid"] = ""
 	}
 
-	return n.store.Update(uuid, updates)
+	return n.store.Update(userFacingID, updates)
 }
 
 // Delete removes a todo and optionally its children
 func (n *NanoStoreAdapter) Delete(userFacingID string, cascade bool) error {
-	// Resolve to UUID first
-	uuid, err := n.store.ResolveUUID(userFacingID)
-	if err != nil {
-		return fmt.Errorf("failed to resolve ID '%s': %w", userFacingID, err)
-	}
-	return n.store.Delete(uuid, cascade)
+	return n.store.Delete(userFacingID, cascade)
 }
 
 // DeleteCompleted removes all completed todos
