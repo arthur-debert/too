@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	
 	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/spf13/cobra"
 
@@ -19,8 +21,13 @@ var moveCmd = &cobra.Command{
 		destParentPath := args[1]
 
 		// Get collection path from command flags
-		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := resolveDataPath(cmd)
+		
+		// Ensure gitignore is updated for project scope
+		if err := datapath.EnsureProjectGitignore(); err != nil {
+			// Log but don't fail
+			fmt.Printf("Warning: could not update .gitignore: %v\n", err)
+		}
 
 		// Call business logic using unified command
 		opts := map[string]interface{}{

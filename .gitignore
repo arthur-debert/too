@@ -48,3 +48,4 @@ tmp
 live-tests/baseline-*/
 live-tests/output-*/
 live-tests/baseline-latest
+.todos.json

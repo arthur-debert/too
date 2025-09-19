@@ -38,8 +38,13 @@ var editCmd = &cobra.Command{
 		position := args[0]
 
 		var text string
-		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := resolveDataPath(cmd)
+		
+		// Ensure gitignore is updated for project scope
+		if err := datapath.EnsureProjectGitignore(); err != nil {
+			// Log but don't fail
+			fmt.Printf("Warning: could not update .gitignore: %v\n", err)
+		}
 
 		// Handle editor mode
 		if editUseEditor {

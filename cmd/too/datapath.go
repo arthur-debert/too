@@ -13,10 +13,9 @@ var datapathCmd = &cobra.Command{
 	GroupID: "misc",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get collection path from flag
-		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := resolveDataPath(cmd)
 
-		// Call business logic
+		// Call business logic using datapath package
 		result, err := datapath.Execute(datapath.Options{
 			CollectionPath: collectionPath,
 		})

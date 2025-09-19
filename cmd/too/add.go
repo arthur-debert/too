@@ -35,9 +35,14 @@ var addCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var text string
-		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := resolveDataPath(cmd)
 		parentPath, _ := cmd.Flags().GetString("to")
+		
+		// Ensure gitignore is updated for project scope
+		if err := datapath.EnsureProjectGitignore(); err != nil {
+			// Log but don't fail
+			fmt.Printf("Warning: could not update .gitignore: %v\n", err)
+		}
 
 		// Handle editor mode
 		if useEditor {

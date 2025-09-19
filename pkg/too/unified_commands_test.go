@@ -43,11 +43,11 @@ func TestCommandRegistration(t *testing.T) {
 		opts := map[string]interface{}{"collectionPath": dbPath}
 		
 		// Add a todo first
-		result, err := too.ExecuteUnifiedCommand("add", []string{"Test todo"}, opts)
+		_, err := too.ExecuteUnifiedCommand("add", []string{"Test todo"}, opts)
 		require.NoError(t, err)
 		
 		// Test alias 'c' for complete
-		result, err = too.ExecuteUnifiedCommand("c", []string{"1"}, opts)
+		result, err := too.ExecuteUnifiedCommand("c", []string{"1"}, opts)
 		require.NoError(t, err)
 		assert.Empty(t, result.Message)
 	})
@@ -469,8 +469,14 @@ func TestDatabasePathHandling(t *testing.T) {
 		// Create a temp directory and change to it
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		os.Chdir(tmpDir)
-		defer os.Chdir(originalWd)
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatalf("Failed to change directory: %v", err)
+		}
+		defer func() {
+			if err := os.Chdir(originalWd); err != nil {
+				t.Errorf("Failed to restore working directory: %v", err)
+			}
+		}()
 		
 		// Execute with empty collection path
 		// When empty, datapath.ResolveCollectionPath would default to .todos.json in current dir

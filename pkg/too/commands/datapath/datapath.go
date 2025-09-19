@@ -3,18 +3,30 @@ package datapath
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	
 	"github.com/arthur-debert/too/pkg/lipbalm"
+	"github.com/arthur-debert/too/pkg/too/scope"
 )
 
 // ResolveCollectionPath resolves the collection file path using the following order:
-// 1. If explicitPath is provided, use it as-is
-// 2. Search current directory and parent directories for .todos.json file (like git)
-// 3. Check TODO_DB_PATH environment variable
-// 4. Fall back to ~/.todos.json if it exists
-// 5. Default to .todos.json in current directory
+// 1. If explicitPath is provided, use it as-is (supports tilde expansion)
+// 2. Check TODO_DB_PATH environment variable
+// 3. Use scope-based resolution (project vs global)
 func ResolveCollectionPath(explicitPath string) string {
+	return ResolveCollectionPathWithGlobal(explicitPath, false)
+}
+
+// ResolveCollectionPathWithGlobal resolves the collection file path with global flag support
+func ResolveCollectionPathWithGlobal(explicitPath string, forceGlobal bool) string {
 	if explicitPath != "" {
+		// Handle tilde expansion
+		if strings.HasPrefix(explicitPath, "~/") {
+			home, err := os.UserHomeDir()
+			if err == nil {
+				return filepath.Join(home, explicitPath[2:])
+			}
+		}
 		return explicitPath
 	}
 
@@ -23,35 +35,50 @@ func ResolveCollectionPath(explicitPath string) string {
 		return envPath
 	}
 
-	// Search upward for .todos.json file (like git does for .git)
-	dir, err := os.Getwd()
-	if err == nil {
-		for {
-			todosPath := filepath.Join(dir, ".todos.json")
-			if _, err := os.Stat(todosPath); err == nil {
-				return todosPath
-			}
-			
-			parent := filepath.Dir(dir)
-			if parent == dir {
-				// Reached root directory
-				break
-			}
-			dir = parent
-		}
-	}
+	// Use scoped path resolution
+	path, _ := ResolveScopedPath(forceGlobal)
+	return path
+}
 
-	// Check if ~/.todos.json exists (home directory default)
-	home, err := os.UserHomeDir()
-	if err == nil {
-		homeDefault := filepath.Join(home, ".todos.json")
-		if _, err := os.Stat(homeDefault); err == nil {
-			return homeDefault
-		}
+// ResolveScopedPath determines the appropriate storage path based on scope
+// Returns the path and whether it's global scope
+func ResolveScopedPath(forceGlobal bool) (string, bool) {
+	resolver := scope.NewResolver(forceGlobal)
+	
+	currentDir, err := os.Getwd()
+	if err != nil {
+		currentDir = "."
 	}
+	
+	scopeInfo, err := resolver.Resolve(currentDir)
+	if err != nil {
+		// Fallback to current directory
+		return ".todos.json", false
+	}
+	
+	// Ensure parent directory exists for global path
+	if scopeInfo.IsGlobal {
+		parentDir := filepath.Dir(scopeInfo.Path)
+		_ = os.MkdirAll(parentDir, 0755) // Best effort - ignore errors
+	}
+	
+	return scopeInfo.Path, scopeInfo.IsGlobal
+}
 
-	// Default to current directory
-	return ".todos.json"
+// EnsureProjectGitignore ensures .todos.json is in .gitignore for project scope
+func EnsureProjectGitignore() error {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil // Silently ignore errors
+	}
+	
+	resolver := scope.NewResolver(false)
+	scopeInfo, err := resolver.Resolve(currentDir)
+	if err != nil || scopeInfo.IsGlobal || scopeInfo.GitRoot == "" {
+		return nil // Not in a git repo or using global scope
+	}
+	
+	return scope.EnsureGitignore(scopeInfo.GitRoot)
 }
 
 // Options holds the options for the datapath command

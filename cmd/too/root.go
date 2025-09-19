@@ -13,6 +13,7 @@ var (
 	verbosity      int
 	formatFlag     string
 	contextualView bool
+	globalFlag     bool
 
 	rootCmd = &cobra.Command{
 		Use:     "too",
@@ -78,6 +79,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
 	rootCmd.PersistentFlags().StringVarP(&formatFlag, "format", "f", "term", msgFlagFormat)
 	rootCmd.PersistentFlags().BoolVar(&contextualView, "contextual", false, msgFlagContextual)
+	rootCmd.PersistentFlags().BoolVarP(&globalFlag, "global", "g", false, "Use global todo storage instead of project-specific")
 
 	// Setup custom help
 	setupHelp()

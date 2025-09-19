@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too"
-	"github.com/arthur-debert/too/pkg/too/commands/datapath"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +19,7 @@ var searchCmd = &cobra.Command{
 		query := strings.Join(args, " ")
 
 		// Get collection path from flag
-		rawCollectionPath, _ := cmd.Flags().GetString("data-path")
-		collectionPath := datapath.ResolveCollectionPath(rawCollectionPath)
+		collectionPath := resolveDataPath(cmd)
 
 		// Get case-sensitive flag (not currently used in unified command)
 		// caseSensitive, _ := cmd.Flags().GetBool("case-sensitive")

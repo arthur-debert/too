@@ -212,7 +212,9 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 	if err != nil {
 		return nil, err
 	}
-	defer engine.Close()
+	defer func() {
+		_ = engine.Close() // Best effort cleanup - ignore errors
+	}()
 	
 	// Execute command
 	var affectedUIDs []string
