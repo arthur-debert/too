@@ -13,15 +13,18 @@ type DisplayConfig struct {
 	IndentSize int
 	// ShowListSummary controls whether to show the "X todo(s), Y done" summary after lists
 	ShowListSummary bool
+	// UseContextualChangeView controls whether to show contextual view for changes (only affected item with context)
+	UseContextualChangeView bool
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		Display: DisplayConfig{
-			IndentString:    " ",
-			IndentSize:      2,
-			ShowListSummary: false,
+			IndentString:            " ",
+			IndentSize:              2,
+			ShowListSummary:         false,
+			UseContextualChangeView: false,
 		},
 	}
 }

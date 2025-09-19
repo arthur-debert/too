@@ -3,14 +3,16 @@ package main
 import (
 	"github.com/arthur-debert/too/internal/version"
 	"github.com/arthur-debert/too/pkg/logging"
+	"github.com/arthur-debert/too/pkg/too"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 var (
-	verbosity  int
-	formatFlag string
+	verbosity      int
+	formatFlag     string
+	contextualView bool
 
 	rootCmd = &cobra.Command{
 		Use:     "too",
@@ -30,6 +32,13 @@ var (
 			// Setup logging based on verbosity
 			logging.SetupLogger(verbosity)
 			log.Debug().Str("command", cmd.Name()).Msg("Command started")
+			
+			// Override contextual view config if flag is set
+			if cmd.Flags().Changed("contextual") {
+				config := too.GetConfig()
+				config.Display.UseContextualChangeView = contextualView
+				too.SetConfig(config)
+			}
 		},
 	}
 )
@@ -68,6 +77,7 @@ func init() {
 	rootCmd.PersistentFlags().CountVarP(&verbosity, "verbose", "v", msgFlagVerbose)
 	rootCmd.PersistentFlags().StringP("data-path", "p", "", msgFlagDataPath)
 	rootCmd.PersistentFlags().StringVarP(&formatFlag, "format", "f", "term", msgFlagFormat)
+	rootCmd.PersistentFlags().BoolVar(&contextualView, "contextual", false, msgFlagContextual)
 
 	// Setup custom help
 	setupHelp()

@@ -1,0 +1,102 @@
+{{- if .AffectedTodos -}}
+{{- $hierarchy := buildHierarchy .AllTodos -}}
+{{- $highlightID := (index .AffectedTodos 0).UID -}}
+{{- $context := buildContextualView $hierarchy $highlightID -}}
+{{- if $context -}}
+{{- template "renderContextNode" dict "Node" $context "Level" (int 0) "HighlightID" $highlightID -}}
+{{- end -}}
+{{- else if not .Message -}}
+<warning>No todos found</warning>
+{{- end -}}
+{{- $config := getConfig -}}
+{{- if and .AffectedTodos $config.Display.ShowListSummary -}}
+
+<subdued>{{.TotalCount}} todo(s), {{.DoneCount}} done</subdued>
+{{- end -}}
+{{- if .Message }}
+
+<{{.MessageType}}>{{.Message}}</{{.MessageType}}>
+{{- end }}
+
+{{- define "renderContextNode" -}}
+{{- $node := .Node -}}
+{{- $level := .Level -}}
+{{- $highlightID := .HighlightID -}}
+
+{{- /* Show parent nodes in the path */ -}}
+{{- if $node.Children -}}
+{{- /* This is a parent in the path - just show it and recurse */ -}}
+{{- template "renderTodo" dict "Todo" $node.Todo "Level" (int $level) "HighlightID" $highlightID -}}
+{{- range $node.Children -}}
+{{- template "renderContextNode" dict "Node" . "Level" (add (int $level) 1) "HighlightID" $highlightID -}}
+{{- end -}}
+{{- else -}}
+{{- /* This is the highlighted level - show context */ -}}
+{{- $indent := indent (int $level) -}}
+
+{{- /* Show ellipsis before if needed */ -}}
+{{- if $node.ShowEllipsisBefore }}
+{{$indent}}<subdued>…</subdued>
+{{- end }}
+
+{{- /* Show siblings before */ -}}
+{{- range $node.SiblingsBefore -}}
+{{- template "renderFullTodo" dict "Todo" . "Level" (int $level) "HighlightID" $highlightID -}}
+{{- end -}}
+
+{{- /* Show the highlighted todo */ -}}
+{{- template "renderTodo" dict "Todo" $node.Todo "Level" (int $level) "HighlightID" $highlightID -}}
+
+{{- /* Show siblings after */ -}}
+{{- range $node.SiblingsAfter -}}
+{{- template "renderFullTodo" dict "Todo" . "Level" (int $level) "HighlightID" $highlightID -}}
+{{- end -}}
+
+{{- /* Show ellipsis after if needed */ -}}
+{{- if $node.ShowEllipsisAfter }}
+{{$indent}}<subdued>…</subdued>
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{- define "renderTodo" -}}
+{{- $todo := .Todo -}}
+{{- $level := .Level -}}
+{{- $highlightID := .HighlightID -}}
+{{- $indent := indent (int $level) -}}
+{{- $symbol := getSymbol $todo.EffectiveStatus -}}
+{{- $lines := lines $todo.Text -}}
+{{- $path := $todo.PositionPath -}}
+{{- if eq $path "" -}}{{- $path = $todo.UID -}}{{- end -}}
+{{- $isHighlighted := eq $todo.UID $highlightID -}}
+{{- $symbolLen := len $symbol -}}
+{{- $pathLen := len $path -}}
+{{- $prefixLen := add (add $symbolLen 1) (add $pathLen 2) -}}
+{{- $lineIndent := repeat (int $prefixLen) " " -}}
+{{- range $i, $line := $lines -}}
+{{- if eq $i 0 }}
+{{- if $isHighlighted }}
+{{$indent}}<highlighted-todo>{{$symbol}} {{$path}}. {{$line}}</highlighted-todo>
+{{- else }}
+{{$indent}}{{$symbol}} {{$path}}. {{$line}}
+{{- end }}
+{{- else }}
+{{- if $isHighlighted }}
+{{$indent}}<highlighted-todo>{{$lineIndent}}{{$line}}</highlighted-todo>
+{{- else }}
+{{$indent}}{{$lineIndent}}{{$line}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "renderFullTodo" -}}
+{{- $todo := .Todo -}}
+{{- $level := .Level -}}
+{{- template "renderTodo" dict "Todo" $todo "Level" (int $level) "HighlightID" .HighlightID -}}
+{{- if $todo.Children -}}
+{{- range $todo.Children -}}
+{{- template "renderFullTodo" dict "Todo" . "Level" (add (int $level) 1) "HighlightID" $.HighlightID -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}

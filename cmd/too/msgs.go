@@ -70,12 +70,13 @@ You can specify a parent in three ways:
 // Flag descriptions
 const (
 	// Global flags
-	msgFlagVerbose  = "Increase verbosity (-v, -vv, -vvv)"
-	msgFlagDataPath = "path to todo collection (default: $HOME/.todos.json)"
-	msgFlagFormat   = "output format (term, json, markdown)"
-	msgFlagMode     = "output mode (short, long)"
-	msgFlagQuiet    = "quiet output (shows only confirmation message)"
-	msgFlagLoud     = "loud output (shows full todo list after command)"
+	msgFlagVerbose    = "Increase verbosity (-v, -vv, -vvv)"
+	msgFlagDataPath   = "path to todo collection (default: $HOME/.todos.json)"
+	msgFlagFormat     = "output format (term, json, markdown)"
+	msgFlagMode       = "output mode (short, long)"
+	msgFlagQuiet      = "quiet output (shows only confirmation message)"
+	msgFlagLoud       = "loud output (shows full todo list after command)"
+	msgFlagContextual = "use contextual view for change output"
 
 	// List command flags
 	msgFlagDone = "print done todos"

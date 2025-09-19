@@ -33,6 +33,7 @@ func templateFuncs() template.FuncMap {
 	funcs["getSymbol"] = GetStatusSymbol
 	funcs["buildHierarchy"] = models.BuildHierarchy
 	funcs["countHierarchy"] = countHierarchy
+	funcs["buildContextualView"] = buildContextualView
 	funcs["getConfig"] = func() *too.Config {
 		return too.GetConfig()
 	}
@@ -65,8 +66,16 @@ func NewEngine() (*Engine, error) {
 
 	// Configure too-specific callbacks
 	lipbalmEngine.Config().Callbacks = lipbalm.RenderCallbacks{
-		// Pre-process callback (currently unused but kept for future extensibility)
+		// Pre-process callback to handle template selection
 		PreProcess: func(format string, data interface{}) interface{} {
+			// Check if it's a ChangeResult and we should use contextual view
+			if cr, ok := data.(*too.ChangeResult); ok && format == "term" {
+				config := too.GetConfig()
+				if config.Display.UseContextualChangeView {
+					// Wrap in a type that will map to "change_result_contextual" template
+					return &ChangeResultContextual{ChangeResult: cr}
+				}
+			}
 			return data
 		},
 
