@@ -283,7 +283,7 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 	default:
 		// Standard attribute mutation
 		if cmd.Attribute != "" {
-			if cmd.AcceptsMultiple && len(args) > 1 {
+			if cmd.AcceptsMultiple {
 				// Multiple refs (complete, reopen)
 				// First, resolve all IDs to UUIDs before any mutations
 				// This is important because IDs can shift after each mutation
