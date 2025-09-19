@@ -51,10 +51,11 @@ func TestSearchCommand_WithTestutil(t *testing.T) {
 	)
 	defer adapter.Close()
 
-	// Search for "Buy" using unified command
+	// Search for "Buy" using unified command (with --all to include completed)
 	opts := map[string]interface{}{
 		"collectionPath": dbPath,
 		"query":          "Buy",
+		"all":            true,
 	}
 	result, err := too.ExecuteUnifiedCommand("search", []string{"Buy"}, opts)
 

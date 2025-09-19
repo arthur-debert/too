@@ -217,6 +217,7 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 	// Execute command
 	var affectedUIDs []string
 	var affectedTodos []*models.Todo
+	var todos []*models.Todo
 	
 	switch cmdName {
 	case "add":
@@ -247,6 +248,37 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 		for _, todo := range removedTodos {
 			affectedUIDs = append(affectedUIDs, todo.UID)
 		}
+		
+	case "search":
+		// Special case: use native search
+		query := strings.Join(args, " ")
+		showAll := false
+		if all, ok := opts["all"].(bool); ok {
+			showAll = all
+		} else if done, ok := opts["done"].(bool); ok && done {
+			showAll = true
+		}
+		
+		searchResults, err := engine.Search(query, showAll)
+		if err != nil {
+			return nil, err
+		}
+		
+		// For search, the results are the todos to display
+		todos = searchResults
+		// No affected todos for search
+		affectedTodos = nil
+		
+	case "list":
+		// Special case: use filter function for list
+		filter := cmd.GetFilterFunc(opts)
+		listResults, err := engine.GetTodos(filter)
+		if err != nil {
+			return nil, err
+		}
+		todos = listResults
+		// No affected todos for list
+		affectedTodos = nil
 		
 	default:
 		// Standard attribute mutation
@@ -303,14 +335,16 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 		}
 	}
 	
-	// Get todos for display
-	var filter FilterFunc
-	if cmd.GetFilterFunc != nil {
-		filter = cmd.GetFilterFunc(opts)
-	}
-	todos, err := engine.GetTodos(filter)
-	if err != nil {
-		return nil, err
+	// Get todos for display (skip for search/list as they're already populated)
+	if cmdName != "search" && cmdName != "list" && todos == nil {
+		var filter FilterFunc
+		if cmd.GetFilterFunc != nil {
+			filter = cmd.GetFilterFunc(opts)
+		}
+		todos, err = engine.GetTodos(filter)
+		if err != nil {
+			return nil, err
+		}
 	}
 	
 	// Get affected todos from all todos (not filtered)
