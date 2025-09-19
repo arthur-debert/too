@@ -9,224 +9,155 @@ setup() {
     LIVE_TESTS_DIR="$(dirname "$E2E_DIR")"
     PROJECT_ROOT="$(dirname "$LIVE_TESTS_DIR")"
     
-    # Load utility functions
-    source "$E2E_DIR/utils/parse-json.sh"
-    
     # Export paths for use in tests
     export TEST_DIR
     export E2E_DIR
     export LIVE_TESTS_DIR
     export PROJECT_ROOT
+    
+    # Create a temporary directory for this test
+    export TEST_TEMP_DIR="$(mktemp -d)"
+    
+    # Build the too binary if needed
+    if [[ ! -f "$PROJECT_ROOT/bin/too" ]]; then
+        (cd "$PROJECT_ROOT" && go build -o bin/too ./cmd/too)
+    fi
+    
+    # Use the actual binary path
+    export TOO_BIN="$PROJECT_ROOT/bin/too"
+}
+
+teardown() {
+    # Clean up temporary directory
+    if [[ -n "$TEST_TEMP_DIR" && -d "$TEST_TEMP_DIR" ]]; then
+        rm -rf "$TEST_TEMP_DIR"
+    fi
+}
+
+# Helper function to check output contains text
+assert_output_contains() {
+    local expected="$1"
+    if ! echo "$output" | grep -q "$expected"; then
+        echo "Expected output to contain: $expected"
+        echo "But got: $output"
+        return 1
+    fi
+}
+
+# Helper function to check output does not contain text
+assert_output_not_contains() {
+    local unexpected="$1"
+    if echo "$output" | grep -q "$unexpected"; then
+        echo "Expected output NOT to contain: $unexpected"
+        echo "But got: $output"
+        return 1
+    fi
 }
 
 @test "scope: default to global when not in git repo" {
-    # Create test script for non-git directory
-    cat > "$TEST_DIR/scope_global.sh" << 'EOF'
-#!/bin/zsh
-# Create a non-git directory
-TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
-
-# Add a todo (should use global scope)
-too add "Global todo 1"
-
-# The datapath should be in XDG_DATA_HOME or ~/.local/share
-too datapath
-
-# Clean up
-rm -rf "$TEST_DIR"
-EOF
-    chmod +x "$TEST_DIR/scope_global.sh"
+    # Create a non-git directory
+    mkdir -p "$TEST_TEMP_DIR/non-git"
+    cd "$TEST_TEMP_DIR/non-git"
     
-    # Run the test script
-    output=$("$LIVE_TESTS_DIR/run" "$TEST_DIR/scope_global.sh")
+    # Clear any environment variables that might interfere
+    unset TODO_DB_PATH
     
-    # Check that it uses global path
-    echo "$output" | grep -q "/.local/share/too/todos.json" || {
-        echo "Expected global path, but got: $output"
-        return 1
-    }
+    # Add a todo (should use global scope)
+    "$TOO_BIN" add "Global todo 1"
+    
+    # The datapath should be in XDG_DATA_HOME or ~/.local/share
+    run "$TOO_BIN" datapath
+    assert_output_contains "/.local/share/too/todos.json"
 }
 
 @test "scope: use project scope in git repo" {
-    # Create test script for git repo
-    cat > "$TEST_DIR/scope_project.sh" << 'EOF'
-#!/bin/zsh
-# Create a git repository
-TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
-git init
-
-# Add a todo (should use project scope)
-too add "Project todo 1"
-
-# The datapath should be in the git repo
-too datapath
-
-# Check .gitignore
-cat .gitignore 2>/dev/null | grep -q ".todos.json" && echo "GITIGNORE_OK"
-
-# Clean up
-rm -rf "$TEST_DIR"
-EOF
-    chmod +x "$TEST_DIR/scope_project.sh"
+    # Create a git repository
+    mkdir -p "$TEST_TEMP_DIR/git-repo"
+    cd "$TEST_TEMP_DIR/git-repo"
+    git init
     
-    # Run the test script
-    output=$("$LIVE_TESTS_DIR/run" "$TEST_DIR/scope_project.sh")
+    # Clear any environment variables that might interfere
+    unset TODO_DB_PATH
     
-    # Check that it uses project path
-    echo "$output" | grep -q "/.todos.json" || {
-        echo "Expected project path ending with .todos.json"
-        return 1
-    }
+    # Add a todo (should use project scope)
+    "$TOO_BIN" add "Project todo 1"
     
-    # Check gitignore was updated
-    echo "$output" | grep -q "GITIGNORE_OK" || {
-        echo ".gitignore was not updated properly"
-        return 1
-    }
+    # The datapath should be in the git repo
+    run "$TOO_BIN" datapath
+    [ "$output" = "$TEST_TEMP_DIR/git-repo/.todos.json" ]
+    
+    # Check .gitignore was updated
+    [ -f .gitignore ]
+    grep -q ".todos.json" .gitignore
 }
 
 @test "scope: --global flag forces global scope in git repo" {
-    # Create test script
-    cat > "$TEST_DIR/scope_force_global.sh" << 'EOF'
-#!/bin/zsh
-# Create a git repository
-TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
-git init
-
-# Add a todo with --global flag
-too --global add "Forced global todo"
-
-# The datapath should be global, not project
-too --global datapath
-
-# Project .todos.json should NOT exist
-[ ! -f ".todos.json" ] && echo "NO_PROJECT_FILE"
-
-# Clean up
-rm -rf "$TEST_DIR"
-EOF
-    chmod +x "$TEST_DIR/scope_force_global.sh"
+    # Create a git repository
+    mkdir -p "$TEST_TEMP_DIR/git-repo-global"
+    cd "$TEST_TEMP_DIR/git-repo-global"
+    git init
     
-    # Run the test script
-    output=$("$LIVE_TESTS_DIR/run" "$TEST_DIR/scope_force_global.sh")
+    # Clear any environment variables that might interfere
+    unset TODO_DB_PATH
     
-    # Check that it uses global path
-    echo "$output" | grep -q "/.local/share/too/todos.json" || {
-        echo "Expected global path, but got: $output"
-        return 1
-    }
+    # Add a todo with --global flag
+    "$TOO_BIN" --global add "Forced global todo"
     
-    # Check no project file was created
-    echo "$output" | grep -q "NO_PROJECT_FILE" || {
-        echo "Project .todos.json should not exist"
-        return 1
-    }
+    # The datapath should be global, not project
+    run "$TOO_BIN" --global datapath
+    assert_output_contains "/.local/share/too/todos.json"
+    
+    # Project .todos.json should NOT exist
+    [ ! -f ".todos.json" ]
 }
 
 @test "scope: todos are isolated between scopes" {
-    # Create test script
-    cat > "$TEST_DIR/scope_isolation.sh" << 'EOF'
-#!/bin/zsh
-# Create a git repo for project scope
-TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
-git init
-
-# Add project todo
-too add "Project-specific todo"
-
-# Add global todo
-too --global add "Global todo"
-
-# List project todos (should not show global todo)
-echo "=== PROJECT TODOS ==="
-too list
-
-# List global todos (should not show project todo)
-echo "=== GLOBAL TODOS ==="
-too --global list
-
-# Clean up
-rm -rf "$TEST_DIR"
-EOF
-    chmod +x "$TEST_DIR/scope_isolation.sh"
+    # Create a git repo for project scope
+    mkdir -p "$TEST_TEMP_DIR/scope-isolation"
+    cd "$TEST_TEMP_DIR/scope-isolation"
+    git init
     
-    # Run the test script
-    output=$("$LIVE_TESTS_DIR/run" "$TEST_DIR/scope_isolation.sh")
+    # Clear any environment variables that might interfere
+    unset TODO_DB_PATH
     
-    # Extract project todos section
-    project_section=$(echo "$output" | sed -n '/=== PROJECT TODOS ===/,/=== GLOBAL TODOS ===/p')
+    # Add project todo
+    "$TOO_BIN" add "Project-specific todo"
     
-    # Check project section has project todo but not global
-    echo "$project_section" | grep -q "Project-specific todo" || {
-        echo "Project todos should contain 'Project-specific todo'"
-        return 1
-    }
-    echo "$project_section" | grep -q "Global todo" && {
-        echo "Project todos should NOT contain 'Global todo'"
-        return 1
-    }
+    # Add global todo
+    "$TOO_BIN" --global add "Global todo"
     
-    # Extract global todos section  
-    global_section=$(echo "$output" | sed -n '/=== GLOBAL TODOS ===/,$p')
+    # List project todos (should not show global todo)
+    run "$TOO_BIN" list
+    assert_output_contains "Project-specific todo"
+    assert_output_not_contains "Global todo"
     
-    # Check global section has global todo but not project
-    echo "$global_section" | grep -q "Global todo" || {
-        echo "Global todos should contain 'Global todo'"
-        return 1
-    }
-    echo "$global_section" | grep -q "Project-specific todo" && {
-        echo "Global todos should NOT contain 'Project-specific todo'"
-        return 1
-    }
+    # List global todos (should not show project todo)
+    run "$TOO_BIN" --global list
+    assert_output_contains "Global todo"
+    assert_output_not_contains "Project-specific todo"
 }
 
 @test "scope: subdirectory finds parent git repo" {
-    # Create test script
-    cat > "$TEST_DIR/scope_subdirectory.sh" << 'EOF'
-#!/bin/zsh
-# Create git repo
-TEST_DIR=$(mktemp -d)
-cd "$TEST_DIR"
-git init
-
-# Create deep subdirectory
-mkdir -p src/pkg/utils
-cd src/pkg/utils
-
-# Add todo from subdirectory
-too add "Subdirectory todo"
-
-# Check .todos.json is in git root
-[ -f "../../../.todos.json" ] && echo "TODOS_IN_ROOT"
-[ ! -f ".todos.json" ] && echo "NO_LOCAL_TODOS"
-
-# List should still work
-too list | grep -q "Subdirectory todo" && echo "LIST_WORKS"
-
-# Clean up
-cd /
-rm -rf "$TEST_DIR"
-EOF
-    chmod +x "$TEST_DIR/scope_subdirectory.sh"
+    # Create git repo
+    mkdir -p "$TEST_TEMP_DIR/parent-search"
+    cd "$TEST_TEMP_DIR/parent-search"
+    git init
     
-    # Run the test script
-    output=$("$LIVE_TESTS_DIR/run" "$TEST_DIR/scope_subdirectory.sh")
+    # Clear any environment variables that might interfere
+    unset TODO_DB_PATH
     
-    # Check all conditions
-    echo "$output" | grep -q "TODOS_IN_ROOT" || {
-        echo ".todos.json should be in git root"
-        return 1
-    }
-    echo "$output" | grep -q "NO_LOCAL_TODOS" || {
-        echo ".todos.json should not be in subdirectory"
-        return 1
-    }
-    echo "$output" | grep -q "LIST_WORKS" || {
-        echo "List command should work from subdirectory"
-        return 1
-    }
+    # Create deep subdirectory
+    mkdir -p src/pkg/utils
+    cd src/pkg/utils
+    
+    # Add todo from subdirectory
+    "$TOO_BIN" add "Subdirectory todo"
+    
+    # Check .todos.json is in git root
+    [ -f "$TEST_TEMP_DIR/parent-search/.todos.json" ]
+    [ ! -f ".todos.json" ]
+    
+    # List should still work
+    run "$TOO_BIN" list
+    assert_output_contains "Subdirectory todo"
 }
