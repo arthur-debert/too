@@ -6,6 +6,8 @@ github.com/Masterminds/semver/v3 v3.3.0 h1:B8LGeaivUe71a5qox1ICM/JLl0NqZSW5CHyL+
 github.com/Masterminds/semver/v3 v3.3.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/Masterminds/sprig/v3 v3.3.0 h1:mQh0Yrg1XPo6vjYXgtf5OtijNAKJRNcTdOOGZe3tPhs=
 github.com/Masterminds/sprig/v3 v3.3.0/go.mod h1:Zy1iXRYNqNLUolqCpL4uhk6SHUMAOSCzdgBfDb35Lz0=
+github.com/arthur-debert/nanostore v0.7.5-0.20250915221522-ddc1581ab466 h1:9zi4gGwO+s/EVIK/MSPIQ1ZO+vLJS3em8Car6k9j+Qc=
+github.com/arthur-debert/nanostore v0.7.5-0.20250915221522-ddc1581ab466/go.mod h1:gUsEtNSfVne6zYJaBUn9i/OvqSgwFfOWWq/MHQGXMQg=
 github.com/arthur-debert/nanostore v0.9.11 h1:2ny3EMEM9hygpvkz6L6WTwH4rLubavThow2BsnGmqJo=
 github.com/arthur-debert/nanostore v0.9.11/go.mod h1:QfNNg/pJa2joYq4OjgT44Mjoc3z+1fZbwG0RJOUuVZM=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=

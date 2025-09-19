@@ -249,6 +249,12 @@ func (n *NanoStoreAdapter) ResolvePositionPath(userFacingID string) (string, err
 		return uuid, nil
 	}
 	
+	// Check if this looks like it could be a position path at all
+	// Position paths should only contain digits, dots, and optional c/p prefixes
+	if !isValidPositionPathFormat(userFacingID) {
+		return "", fmt.Errorf("invalid position path format: '%s'", userFacingID)
+	}
+	
 	// If that fails and the ID doesn't have status prefixes, try different combinations
 	if !strings.Contains(userFacingID, "c") && !strings.Contains(userFacingID, "p") {
 		// For hierarchical IDs like "1.1", we need to try different status combinations
@@ -462,4 +468,28 @@ func (n *NanoStoreAdapter) GetDescendantsOf(parentID string) ([]*models.Todo, er
 	}
 	
 	return allDescendants, nil
+}
+
+// isValidPositionPathFormat checks if a string could be a valid position path
+// This is stricter than the engine's looksLikePositionPath as it's used to decide
+// whether to attempt resolution at all
+func isValidPositionPathFormat(s string) bool {
+	// Empty string is not valid
+	if s == "" {
+		return false
+	}
+	
+	// Check each character - should only be digits, dots, 'c', or 'p'
+	for _, r := range s {
+		if !('0' <= r && r <= '9') && r != '.' && r != 'c' && r != 'p' {
+			return false
+		}
+	}
+	
+	// Additional validation: shouldn't start/end with dot, no double dots
+	if strings.HasPrefix(s, ".") || strings.HasSuffix(s, ".") || strings.Contains(s, "..") {
+		return false
+	}
+	
+	return true
 }

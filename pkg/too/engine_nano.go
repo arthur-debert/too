@@ -2,6 +2,8 @@ package too
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
@@ -213,8 +215,30 @@ func (e *NanoEngine) Search(query string, showAll bool) ([]*models.Todo, error) 
 }
 
 // ResolveReference converts a user-facing ID to UUID
+// Supports both position paths (1, 1.2, etc) and free text search
 func (e *NanoEngine) ResolveReference(ref string) (string, error) {
-	return e.adapter.ResolvePositionPath(ref)
+	// First try as position path
+	uuid, err := e.adapter.ResolvePositionPath(ref)
+	if err == nil {
+		return uuid, nil
+	}
+	
+	// Check if the error indicates invalid position path format
+	// In that case, try free text search
+	if strings.Contains(err.Error(), "invalid position path format") {
+		e.logger.Debug().Str("ref", ref).Msg("invalid position path format, trying free text search")
+		return e.resolveFreeText(ref)
+	}
+	
+	// If it looks like a position path but failed for other reasons, return the error
+	if looksLikePositionPath(ref) {
+		e.logger.Debug().Str("ref", ref).Err(err).Msg("looks like position path, returning error")
+		return "", err
+	}
+	
+	// Otherwise, try free text search
+	e.logger.Debug().Str("ref", ref).Msg("trying free text search")
+	return e.resolveFreeText(ref)
 }
 
 // MutateAttributeByUUID changes a single attribute on a todo by its UUID
@@ -269,10 +293,10 @@ func (e *NanoEngine) MutateAttributeByUUID(uuid string, attr models.AttributeTyp
 
 // MutateAttribute changes a single attribute on a todo
 func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, value interface{}) (string, error) {
-	// Resolve reference to UID
-	uuid, err := e.adapter.ResolvePositionPath(ref)
+	// Resolve reference to UID (supports both position paths and free text)
+	uuid, err := e.ResolveReference(ref)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve reference '%s': %w", ref, err)
+		return "", err
 	}
 
 	// Apply mutation based on attribute type
@@ -280,7 +304,7 @@ func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, valu
 	case models.AttributeCompletion:
 		status := value.(string)
 		if status == string(models.StatusDone) {
-			err = e.adapter.Complete(ref)
+			err = e.adapter.CompleteByUUID(uuid)
 			if err == nil {
 				// Status bubbles UP only: when completing a todo, update parent status
 				// if all siblings are now complete. Children statuses are NOT changed.
@@ -290,7 +314,7 @@ func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, valu
 				}
 			}
 		} else {
-			err = e.adapter.Reopen(ref)
+			err = e.adapter.ReopenByUUID(uuid)
 			if err == nil {
 				// Status bubbles UP only: when reopening a todo, update parent status
 				// to pending if it was previously completed. Children statuses are NOT changed.
@@ -301,14 +325,14 @@ func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, valu
 		}
 	case models.AttributeText:
 		text := value.(string)
-		err = e.adapter.Update(ref, text)
+		err = e.adapter.UpdateByUUID(uuid, text)
 	case models.AttributeParent:
 		newParent := value.(string)
 		var parentPtr *string
 		if newParent != "" {
 			parentPtr = &newParent
 		}
-		err = e.adapter.Move(ref, parentPtr)
+		err = e.adapter.MoveByUUID(uuid, parentPtr)
 	default:
 		return "", fmt.Errorf("unknown attribute: %s", attr)
 	}
@@ -504,5 +528,54 @@ func (e *NanoEngine) autoUpdateParentStatus(childUUID string) error {
 	}
 
 	return nil
+}
+
+// looksLikePositionPath checks if a string looks like a position path
+// Examples: "1", "2.1", "c1", "c1.2", "1.p2.c3"
+func looksLikePositionPath(ref string) bool {
+	// Position paths are numeric with optional status prefixes and dots
+	// Pattern: optional prefix (c/p) + digit + optional (dot + optional prefix + digit)
+	positionPathRegex := regexp.MustCompile(`^[cp]?\d+(\.[cp]?\d+)*$`)
+	return positionPathRegex.MatchString(ref)
+}
+
+// resolveFreeText tries to find a todo by searching for the text
+func (e *NanoEngine) resolveFreeText(text string) (string, error) {
+	// Search for exact or partial matches
+	e.logger.Debug().Str("text", text).Msg("searching for text")
+	matches, err := e.adapter.Search(text, true) // Search all todos
+	if err != nil {
+		return "", fmt.Errorf("failed to search for '%s': %w", text, err)
+	}
+	e.logger.Debug().Int("matches", len(matches)).Msg("search results")
+	
+	if len(matches) == 0 {
+		return "", fmt.Errorf("no todo found matching '%s'", text)
+	}
+	
+	if len(matches) > 1 {
+		// Try exact match first
+		textLower := strings.ToLower(text)
+		for _, todo := range matches {
+			if strings.ToLower(todo.Text) == textLower {
+				return todo.UID, nil
+			}
+		}
+		
+		// If no exact match, return error with suggestions
+		var suggestions []string
+		for i, todo := range matches {
+			if i >= 5 { // Limit suggestions to 5
+				suggestions = append(suggestions, "...")
+				break
+			}
+			suggestions = append(suggestions, fmt.Sprintf("  %s: %s", todo.PositionPath, todo.Text))
+		}
+		return "", fmt.Errorf("multiple todos found matching '%s':\n%s\nPlease be more specific or use the position path", text, strings.Join(suggestions, "\n"))
+	}
+	
+	// Single match found
+	e.logger.Debug().Str("uuid", matches[0].UID).Str("text", matches[0].Text).Msg("returning match UUID")
+	return matches[0].UID, nil
 }
 
