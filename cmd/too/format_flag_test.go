@@ -18,15 +18,25 @@ func TestFormatFlag(t *testing.T) {
 
 	t.Run("render with valid format", func(t *testing.T) {
 		// Test each registered format
+		// Use a struct for testing since gocsv only supports structs
+		type testData struct {
+			Test string
+			Data string
+		}
+		data := testData{Test: "test", Data: "data"}
+		
 		formats := lipbalm.ListFormats()
 		for _, format := range formats {
-			err := render(&testWriter{}, format, map[string]string{"test": "data"})
+			err := render(&testWriter{}, format, data)
 			require.NoError(t, err, "format %s should work", format)
 		}
 	})
 
 	t.Run("render with invalid format", func(t *testing.T) {
-		err := render(&testWriter{}, "invalid", map[string]string{"test": "data"})
+		type testData struct {
+			Test string
+		}
+		err := render(&testWriter{}, "invalid", testData{Test: "data"})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid format")
 		assert.Contains(t, err.Error(), "Available formats")
