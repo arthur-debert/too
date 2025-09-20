@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/arthur-debert/too/pkg/logging"
 	"github.com/arthur-debert/too/pkg/too/models"
 	"github.com/rs/zerolog/log"
 )
