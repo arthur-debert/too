@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -108,9 +109,19 @@ func TestIsUnknownCommandError(t *testing.T) {
 		want    bool
 	}{
 		{
-			name: "unknown command error",
-			err:  assert.AnError,
-			want: false, // Will be false since assert.AnError doesn't contain the text
+			name: "cobra unknown command error",
+			err:  fmt.Errorf("unknown command \"foo\" for \"too\""),
+			want: true,
+		},
+		{
+			name: "alternative unknown command format",
+			err:  fmt.Errorf("Error: unknown command \"bar\""),
+			want: true,
+		},
+		{
+			name: "other error",
+			err:  fmt.Errorf("some other error"),
+			want: false,
 		},
 		{
 			name: "nil error",
@@ -122,7 +133,7 @@ func TestIsUnknownCommandError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := isUnknownCommandError(tt.err)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got, "isUnknownCommandError(%v) = %v, want %v", tt.err, got, tt.want)
 		})
 	}
 }
