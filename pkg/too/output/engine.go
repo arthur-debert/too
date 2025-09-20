@@ -97,16 +97,6 @@ func NewEngine() (*Engine, error) {
 				return "", false
 			},
 
-			// Custom CSV rendering for hierarchical todos
-			"[]*models.Todo": func(format, fieldName string, value interface{}) (string, bool) {
-				if format != "csv" {
-					return "", false
-				}
-				
-				// CSV rendering not yet implemented - return false to use default
-				// This is tracked separately and not a code TODO
-				return "", false
-			},
 		},
 	}
 
