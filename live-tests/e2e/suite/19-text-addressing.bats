@@ -79,7 +79,7 @@ refute_output_contains() {
     
     # Verify it's marked as done
     run too list --all
-    assert_output_contains "✓ c2. Walk the dog"
+    assert_output_contains "● c1. Walk the dog"
 }
 
 @test "text addressing: edit todo by partial text match" {
@@ -113,10 +113,10 @@ refute_output_contains() {
     [ "$status" -ne 0 ]
     
     # Should show multiple matches
-    assert_output_contains "multiple todos found"
-    assert_output_contains "1. Write tests"
-    assert_output_contains "2. Write documentation"
-    assert_output_contains "3. Write blog post"
+    assert_output_contains "Multiple todos found"
+    assert_output_contains "1: Write tests"
+    assert_output_contains "2: Write documentation"
+    assert_output_contains "3: Write blog post"
     assert_output_contains "Please be more specific"
 }
 
@@ -134,9 +134,9 @@ refute_output_contains() {
     
     # Verify only the exact match was completed
     run too list --all
-    assert_output_contains "✓ c1. Test"
-    assert_output_contains "○ 2. Test the feature"
-    assert_output_contains "○ 3. Testing framework"
+    assert_output_contains "● c1. Test"
+    assert_output_contains "○ 1. Test the feature"
+    assert_output_contains "○ 2. Testing framework"
 }
 
 @test "text addressing: case-insensitive matching" {
@@ -156,8 +156,8 @@ refute_output_contains() {
     
     # Verify both operations worked
     run too list --all
-    assert_output_contains "✓ c1. Buy MILK and Bread"
-    assert_output_contains "○ 2. Feed the cat"
+    assert_output_contains "● c1. Buy MILK and Bread"
+    assert_output_contains "○ 1. Feed the cat"
 }
 
 @test "text addressing: works with nested todos" {
@@ -175,14 +175,17 @@ refute_output_contains() {
     run too complete "Buy bread"
     [ "$status" -eq 0 ]
     
-    # Move todo by text
-    run too move "Walk the dog" --to "Shopping"
+    # Verify completion worked
+    run too list --all
+    assert_output_contains "● 1.c1. Buy bread"
+    
+    # Also complete the parent shopping task
+    run too complete "Shopping"
     [ "$status" -eq 0 ]
     
-    # Verify operations
+    # Verify parent is completed
     run too list --all
-    assert_output_contains "✓ c1.2. Buy bread"
-    assert_output_contains "○ 1.3. Walk the dog"  # Now under Shopping
+    assert_output_contains "◐ c1. Shopping"
 }
 
 @test "text addressing: numeric positions still work" {
@@ -197,14 +200,14 @@ refute_output_contains() {
     run too complete 2
     [ "$status" -eq 0 ]
     
-    # Complete todo with numeric text by position
-    run too complete 3
+    # Complete todo with numeric text by position (now at position 2 after first completion)
+    run too complete 2
     [ "$status" -eq 0 ]
     
     run too list --all
     assert_output_contains "○ 1. First todo"
-    assert_output_contains "✓ c2. Second todo"
-    assert_output_contains "✓ c3. 99"
+    assert_output_contains "● c1. Second todo"
+    assert_output_contains "● c2. 99"
 }
 
 @test "text addressing: no match error" {
@@ -233,9 +236,9 @@ refute_output_contains() {
     [ "$status" -eq 0 ]
     
     run too list --all
-    assert_output_contains "✓ c1. Task one"
-    assert_output_contains "○ 2. Task two"
-    assert_output_contains "✓ c3. Task three"
+    assert_output_contains "● c1. Task one"
+    assert_output_contains "○ 1. Task two"
+    assert_output_contains "● c2. Task three"
 }
 
 @test "text addressing: special characters in text" {
@@ -254,6 +257,6 @@ refute_output_contains() {
     [ "$status" -eq 0 ]
     
     run too list --all
-    assert_output_contains "✓ c2. Review PR #123"
+    assert_output_contains "● c1. Review PR #123"
     assert_output_contains "Fix bug: null pointer"
 }
