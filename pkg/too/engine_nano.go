@@ -564,14 +564,16 @@ func (e *NanoEngine) resolveFreeText(text string) (string, error) {
 		
 		// If no exact match, return error with suggestions
 		var suggestions []string
+		suggestions = append(suggestions, fmt.Sprintf("Multiple todos found matching '%s':", text))
 		for i, todo := range matches {
 			if i >= 5 { // Limit suggestions to 5
-				suggestions = append(suggestions, "...")
+				suggestions = append(suggestions, "  ...")
 				break
 			}
 			suggestions = append(suggestions, fmt.Sprintf("  %s: %s", todo.PositionPath, todo.Text))
 		}
-		return "", fmt.Errorf("multiple todos found matching '%s':\n%s\nPlease be more specific or use the position path", text, strings.Join(suggestions, "\n"))
+		suggestions = append(suggestions, "Please be more specific or use the position path")
+		return "", fmt.Errorf("%s", strings.Join(suggestions, "\n"))
 	}
 	
 	// Single match found
