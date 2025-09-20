@@ -34,7 +34,7 @@ func TestAddCommandCLI(t *testing.T) {
 
 		// The error should be about parent not found, not about flag parsing
 		if err != nil {
-			assert.Contains(t, err.Error(), "failed to resolve parent")
+			assert.Contains(t, err.Error(), "failed to resolve parent ID")
 		}
 	})
 
@@ -102,7 +102,7 @@ func TestAddCommandCLI(t *testing.T) {
 		err = addOrphanCmd.Execute()
 		// Should fail with parent not found
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to resolve parent")
+		assert.Contains(t, err.Error(), "failed to resolve parent ID '99'")
 	})
 
 	t.Run("shortcut: first arg as position path", func(t *testing.T) {

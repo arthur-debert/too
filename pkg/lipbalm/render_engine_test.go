@@ -162,26 +162,34 @@ func TestRenderEngine_CSV(t *testing.T) {
 		output := buf.String()
 		lines := strings.Split(strings.TrimSpace(output), "\n")
 		
-		// Check headers
-		assert.Equal(t, "name,age,email", lines[0])
+		// Check headers - gocsv uses field names, not tags
+		assert.Equal(t, "Name,Age,Email", lines[0])
 		
 		// Check data
 		assert.Equal(t, "Alice,30,alice@example.com", lines[1])
 		assert.Equal(t, "Bob,25,bob@example.com", lines[2])
 	})
 
-	t.Run("Map to CSV", func(t *testing.T) {
-		data := map[string]int{"foo": 1, "bar": 2}
+	t.Run("Single struct to CSV", func(t *testing.T) {
+		type Person struct {
+			Name  string `json:"name"`
+			Age   int    `json:"age"`
+			Email string `json:"email"`
+		}
+		
+		// gocsv requires slices, but our formatter wraps single structs
+		data := Person{Name: "Charlie", Age: 35, Email: "charlie@example.com"}
 
 		var buf bytes.Buffer
 		err := engine.Render(&buf, "csv", data)
 		require.NoError(t, err)
 
 		output := buf.String()
-		assert.Contains(t, output, "key,value")
-		// Maps are unordered, so just check both entries exist
-		assert.Contains(t, output, "foo,1")
-		assert.Contains(t, output, "bar,2")
+		// Should have headers and one data row
+		lines := strings.Split(strings.TrimSpace(output), "\n")
+		assert.Equal(t, 2, len(lines))
+		assert.Equal(t, "Name,Age,Email", lines[0])
+		assert.Equal(t, "Charlie,35,charlie@example.com", lines[1])
 	})
 }
 

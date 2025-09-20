@@ -4,6 +4,10 @@ import (
 	"github.com/arthur-debert/too/pkg/too/models"
 )
 
+// contextSiblingCount defines how many siblings to show before and after
+// the highlighted item in contextual view mode
+const contextSiblingCount = 2
+
 // ContextualNode represents a node in the contextual view
 type ContextualNode struct {
 	Todo               *models.HierarchicalTodo
@@ -74,10 +78,9 @@ func buildContextFromPath(todos []*models.HierarchicalTodo, path []string, pathI
 
 	if isLastInPath {
 		// This is the highlighted item - add context siblings
-		const contextSize = 2
 
 		// Calculate siblings before
-		startIdx := targetIndex - contextSize
+		startIdx := targetIndex - contextSiblingCount
 		if startIdx < 0 {
 			startIdx = 0
 		} else if startIdx > 0 {
@@ -90,7 +93,7 @@ func buildContextFromPath(todos []*models.HierarchicalTodo, path []string, pathI
 		}
 
 		// Calculate siblings after
-		endIdx := targetIndex + contextSize + 1
+		endIdx := targetIndex + contextSiblingCount + 1
 		if endIdx > len(todos) {
 			endIdx = len(todos)
 		} else if endIdx < len(todos) {

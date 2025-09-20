@@ -1,6 +1,7 @@
 package datapath
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,7 +60,19 @@ func ResolveScopedPath(forceGlobal bool) (string, bool) {
 	// Ensure parent directory exists for global path
 	if scopeInfo.IsGlobal {
 		parentDir := filepath.Dir(scopeInfo.Path)
-		_ = os.MkdirAll(parentDir, 0755) // Best effort - ignore errors
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			// Log error but continue - the actual file operations will fail with clearer errors
+			// We don't want to fail here as it might be a transient issue
+			if os.IsPermission(err) {
+				// Permission errors are more serious - log prominently
+				fmt.Fprintf(os.Stderr, "ERROR: Permission denied creating global storage directory %s: %v\n", parentDir, err)
+				fmt.Fprintf(os.Stderr, "You may need to manually create this directory or use sudo\n")
+			} else {
+				// For other errors (like disk full), log warning
+				fmt.Fprintf(os.Stderr, "Warning: could not create global storage directory %s: %v\n", parentDir, err)
+			}
+			// Continue anyway - let the actual file operation provide the final error
+		}
 	}
 	
 	return scopeInfo.Path, scopeInfo.IsGlobal
@@ -69,7 +82,9 @@ func ResolveScopedPath(forceGlobal bool) (string, bool) {
 func EnsureProjectGitignore() error {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil // Silently ignore errors
+		// Can't determine current directory - not critical for gitignore
+		fmt.Fprintf(os.Stderr, "Debug: could not get current directory for gitignore check: %v\n", err)
+		return nil
 	}
 	
 	resolver := scope.NewResolver(false)

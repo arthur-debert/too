@@ -58,7 +58,7 @@ func TestFreeTextAddressing(t *testing.T) {
 			},
 			reference:   "Buy",
 			expectError: true,
-			errorMsg:    "multiple todos found matching 'Buy'",
+			errorMsg:    "Multiple todos found matching 'Buy'",
 		},
 		{
 			name: "exact match resolves ambiguity",
@@ -198,7 +198,7 @@ func TestFreeTextInCommands(t *testing.T) {
 		
 		_, err := ExecuteUnifiedCommand("complete", []string{"Write"}, opts)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "multiple todos found")
+		assert.Contains(t, err.Error(), "Multiple todos found")
 		assert.Contains(t, err.Error(), "Write documentation")
 		assert.Contains(t, err.Error(), "Write tests")
 	})

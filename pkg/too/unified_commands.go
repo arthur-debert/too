@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arthur-debert/too/pkg/too/models"
+	"github.com/rs/zerolog/log"
 )
 
 // UnifiedCommand represents a simplified command definition
@@ -213,7 +214,9 @@ func ExecuteUnifiedCommand(cmdName string, args []string, opts map[string]interf
 		return nil, err
 	}
 	defer func() {
-		_ = engine.Close() // Best effort cleanup - ignore errors
+		if err := engine.Close(); err != nil {
+			log.Debug().Err(err).Msg("error closing engine during cleanup")
+		}
 	}()
 	
 	// Execute command
