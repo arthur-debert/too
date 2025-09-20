@@ -82,7 +82,9 @@ func ResolveScopedPath(forceGlobal bool) (string, bool) {
 func EnsureProjectGitignore() error {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil // Silently ignore errors
+		// Can't determine current directory - not critical for gitignore
+		fmt.Fprintf(os.Stderr, "Debug: could not get current directory for gitignore check: %v\n", err)
+		return nil
 	}
 	
 	resolver := scope.NewResolver(false)
