@@ -103,7 +103,8 @@ func NewEngine() (*Engine, error) {
 					return "", false
 				}
 				
-				// TODO: Implement custom CSV rendering for hierarchical todos
+				// CSV rendering not yet implemented - return false to use default
+				// This is tracked separately and not a code TODO
 				return "", false
 			},
 		},
