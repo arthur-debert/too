@@ -299,49 +299,8 @@ func (e *NanoEngine) MutateAttribute(ref string, attr models.AttributeType, valu
 		return "", err
 	}
 
-	// Apply mutation based on attribute type
-	switch attr {
-	case models.AttributeCompletion:
-		status := value.(string)
-		if status == string(models.StatusDone) {
-			err = e.adapter.CompleteByUUID(uuid)
-			if err == nil {
-				// Status bubbles UP only: when completing a todo, update parent status
-				// if all siblings are now complete. Children statuses are NOT changed.
-				// This preserves individual child completion states when parents are completed.
-				if updateErr := e.autoUpdateParentStatus(uuid); updateErr != nil {
-					e.logger.Warn().Err(updateErr).Msg("failed to auto-update parent status")
-				}
-			}
-		} else {
-			err = e.adapter.ReopenByUUID(uuid)
-			if err == nil {
-				// Status bubbles UP only: when reopening a todo, update parent status
-				// to pending if it was previously completed. Children statuses are NOT changed.
-				if updateErr := e.autoUpdateParentStatus(uuid); updateErr != nil {
-					e.logger.Warn().Err(updateErr).Msg("failed to auto-update parent status")
-				}
-			}
-		}
-	case models.AttributeText:
-		text := value.(string)
-		err = e.adapter.UpdateByUUID(uuid, text)
-	case models.AttributeParent:
-		newParent := value.(string)
-		var parentPtr *string
-		if newParent != "" {
-			parentPtr = &newParent
-		}
-		err = e.adapter.MoveByUUID(uuid, parentPtr)
-	default:
-		return "", fmt.Errorf("unknown attribute: %s", attr)
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	return uuid, nil
+	// Delegate to MutateAttributeByUUID to avoid duplication
+	return e.MutateAttributeByUUID(uuid, attr, value)
 }
 
 // GetStats returns todo counts
